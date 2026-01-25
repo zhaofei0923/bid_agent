@@ -1,0 +1,1636 @@
+openapi: 3.1.0
+info:
+  title: BidAgent API
+  description: |
+    多边机构投标AI Agent平台API
+    
+    ## 认证
+    所有API（除auth相关）需要在Header中携带JWT Token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## 积分计费
+    涉及LLM调用的接口会消耗积分，响应头中包含:
+    - X-Credits-Consumed: 本次消耗积分
+    - X-Credits-Remaining: 剩余积分
+    
+    ## 错误码
+    | Code | Description |
+    |------|-------------|
+    | 40001 | 参数验证失败 |
+    | 40101 | 未认证 |
+    | 40301 | 权限不足 |
+    | 40401 | 资源不存在 |
+    | 40901 | 积分不足 |
+    | 50001 | 服务器内部错误 |
+    | 50301 | LLM服务不可用 |
+  version: 1.0.0
+  contact:
+    name: BidAgent Support
+    email: support@bidagent.ai
+
+servers:
+  - url: https://api.bidagent.ai/v1
+    description: Production
+  - url: http://localhost:8000/v1
+    description: Development
+
+tags:
+  - name: Auth
+    description: 认证与授权
+  - name: Users
+    description: 用户管理
+  - name: Opportunities
+    description: 招标机会
+  - name: Projects
+    description: 投标项目
+  - name: Documents
+    description: 文档管理
+  - name: Generation
+    description: 标书生成
+  - name: Credits
+    description: 积分管理
+
+paths:
+  # ========== 认证 ==========
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 用户注册
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 邮箱已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 用户登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: 凭证无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: 刷新Token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: 登出
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: 登出成功
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      summary: 忘记密码
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: 重置邮件已发送
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: 重置密码
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: 密码重置成功
+
+  # ========== 用户 ==========
+  /users/me:
+    get:
+      tags: [Users]
+      summary: 获取当前用户信息
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    patch:
+      tags: [Users]
+      summary: 更新当前用户信息
+      operationId: updateCurrentUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/me/password:
+    put:
+      tags: [Users]
+      summary: 修改密码
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: 密码修改成功
+        '400':
+          description: 当前密码错误
+
+  # ========== 招标机会 ==========
+  /opportunities:
+    get:
+      tags: [Opportunities]
+      summary: 获取招标机会列表
+      operationId: listOpportunities
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [adb, wb, un]
+          description: 来源机构
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, closed]
+            default: open
+        - name: sector
+          in: query
+          schema:
+            type: string
+          description: 行业领域
+        - name: country
+          in: query
+          schema:
+            type: string
+          description: 国家
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: 全文搜索关键词
+        - name: deadline_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: deadline_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [deadline, published_at, budget]
+            default: deadline
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpportunityList'
+
+  /opportunities/{id}:
+    get:
+      tags: [Opportunities]
+      summary: 获取招标机会详情
+      operationId: getOpportunity
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Opportunity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /opportunities/{id}/subscribe:
+    post:
+      tags: [Opportunities]
+      summary: 订阅机会更新
+      operationId: subscribeOpportunity
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: 订阅成功
+
+  # ========== 项目 ==========
+  /projects:
+    get:
+      tags: [Projects]
+      summary: 获取项目列表
+      operationId: listProjects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, analyzing, generating, review, submitted, won, lost]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectList'
+    post:
+      tags: [Projects]
+      summary: 创建项目
+      operationId: createProject
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{id}:
+    get:
+      tags: [Projects]
+      summary: 获取项目详情
+      operationId: getProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Projects]
+      summary: 更新项目
+      operationId: updateProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    delete:
+      tags: [Projects]
+      summary: 删除项目
+      operationId: deleteProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: 删除成功
+
+  # ========== 文档 ==========
+  /projects/{projectId}/documents:
+    get:
+      tags: [Documents]
+      summary: 获取项目文档列表
+      operationId: listDocuments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [tor, rfp, company_profile, cv, past_project, reference, other]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentList'
+    post:
+      tags: [Documents]
+      summary: 上传文档
+      operationId: uploadDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 文件（PDF, DOCX, TXT）
+                type:
+                  type: string
+                  enum: [tor, rfp, company_profile, cv, past_project, reference, other]
+                name:
+                  type: string
+                  description: 自定义名称
+      responses:
+        '201':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          headers:
+            X-Credits-Consumed:
+              schema:
+                type: integer
+              description: 消耗积分（解析费用）
+
+  /projects/{projectId}/documents/{documentId}:
+    get:
+      tags: [Documents]
+      summary: 获取文档详情
+      operationId: getDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+    delete:
+      tags: [Documents]
+      summary: 删除文档
+      operationId: deleteDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 删除成功
+
+  /projects/{projectId}/documents/{documentId}/download:
+    get:
+      tags: [Documents]
+      summary: 下载原始文档
+      operationId: downloadDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 文件流
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  # ========== 标书生成 ==========
+  /projects/{projectId}/analyze:
+    post:
+      tags: [Generation]
+      summary: 分析TOR文档
+      description: |
+        分析上传的TOR文档，提取关键信息和评分标准。
+        消耗积分：基础5 + 每页1积分
+      operationId: analyzeTor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 分析完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TorAnalysis'
+          headers:
+            X-Credits-Consumed:
+              schema:
+                type: integer
+        '402':
+          $ref: '#/components/responses/InsufficientCredits'
+
+  /projects/{projectId}/generate:
+    post:
+      tags: [Generation]
+      summary: 开始生成标书
+      description: |
+        启动标书生成工作流。返回工作流ID用于查询进度。
+        积分预估：根据生成内容不同，约50-200积分
+      operationId: startGeneration
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationRequest'
+      responses:
+        '202':
+          description: 生成任务已启动
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationTask'
+        '402':
+          $ref: '#/components/responses/InsufficientCredits'
+
+  /projects/{projectId}/generate/status:
+    get:
+      tags: [Generation]
+      summary: 查询生成进度
+      operationId: getGenerationStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+
+  /projects/{projectId}/generate/review:
+    post:
+      tags: [Generation]
+      summary: 提交人工审核
+      description: 在人工审核节点提交审核结果
+      operationId: submitReview
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '200':
+          description: 审核已提交
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+
+  /projects/{projectId}/generated-docs:
+    get:
+      tags: [Generation]
+      summary: 获取生成的文档列表
+      operationId: listGeneratedDocs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeneratedDoc'
+
+  /projects/{projectId}/generated-docs/{docId}:
+    get:
+      tags: [Generation]
+      summary: 获取生成文档内容
+      operationId: getGeneratedDoc
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedDocDetail'
+    patch:
+      tags: [Generation]
+      summary: 编辑生成文档
+      operationId: updateGeneratedDoc
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, approved]
+      responses:
+        '200':
+          description: 更新成功
+
+  /projects/{projectId}/export:
+    post:
+      tags: [Generation]
+      summary: 导出标书
+      description: |
+        将生成的标书导出为PDF或DOCX格式。
+        消耗积分：10积分
+      operationId: exportBid
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [pdf, docx]
+                  default: pdf
+                include_sections:
+                  type: array
+                  items:
+                    type: string
+                  description: 要包含的章节ID，为空则导出全部
+      responses:
+        '200':
+          description: 导出成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  download_url:
+                    type: string
+                    format: uri
+                  expires_at:
+                    type: string
+                    format: date-time
+
+  # ========== 问答 ==========
+  /projects/{projectId}/qa:
+    post:
+      tags: [Generation]
+      summary: 项目问答
+      description: |
+        基于项目文档进行问答。
+        消耗积分：根据响应长度，约2-10积分
+      operationId: askQuestion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer:
+                    type: string
+                  sources:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        document_name:
+                          type: string
+                        page:
+                          type: integer
+          headers:
+            X-Credits-Consumed:
+              schema:
+                type: integer
+
+  # ========== 积分 ==========
+  /credits/balance:
+    get:
+      tags: [Credits]
+      summary: 获取积分余额
+      operationId: getCreditsBalance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                  pending:
+                    type: integer
+                    description: 待入账积分
+
+  /credits/transactions:
+    get:
+      tags: [Credits]
+      summary: 获取积分明细
+      operationId: listTransactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [recharge, consume, refund, bonus]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionList'
+
+  /credits/packages:
+    get:
+      tags: [Credits]
+      summary: 获取积分套餐
+      operationId: listPackages
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditPackage'
+
+  /credits/recharge:
+    post:
+      tags: [Credits]
+      summary: 创建充值订单
+      operationId: createRechargeOrder
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [package_id, payment_method]
+              properties:
+                package_id:
+                  type: string
+                payment_method:
+                  type: string
+                  enum: [alipay, wechat, stripe]
+      responses:
+        '201':
+          description: 订单创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RechargeOrder'
+
+  /credits/orders/{orderId}:
+    get:
+      tags: [Credits]
+      summary: 查询订单状态
+      operationId: getOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RechargeOrder'
+
+  # ========== Webhooks ==========
+  /webhooks/payment:
+    post:
+      tags: [Credits]
+      summary: 支付回调
+      description: 支付网关回调接口（内部使用）
+      operationId: paymentWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 处理成功
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: 参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: 未认证
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InsufficientCredits:
+      description: 积分不足
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  required_credits:
+                    type: integer
+                  current_balance:
+                    type: integer
+
+  schemas:
+    # ===== Auth =====
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        company:
+          type: string
+        language:
+          type: string
+          enum: [zh, en]
+          default: zh
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+          description: 过期时间（秒）
+        user:
+          $ref: '#/components/schemas/User'
+
+    # ===== User =====
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        company:
+          type: string
+        avatar_url:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        language:
+          type: string
+        credits_balance:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        language:
+          type: string
+          enum: [zh, en]
+        timezone:
+          type: string
+
+    # ===== Opportunity =====
+    Opportunity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source:
+          type: string
+          enum: [adb, wb, un]
+        external_id:
+          type: string
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        description:
+          type: string
+        organization:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        budget_min:
+          type: number
+        budget_max:
+          type: number
+        currency:
+          type: string
+        location:
+          type: string
+        country:
+          type: string
+        sector:
+          type: string
+        procurement_type:
+          type: string
+        status:
+          type: string
+          enum: [open, closed, cancelled]
+        created_at:
+          type: string
+          format: date-time
+
+    OpportunityList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Opportunity'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        pages:
+          type: integer
+
+    # ===== Project =====
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, analyzing, generating, review, submitted, won, lost]
+        opportunity_id:
+          type: string
+          format: uuid
+        deadline:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            opportunity:
+              $ref: '#/components/schemas/Opportunity'
+            documents_count:
+              type: integer
+            generated_docs_count:
+              type: integer
+            analysis:
+              $ref: '#/components/schemas/TorAnalysis'
+
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        opportunity_id:
+          type: string
+          format: uuid
+        deadline:
+          type: string
+          format: date-time
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+
+    ProjectList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    # ===== Document =====
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [tor, rfp, company_profile, cv, past_project, reference, other]
+        file_size:
+          type: integer
+        mime_type:
+          type: string
+        parse_status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            parsed_content:
+              type: string
+            metadata:
+              type: object
+              properties:
+                page_count:
+                  type: integer
+                language:
+                  type: string
+
+    DocumentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        total:
+          type: integer
+
+    # ===== Generation =====
+    TorAnalysis:
+      type: object
+      properties:
+        project_title:
+          type: string
+        objectives:
+          type: array
+          items:
+            type: string
+        scope_of_work:
+          type: array
+          items:
+            type: object
+            properties:
+              task:
+                type: string
+              description:
+                type: string
+        deliverables:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              deadline:
+                type: string
+        qualifications:
+          type: array
+          items:
+            type: string
+        evaluation_criteria:
+          type: array
+          items:
+            type: object
+            properties:
+              criterion:
+                type: string
+              weight:
+                type: integer
+              sub_criteria:
+                type: array
+                items:
+                  type: string
+
+    GenerationRequest:
+      type: object
+      properties:
+        sections:
+          type: array
+          items:
+            type: string
+            enum: [technical_proposal, company_experience, team_composition, work_plan, methodology]
+          description: 要生成的章节，为空则生成全部
+        config:
+          type: object
+          properties:
+            tone:
+              type: string
+              enum: [professional, innovative, conservative]
+              default: professional
+            length:
+              type: string
+              enum: [concise, standard, detailed]
+              default: standard
+
+    GenerationTask:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, waiting_review, completed, failed]
+        estimated_credits:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    GenerationStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, waiting_review, completed, failed]
+        current_step:
+          type: string
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [pending, running, completed, failed]
+              started_at:
+                type: string
+                format: date-time
+              completed_at:
+                type: string
+                format: date-time
+        waiting_for_review:
+          type: boolean
+        review_data:
+          type: object
+          description: 需要审核的数据（如大纲）
+        credits_consumed:
+          type: integer
+        error:
+          type: string
+
+    ReviewRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, revise]
+        comments:
+          type: string
+        revisions:
+          type: object
+          description: 修改建议
+
+    GeneratedDoc:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [draft, approved, exported]
+        created_at:
+          type: string
+          format: date-time
+
+    GeneratedDocDetail:
+      allOf:
+        - $ref: '#/components/schemas/GeneratedDoc'
+        - type: object
+          properties:
+            content:
+              type: string
+            quality_score:
+              type: number
+            feedback:
+              type: string
+
+    # ===== Credits =====
+    CreditPackage:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        name_en:
+          type: string
+        credits:
+          type: integer
+        bonus_credits:
+          type: integer
+        price:
+          type: number
+        currency:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [recharge, consume, refund, bonus]
+        amount:
+          type: integer
+        balance_after:
+          type: integer
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TransactionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    RechargeOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_no:
+          type: string
+        package_id:
+          type: string
+        credits_amount:
+          type: integer
+        price:
+          type: number
+        currency:
+          type: string
+        payment_method:
+          type: string
+        status:
+          type: string
+          enum: [pending, paid, cancelled, refunded]
+        payment_url:
+          type: string
+          format: uri
+          description: 支付链接
+        created_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+
+    # ===== Common =====
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        details:
+          type: object
