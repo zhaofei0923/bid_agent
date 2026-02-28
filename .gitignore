@@ -33,6 +33,8 @@ Thumbs.db
 
 # Logs
 *.log
+.logs/
+.pids/
 
 # Testing
 .coverage
