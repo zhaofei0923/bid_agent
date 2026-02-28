@@ -3,6 +3,7 @@
 All environment variables are loaded from .env file or system environment.
 """
 
+import json
 from functools import lru_cache
 from typing import Any
 
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SECRET_KEY: str = "change-me-in-production"
     API_V1_PREFIX: str = "/v1"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: str = "http://localhost:3000"
     APP_NAME: str = "BidAgent V2"
     APP_VERSION: str = "2.0.0"
 
@@ -88,10 +89,27 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: Any) -> list[str]:
+    def parse_cors_origins(cls, v: Any) -> str:
+        """Accept any format and normalize to comma-separated string."""
+        if isinstance(v, list):
+            return ",".join(v)
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+            v = v.strip()
+            # Handle JSON array format: '["url1","url2"]'
+            if v.startswith("["):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return ",".join(str(i) for i in parsed)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            return v
+        return str(v)
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Return CORS origins as a list."""
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def is_production(self) -> bool:
