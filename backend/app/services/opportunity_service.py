@@ -64,7 +64,7 @@ class OpportunityService:
             total=total,
             page=query.page,
             page_size=query.page_size,
-            pages=math.ceil(total / query.page_size) if total > 0 else 0,
+            total_pages=math.ceil(total / query.page_size) if total > 0 else 0,
         )
 
     async def get_by_id(self, opportunity_id: UUID) -> Opportunity:

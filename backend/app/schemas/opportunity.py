@@ -54,7 +54,7 @@ class PaginatedOpportunities(BaseModel):
     total: int
     page: int
     page_size: int
-    pages: int
+    total_pages: int
 
 
 # ── Public (no-auth) schemas ──────────────────────────────────
@@ -102,4 +102,4 @@ class PaginatedPublicOpportunities(BaseModel):
     total: int
     page: int
     page_size: int
-    pages: int
+    total_pages: int
