@@ -1,0 +1,54 @@
+import apiClient from "./api-client"
+import type { BidPlan, BidPlanTask } from "@/types/bid"
+
+export const bidPlanService = {
+  getByProject: async (projectId: string) => {
+    const { data } = await apiClient.get<BidPlan>(
+      `/projects/${projectId}/plan`
+    )
+    return data
+  },
+
+  createOrUpdate: async (
+    projectId: string,
+    plan: { outline?: Record<string, unknown>; strategy?: Record<string, unknown> }
+  ) => {
+    const { data } = await apiClient.post<BidPlan>(
+      `/projects/${projectId}/plan`,
+      plan
+    )
+    return data
+  },
+
+  listTasks: async (projectId: string) => {
+    const { data } = await apiClient.get<BidPlanTask[]>(
+      `/projects/${projectId}/plan/tasks`
+    )
+    return data
+  },
+
+  addTask: async (projectId: string, task: Partial<BidPlanTask>) => {
+    const { data } = await apiClient.post<BidPlanTask>(
+      `/projects/${projectId}/plan/tasks`,
+      task
+    )
+    return data
+  },
+
+  updateTask: async (
+    projectId: string,
+    taskId: string,
+    status: string
+  ) => {
+    const { data } = await apiClient.put<BidPlanTask>(
+      `/projects/${projectId}/plan/tasks/${taskId}/status`,
+      null,
+      { params: { status } }
+    )
+    return data
+  },
+
+  deleteTask: async (projectId: string, taskId: string) => {
+    await apiClient.delete(`/projects/${projectId}/plan/tasks/${taskId}`)
+  },
+}

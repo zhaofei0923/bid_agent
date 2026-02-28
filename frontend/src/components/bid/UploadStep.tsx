@@ -1,0 +1,139 @@
+"use client"
+
+import { memo, useState, useCallback } from "react"
+import { useBidWorkspaceStore } from "@/stores/bid-workspace"
+import { useDocuments, useUploadDocument } from "@/hooks/use-documents"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { useTranslations } from "next-intl"
+
+interface UploadStepProps {
+  projectId: string
+}
+
+export const UploadStep = memo(function UploadStep({
+  projectId,
+}: UploadStepProps) {
+  const { completeStep, goToStep } = useBidWorkspaceStore()
+  const t = useTranslations("bid")
+  const { data: documents, isLoading } = useDocuments(projectId)
+  const uploadMutation = useUploadDocument(projectId)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files?.length) return
+      for (const file of Array.from(files)) {
+        if (
+          file.type === "application/pdf" ||
+          file.type ===
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+          await uploadMutation.mutateAsync(file)
+        }
+      }
+    },
+    [uploadMutation]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragging(false)
+      handleFileSelect(e.dataTransfer.files)
+    },
+    [handleFileSelect]
+  )
+
+  const handleNext = () => {
+    completeStep("upload")
+    goToStep("overview")
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">{t("upload.title")}</h2>
+        <p className="text-muted-foreground text-sm mt-1">
+          {t("upload.subtitle")}
+        </p>
+      </div>
+
+      {/* Upload area */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+          isDragging
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/25 hover:border-primary/50"
+        }`}
+      >
+        <div className="text-4xl mb-4">📄</div>
+        <p className="text-sm font-medium mb-1">
+          {t("upload.dragHint")}
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          {t("upload.formatHint")}
+        </p>
+        <label>
+          <input
+            type="file"
+            accept=".pdf,.docx"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFileSelect(e.target.files)}
+          />
+          <Button variant="outline" size="sm" asChild>
+            <span>{t("upload.selectFile")}</span>
+          </Button>
+        </label>
+        {uploadMutation.isPending && (
+          <p className="mt-4 text-sm text-muted-foreground animate-pulse">
+            {t("upload.uploading")}
+          </p>
+        )}
+      </div>
+
+      {/* Document list */}
+      {documents && documents.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold">{t("upload.uploadedFiles")}</h3>
+          {documents.map((doc) => (
+            <Card key={doc.id}>
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {doc.file_type === "pdf" ? "📕" : "📘"}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {doc.file_name}
+                    </span>
+                  </div>
+                  <Badge variant="secondary">
+                    {doc.upload_status || "uploaded"}
+                  </Badge>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Next button */}
+      {documents && documents.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleNext}>
+            {t("upload.nextStep")}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+})

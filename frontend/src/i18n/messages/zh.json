@@ -1,0 +1,1003 @@
+{
+  "common": {
+    "appName": "BidAgent",
+    "loading": "加载中...",
+    "save": "保存",
+    "saving": "保存中...",
+    "saveSuccess": "保存成功",
+    "cancel": "取消",
+    "delete": "删除",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "search": "搜索",
+    "noData": "暂无数据",
+    "error": "发生错误",
+    "retry": "重试",
+    "reset": "重置",
+    "add": "添加",
+    "send": "发送",
+    "stop": "停止",
+    "processing": "处理中...",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "totalResults": "共 {total} 条结果，第 {page} / {pages} 页",
+    "active": "活跃",
+    "comingSoon": "即将推出",
+    "all": "全部",
+    "credits": "积分",
+    "backToList": "← 返回列表"
+  },
+  "nav": {
+    "dashboard": "仪表板",
+    "opportunities": "招标机会",
+    "projects": "我的项目",
+    "credits": "积分管理",
+    "settings": "设置",
+    "help": "帮助中心",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出登录",
+    "langSwitch": "EN"
+  },
+  "auth": {
+    "loginTitle": "登录 BidAgent",
+    "registerTitle": "注册账号",
+    "email": "邮箱",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "name": "姓名",
+    "company": "公司名称",
+    "loginButton": "登录",
+    "registerButton": "注册",
+    "noAccount": "还没有账号？",
+    "hasAccount": "已有账号？",
+    "forgotPassword": "忘记密码？",
+    "loginError": "登录失败，请检查邮箱和密码",
+    "registerError": "注册失败，邮箱可能已被使用"
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "activeProjects": "进行中的项目",
+    "totalOpportunities": "可用机会",
+    "creditsBalance": "积分余额",
+    "recentProjects": "最近项目",
+    "quickStart": "快速开始",
+    "createProject": "创建项目",
+    "browseOpportunities": "浏览招标机会",
+    "browseOpportunitiesDesc": "发现最新的投标机会",
+    "startBidProject": "开始新的投标项目"
+  },
+  "opportunities": {
+    "title": "招标机会",
+    "search": "搜索招标机会...",
+    "filters": "筛选",
+    "source": "来源",
+    "institution": "机构",
+    "sector": "领域",
+    "country": "国家",
+    "status": "状态",
+    "statusOpen": "进行中",
+    "statusClosed": "已关闭",
+    "deadline": "截止日期",
+    "budget": "预算",
+    "createProject": "创建投标项目",
+    "viewDetail": "查看详情",
+    "noResults": "未找到匹配的招标机会",
+    "noResultsHint": "暂无招标机会，请调整搜索条件",
+    "projectNumber": "项目编号",
+    "organization": "机构",
+    "description": "描述",
+    "viewOriginal": "查看原始链接",
+    "notFound": "未找到该招标机会"
+  },
+  "projects": {
+    "title": "我的项目",
+    "create": "新建项目",
+    "name": "项目名称",
+    "description": "项目描述",
+    "status": "状态",
+    "progress": "进度",
+    "createdAt": "创建时间",
+    "openWorkspace": "打开工作台",
+    "deleteConfirm": "确定要删除此项目吗？",
+    "noProjects": "暂无项目，点击上方按钮创建",
+    "createdOn": "创建于 {date}",
+    "notFound": "未找到该项目",
+    "currentStep": "当前步骤",
+    "notStarted": "未开始"
+  },
+  "workspace": {
+    "title": "投标工作台",
+    "back": "← 返回",
+    "hideAI": "隐藏 AI",
+    "showAI": "显示 AI",
+    "unknownStep": "未知步骤",
+    "steps": {
+      "upload": "文件上传",
+      "overview": "文档解读",
+      "analysis": "投标分析",
+      "plan": "投标计划",
+      "writing": "AI编制指导",
+      "review": "质量审查",
+      "tracking": "进度跟踪"
+    },
+    "stepsTitle": "投标步骤",
+    "chat": {
+      "title": "AI 投标助手",
+      "collapsed": "AI 助手 →",
+      "placeholder": "输入问题...",
+      "send": "发送",
+      "stop": "停止",
+      "greeting": "👋 您好！我是 AI 投标助手",
+      "greetingHint": "可以问我关于招标文件、资质要求、评分标准等问题",
+      "skills": {
+        "extractDates": "提取关键日期",
+        "analyzeQualification": "分析资质要求",
+        "evaluateCriteria": "评估评分标准",
+        "analyzeCommercial": "审查商务条款"
+      }
+    }
+  },
+  "credits": {
+    "title": "积分管理",
+    "balance": "当前余额",
+    "recharge": "充值",
+    "history": "使用记录",
+    "packages": "充值套餐",
+    "creditsUnit": "积分",
+    "noTransactions": "暂无交易记录",
+    "typeCol": "类型",
+    "creditsCol": "积分",
+    "descriptionCol": "描述",
+    "timeCol": "时间",
+    "consume": "消费",
+    "rechargeType": "充值",
+    "transactionHistory": "交易记录"
+  },
+  "settings": {
+    "title": "设置",
+    "profile": "个人资料",
+    "credits": "积分设置",
+    "security": "安全设置",
+    "notifications": "通知偏好",
+    "language": "语言",
+    "profilePage": {
+      "title": "个人资料",
+      "subtitle": "管理您的个人信息",
+      "email": "邮箱",
+      "name": "姓名",
+      "company": "公司"
+    },
+    "securityPage": {
+      "title": "安全设置",
+      "subtitle": "管理您的密码和安全选项",
+      "changePassword": "修改密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmNewPassword": "确认新密码",
+      "minChars": "至少 8 个字符",
+      "passwordMismatch": "两次输入的密码不一致",
+      "passwordError": "密码修改失败，请检查当前密码是否正确",
+      "passwordChanged": "密码已修改",
+      "changingPassword": "修改中...",
+      "twoFA": "两步验证 (2FA)",
+      "twoFADesc": "开启两步验证可增强账户安全",
+      "sessions": "登录会话",
+      "sessionsDesc": "管理您的活跃登录会话",
+      "currentDevice": "当前设备",
+      "currentSession": "当前活跃会话"
+    },
+    "notificationsPage": {
+      "title": "通知偏好",
+      "subtitle": "管理您的通知方式和偏好",
+      "newOpportunity": "新招标机会",
+      "newOpportunityDesc": "当符合条件的新招标机会发布时发送邮件通知",
+      "deadlineReminder": "截止日期提醒",
+      "deadlineReminderDesc": "投标截止日期前 3 天和 1 天发送提醒",
+      "creditsAlert": "积分余额提醒",
+      "creditsAlertDesc": "当积分余额低于阈值时发送提醒",
+      "browserPush": "浏览器推送通知",
+      "browserPushDesc": "在浏览器中接收实时通知推送",
+      "saveSettings": "保存设置"
+    },
+    "creditsPage": {
+      "title": "积分设置",
+      "subtitle": "查看积分余额和使用情况",
+      "currentBalance": "当前余额",
+      "usageTips": "积分说明",
+      "tip1": "投标文档分析：50 积分/次",
+      "tip2": "AI 投标指导：20 积分/次",
+      "tip3": "质量全面审查：100 积分/次",
+      "tip4": "质量快速检查：30 积分/次",
+      "tip5": "知识库搜索：5 积分/次",
+      "recentTransactions": "最近交易",
+      "noTransactions": "暂无交易记录"
+    }
+  },
+  "help": {
+    "title": "帮助中心",
+    "subtitle": "查找常见问题答案和使用指南",
+    "searchPlaceholder": "搜索帮助内容...",
+    "faq": "常见问题",
+    "guides": "使用指南",
+    "contact": "联系我们",
+    "moreQuestions": "还有疑问？",
+    "moreQuestionsDesc": "联系我们的技术支持团队获取帮助",
+    "contactSupport": "联系支持",
+    "faqItems": [
+      {
+        "q": "BidAgent 是什么？",
+        "a": "BidAgent 是一款面向多边发展银行（ADB、世界银行、联合国等）投标的 AI 智能助手平台。它通过 AI 技术帮助您分析招标文件、制定投标策略、指导标书编写和质量审查。"
+      },
+      {
+        "q": "BidAgent 能直接生成标书吗？",
+        "a": "BidAgent 不直接生成标书文档。我们通过 AI 问答式交互，指导您根据招标文件的具体要求，逐步自行编写高质量标书。这样既保证内容的准确性和原创性，又充分发挥 AI 的分析和策略优势。"
+      },
+      {
+        "q": "支持哪些机构的投标？",
+        "a": "目前支持亚洲开发银行 (ADB)、世界银行 (WB) 和联合国 (UN) 等多边发展银行的咨询服务项目投标。我们持续增加对更多机构的支持。"
+      },
+      {
+        "q": "积分是如何计算的？",
+        "a": "不同功能消耗不同积分：文档分析约 50 积分/次，AI 指导约 20 积分/次，质量全面审查约 100 积分/次。新用户注册即赠送免费体验积分。"
+      },
+      {
+        "q": "如何开始使用？",
+        "a": "注册账号 → 浏览招标机会 → 创建投标项目 → 上传招标文件 → 使用 AI 分析和指导功能。整个流程简单直观，AI 助手全程陪伴指导。"
+      },
+      {
+        "q": "数据安全如何保障？",
+        "a": "所有数据通过加密传输和存储。您上传的招标文件仅用于当前项目分析，不会与他人共享。我们遵循严格的数据安全和隐私保护标准。"
+      },
+      {
+        "q": "如何联系技术支持？",
+        "a": "您可以通过邮件 support@bidagent.ai 联系我们的技术支持团队，工作时间响应时间通常在 24 小时内。"
+      }
+    ],
+    "guideItems": [
+      {
+        "title": "快速开始",
+        "desc": "5 分钟了解 BidAgent 核心功能",
+        "icon": "🚀"
+      },
+      {
+        "title": "标书编写指南",
+        "desc": "如何使用 AI 助手高效编写投标文件",
+        "icon": "📝"
+      },
+      {
+        "title": "文档分析说明",
+        "desc": "了解 AI 如何分析招标文件的 8 个维度",
+        "icon": "📊"
+      },
+      {
+        "title": "质量审查指南",
+        "desc": "如何利用 AI 进行标书质量审查",
+        "icon": "✅"
+      }
+    ]
+  },
+  "knowledgeBase": {
+    "title": "知识库助手",
+    "subtitle": "基于投标知识库的 AI 问答",
+    "greeting": "您好！我是投标知识库助手。",
+    "greetingHint": "您可以问我关于投标流程、要求等问题。",
+    "inputPlaceholder": "输入您的问题...",
+    "send": "发送",
+    "errorMessage": "抱歉，暂时无法回答该问题，请稍后再试。",
+    "quickQuestions": [
+      "ADB 投标的资质要求是什么？",
+      "如何准备技术建议书？",
+      "评标标准一般有哪些维度？",
+      "世行项目的采购流程是怎样的？"
+    ],
+    "widget": {
+      "title": "AI 投标顾问",
+      "subtitle": "基于投标知识库的智能助手",
+      "inputPlaceholder": "输入您的投标问题...",
+      "ask": "询问",
+      "tips": [
+        "ADB 投标需要什么资质？",
+        "如何提高中标率？",
+        "评分标准包括哪些维度？"
+      ]
+    }
+  },
+  "landing": {
+    "heroTitle": "AI 驱动的多边机构投标助手",
+    "heroSubtitle": "从招标发现到标书编制，BidAgent 用 AI 指导您高效完成 {institutions} 投标全流程，效率提升 80%",
+    "cta": "🚀 免费开始",
+    "ctaSecondary": "了解更多",
+    "features": "核心功能",
+    "workflow": "投标流程",
+    "pricing": "定价方案",
+    "faq": "常见问题",
+    "workspacePreview": "三栏投标工作台",
+    "workspacePreviewDesc": "步骤导航 · 内容编辑 · AI 助手",
+    "featuresTitle": "BidAgent 如何帮助您赢标？",
+    "featureItems": [
+      {
+        "title": "智能招标发现",
+        "desc": "自动爬取 ADB/WB/UN 三大机构招标信息，智能匹配推荐，不再遗漏任何机会"
+      },
+      {
+        "title": "AI 深度分析",
+        "desc": "8 维度全方位解读：资质要求、评分标准、关键日期、BDS修改、风险评估..."
+      },
+      {
+        "title": "专业编制指导",
+        "desc": "AI 投标顾问全程指导标书编写，提供格式要求、内容要点、评分对标建议"
+      },
+      {
+        "title": "智能质量审查",
+        "desc": "4 维度自动审查：完整性、合规性、一致性、风险识别，降低废标风险至 5%"
+      }
+    ],
+    "workflowTitle": "从发现到提交，一站式投标体验",
+    "workflowSteps": [
+      {
+        "label": "发现招标",
+        "desc": "自动爬取 ADB/WB/UN 招标公告，全文搜索、多条件筛选",
+        "tags": [
+          "自动爬取",
+          "三源聚合"
+        ]
+      },
+      {
+        "label": "文档解析",
+        "desc": "上传 PDF/DOCX，AI 自动解析、OCR、章节识别、向量化",
+        "tags": [
+          "OCR 支持",
+          "智能分块"
+        ]
+      },
+      {
+        "label": "招标分析",
+        "desc": "8 维度 RAG 增强深度分析，全面理解招标要求",
+        "tags": [
+          "8 维度",
+          "RAG 增强"
+        ]
+      },
+      {
+        "label": "投标计划",
+        "desc": "AI 生成投标待办清单，从 deadline 反推时间线",
+        "tags": [
+          "自动规划",
+          "甘特图"
+        ]
+      },
+      {
+        "label": "编制指导",
+        "desc": "AI 顾问指导标书编写：格式要求、内容要点、评分对标",
+        "tags": [
+          "Q&A 交互",
+          "实时指导"
+        ]
+      },
+      {
+        "label": "质量审查",
+        "desc": "完整性、合规性、一致性、风险 4 维度 AI 审查",
+        "tags": [
+          "4 维度审查",
+          "评分预测"
+        ]
+      },
+      {
+        "label": "提交文件",
+        "desc": "最终检查清单 + 导出完整投标文件",
+        "tags": [
+          "一键导出",
+          "合规检查"
+        ]
+      }
+    ],
+    "painPointsTitle": "传统投标，为何如此艰难？",
+    "painPoints": [
+      {
+        "title": "耗时 2-4 周",
+        "desc": "标书编制平均需要 2-4 周，大量时间花在理解招标文件和格式调整上"
+      },
+      {
+        "title": "格式要求复杂",
+        "desc": "ADB/WB/UN 各有不同的招标格式规范，稍有不慎就可能废标"
+      },
+      {
+        "title": "废标风险高",
+        "desc": "超过 30% 的投标因格式不合规或内容遗漏而被淘汰"
+      },
+      {
+        "title": "信息分散",
+        "desc": "招标信息散布在多个平台，容易遗漏优质机会"
+      },
+      {
+        "title": "知识难沉淀",
+        "desc": "经验依赖资深员工，人员流动后知识难以传承"
+      },
+      {
+        "title": "协作断层",
+        "desc": "投标经理与撰写人之间信息传递低效，版本管理混乱"
+      }
+    ],
+    "comparisonTitle": "传统投标 vs BidAgent 智能投标",
+    "traditionalWay": "❌ 传统方式",
+    "bidagentWay": "✅ BidAgent",
+    "comparisonRows": [
+      {
+        "traditional": "编制周期 2-4 周",
+        "bidagent": "编制周期 3-5 天"
+      },
+      {
+        "traditional": "人工逐条解读招标文件",
+        "bidagent": "AI 8 维度智能分析"
+      },
+      {
+        "traditional": "经验依赖个人",
+        "bidagent": "知识库 + AI 指导"
+      },
+      {
+        "traditional": "格式错误导致废标",
+        "bidagent": "自动合规性检查"
+      },
+      {
+        "traditional": "散落多平台找招标",
+        "bidagent": "ADB/WB/UN 三源聚合"
+      },
+      {
+        "traditional": "评分要点易遗漏",
+        "bidagent": "评分标准自动对标"
+      },
+      {
+        "traditional": "质量全靠人工审查",
+        "bidagent": "AI 4 维度质量审查"
+      }
+    ],
+    "pricingTitle": "简单透明的积分定价",
+    "plans": [
+      {
+        "name": "体验版",
+        "price": "免费",
+        "features": [
+          "100 积分",
+          "1 个项目",
+          "基础分析",
+          "社区支持"
+        ],
+        "cta": "开始试用"
+      },
+      {
+        "name": "专业版",
+        "price": "¥299/月",
+        "badge": "最受欢迎",
+        "features": [
+          "2,000 积分",
+          "不限项目",
+          "全部分析维度",
+          "编制指导",
+          "质量审查",
+          "知识库",
+          "优先支持"
+        ],
+        "cta": "立即订阅"
+      },
+      {
+        "name": "企业版",
+        "price": "联系我们",
+        "features": [
+          "无限积分",
+          "不限项目",
+          "定制功能",
+          "专属顾问",
+          "API 集成",
+          "SLA 保障"
+        ],
+        "cta": "联系销售"
+      }
+    ],
+    "personasTitle": "不同角色，都能高效投标",
+    "coreFeatures": "核心使用功能：",
+    "personas": [
+      {
+        "role": "投标经理",
+        "name": "张总监",
+        "quote": "以前评估一个 ADB 项目要花 3 天读标书，现在 BidAgent 的 AI 分析 10 分钟就给出 Bid/No-Bid 建议，效率提升了 10 倍",
+        "features": [
+          "招标信息聚合浏览",
+          "AI 风险评估 + Bid/No-Bid 决策",
+          "投标进度跟踪"
+        ]
+      },
+      {
+        "role": "技术撰写人",
+        "name": "李工程师",
+        "quote": "AI 指导让我写出评分对标的技术方案，中标率大幅提高",
+        "features": [
+          "章节编写指导",
+          "评分对标",
+          "草稿审查",
+          "知识库参考"
+        ]
+      },
+      {
+        "role": "商务人员",
+        "name": "王经理",
+        "quote": "自动解读评标方法和商务条款，报价策略更精准",
+        "features": [
+          "评分标准提取",
+          "商务条款分析",
+          "预算参考"
+        ]
+      }
+    ],
+    "trustTitle": "支持的多边发展机构",
+    "institutions": [
+      {
+        "name": "亚洲开发银行",
+        "abbr": "ADB"
+      },
+      {
+        "name": "世界银行",
+        "abbr": "WB"
+      },
+      {
+        "name": "联合国",
+        "abbr": "UN"
+      }
+    ],
+    "stats": [
+      {
+        "value": 80,
+        "suffix": "%",
+        "label": "效率提升",
+        "desc": "标书编制周期从4周→5天"
+      },
+      {
+        "value": 10,
+        "suffix": "min",
+        "label": "分析耗时",
+        "desc": "从上传到完成8维分析"
+      },
+      {
+        "value": 3,
+        "suffix": "源",
+        "label": "招标聚合",
+        "desc": "ADB/WB/UN 一站搜索"
+      },
+      {
+        "value": 4,
+        "suffix": "维度",
+        "label": "质量审查",
+        "desc": "完整性/合规性/一致/风险"
+      }
+    ],
+    "ctaTitle": "准备好提升您的投标效率了吗？",
+    "ctaDesc": "免费注册，获得 100 积分体验完整功能",
+    "ctaButton": "🚀 立即免费开始",
+    "faqTitle": "常见问题",
+    "landingFaqs": [
+      {
+        "q": "BidAgent 支持哪些多边机构？",
+        "a": "目前支持 ADB（亚洲开发银行）、World Bank（世界银行）和 UN（联合国 UNGM 14 个子机构），更多机构持续扩展中。"
+      },
+      {
+        "q": "AI 会直接写标书吗？",
+        "a": "不会。BidAgent 的 AI 作为专业投标顾问，指导您按照招标文件要求和规范编写标书。AI 提供格式要求、内容要点、评分对标建议和草稿审查，但最终文档由您自行编写，确保内容真实、准确、符合您公司的实际情况。"
+      },
+      {
+        "q": "数据安全如何保障？",
+        "a": "JWT 加密认证、文件 SHA256 去重、数据库加密存储、CORS 白名单。您的招标文件和投标内容不会被用于训练 AI 模型。"
+      },
+      {
+        "q": "支持哪些文件格式？",
+        "a": "支持 PDF 和 DOCX 格式，含扫描件 OCR 支持。上传后 AI 自动解析文档结构、识别章节、建立向量索引。"
+      },
+      {
+        "q": "积分是如何消耗的？",
+        "a": "创建项目 10 积分，AI 分析按 token 计费，编制指导 20-100 积分/次，质量审查 50-200 积分/次。免费用户获得 100 积分体验。"
+      },
+      {
+        "q": "可以多人协作吗？",
+        "a": "V2 版本支持单人使用，团队协作功能在 V3 规划中，届时将支持多角色协同、评审工作流和版本管理。"
+      }
+    ],
+    "footerDesc": "AI 驱动的多边机构投标助手",
+    "footerProduct": "产品",
+    "footerSupport": "支持",
+    "footerLegal": "法律",
+    "footerFeatures": "功能",
+    "footerPricing": "定价",
+    "footerHelpCenter": "帮助中心",
+    "footerContactUs": "联系我们",
+    "footerPrivacy": "隐私政策",
+    "footerTerms": "服务条款",
+    "navFeatures": "功能",
+    "navPricing": "定价",
+    "navSearch": "招标搜索",
+    "navLogin": "登录",
+    "navTrial": "免费试用",
+    "footerBidSearch": "招标搜索"
+  },
+  "landingV2": {
+    "metaTitle": "BidAgent - 高端首页预览",
+    "metaDescription": "BidAgent 首页高保真预览，采用更简洁、更大气的咨询风格，帮助团队更轻松尝试国际投标智能辅助。",
+    "nav": {
+      "platform": "产品价值",
+      "workflow": "如何使用",
+      "pricing": "定价",
+      "signIn": "登录",
+      "start": "免费试用"
+    },
+    "hero": {
+      "eyebrow": "为国际投标团队而设计",
+      "title": "让国际投标更轻松，也更值得尝试",
+      "subtitle": "BidAgent 用清晰的流程、准确的要求提炼和提交前审查，帮助团队更稳妥地推进 ADB、World Bank 与 UN 项目。从判断机会到完成提交，都更省心。",
+      "primaryCta": "免费试用",
+      "secondaryCta": "查看招标",
+      "trustNotes": [
+        "支持 ADB / World Bank / UN 公开招标场景",
+        "从机会判断到提交前检查，一页看清关键事项",
+        "无需改变原有团队分工，即可快速开始试用"
+      ]
+    },
+    "trust": {
+      "label": "Trusted Coverage",
+      "title": "聚焦多边机构投标场景，而不是泛用型写作工具",
+      "description": "页面先强调可信度和专业边界：BidAgent 服务的是国际投标流程本身，帮助团队更快理解要求、更稳推进编制、更安心完成提交前检查。",
+      "institutions": [
+        {
+          "name": "亚洲开发银行 ADB",
+          "detail": "覆盖常见资格要求、提交格式与关键时间节点。"
+        },
+        {
+          "name": "世界银行 World Bank",
+          "detail": "帮助团队更清楚理解评审结构与响应重点。"
+        },
+        {
+          "name": "联合国 UN",
+          "detail": "统一查看公开机会，降低遗漏项目的概率。"
+        }
+      ]
+    },
+    "outcomes": {
+      "label": "Product Value",
+      "title": "三件最值得先体验的事",
+      "description": "不需要先理解全部功能，先看试用后最直接的价值：判断更快、推进更顺、提交更稳。",
+      "items": [
+        {
+          "title": "更快判断是否值得投",
+          "desc": "把零散的信息整理成清晰结论，让负责人更容易做决定。",
+          "bullets": [
+            "更早识别关键门槛与潜在风险",
+            "减少反复沟通与前期判断成本"
+          ]
+        },
+        {
+          "title": "更轻松推进投标流程",
+          "desc": "把要求提炼、任务安排和协作节奏整理得更清楚。",
+          "bullets": [
+            "让团队按统一顺序推进重点工作",
+            "减少临近截止时的临时返工"
+          ]
+        },
+        {
+          "title": "更稳妥完成提交前检查",
+          "desc": "在最终提交前，把容易遗漏的细节提前看见。",
+          "bullets": [
+            "更早发现完整性与合规性问题",
+            "让最终提交更从容、更安心"
+          ]
+        }
+      ]
+    },
+    "workflow": {
+      "label": "How It Works",
+      "title": "用更短的路径完成一次投标准备",
+      "description": "页面只保留最关键的三步，让用户一眼知道试用后会发生什么。",
+      "steps": [
+        {
+          "name": "发现机会",
+          "detail": "统一查看公开招标信息，先筛选适合团队的项目。",
+          "outcome": "结果：快速形成候选项目清单"
+        },
+        {
+          "name": "组织编制",
+          "detail": "提炼要求、安排任务、指导章节准备。",
+          "outcome": "结果：团队按统一节奏推进"
+        },
+        {
+          "name": "完成审查与提交",
+          "detail": "在提交前统一检查完整性与关键风险。",
+          "outcome": "结果：更从容进入最终提交"
+        }
+      ]
+    },
+    "capabilities": {
+      "label": "Key Capabilities",
+      "title": "足够专业，但不过度复杂",
+      "intro": "页面保留四项核心能力，既能建立信任，也不会让首次访问者感到信息负担过重。",
+      "items": [
+        {
+          "title": "招标搜索与聚合",
+          "desc": "集中查看多边机构公开机会，减少重复搜索与信息分散。",
+          "stat": "多源统一查看",
+          "statLabel": "Discovery"
+        },
+        {
+          "title": "文档理解与要求提炼",
+          "desc": "快速梳理资格、格式、关键日期和重点要求。",
+          "stat": "8 维分析",
+          "statLabel": "Analysis"
+        },
+        {
+          "title": "编制指导与协同推进",
+          "desc": "让团队按更清晰的顺序分工协作，减少临时返工。",
+          "stat": "流程更顺",
+          "statLabel": "Execution"
+        },
+        {
+          "title": "提交前质量审查",
+          "desc": "在最后阶段检查完整性、合规性与关键风险。",
+          "stat": "4 维审查",
+          "statLabel": "Review"
+        }
+      ]
+    },
+    "roles": {
+      "label": "Who It Helps",
+      "title": "既能打动决策者，也能让执行团队愿意上手",
+      "description": "首页用更轻的方式说明适用对象，让不同角色都能快速理解自己能得到什么。",
+      "items": [
+        {
+          "role": "企业负责人",
+          "summary": "关注投入是否值得",
+          "headline": "先更快判断机会质量，再决定是否投入团队资源。",
+          "bullets": [
+            "更早看到项目价值与主要风险",
+            "降低前期试错成本"
+          ]
+        },
+        {
+          "role": "投标经理",
+          "summary": "关注进度与质量",
+          "headline": "把要求梳理、任务推进和最终检查放到同一条清晰路径上。",
+          "bullets": [
+            "减少临近截止前的混乱返工",
+            "让项目推进更有节奏"
+          ]
+        },
+        {
+          "role": "执行人员",
+          "summary": "关注是否容易使用",
+          "headline": "不用改变原有职责，也能更轻松理解要求并完成配合。",
+          "bullets": [
+            "更快进入章节准备和响应工作",
+            "减少因信息遗漏带来的反复修改"
+          ]
+        }
+      ]
+    },
+    "pricing": {
+      "label": "Pricing",
+      "title": "先低门槛试用，再按团队节奏升级",
+      "description": "首页更强调先体验，而不是强推销售。让用户愿意尝试，再自然理解升级路径。",
+      "plans": [
+        {
+          "name": "体验版",
+          "price": "免费",
+          "period": "试用",
+          "summary": "适合首次体验 BidAgent，快速感受整体流程。",
+          "cta": "立即试用",
+          "features": [
+            "100 积分",
+            "基础功能体验",
+            "1 个项目试用",
+            "标准支持"
+          ]
+        },
+        {
+          "name": "专业版",
+          "price": "¥299",
+          "period": "/月",
+          "summary": "适合稳定有投标需求的团队，获得更完整的使用体验。",
+          "cta": "开始试用",
+          "highlight": "推荐",
+          "features": [
+            "2,000 积分 / 月",
+            "不限项目数量",
+            "完整分析与审查",
+            "优先支持"
+          ]
+        },
+        {
+          "name": "企业版",
+          "price": "联系顾问",
+          "period": "",
+          "summary": "适合需要更深度支持、流程对接或团队协同的企业。",
+          "cta": "联系顾问",
+          "features": [
+            "定制流程",
+            "系统集成",
+            "专属服务"
+          ]
+        }
+      ]
+    },
+    "cta": {
+      "title": "先从一次更轻松的试用开始",
+      "subtitle": "不需要复杂准备，就能快速体验从机会判断到提交前检查的完整思路。",
+      "primary": "免费试用",
+      "secondary": "查看公开招标"
+    },
+    "footer": {
+      "description": "BidAgent 帮助国际投标团队用更清晰的方式推进判断、编制与提交前检查。",
+      "productTitle": "产品",
+      "productOverview": "产品价值",
+      "productSearch": "招标搜索",
+      "productWorkflow": "如何使用",
+      "supportTitle": "支持",
+      "supportHelp": "帮助中心",
+      "supportPricing": "定价",
+      "companyTitle": "公司",
+      "companyAbout": "返回首页",
+      "companyContact": "试用入口",
+      "companyLanguage": "切换语言",
+      "copyright": "© 2026 BidAgent"
+    }
+  },
+  "publicSearch": {
+    "title": "全球多边机构招标搜索",
+    "subtitle": "免费搜索亚开行、世行、联合国最新招标机会",
+    "noResults": "暂无匹配的招标机会，请尝试调整搜索条件",
+    "registerCta": "注册免费账号查看全部招标",
+    "registerCtaDesc": "当前仅展示前 100 条结果。注册后可查看全部招标机会、保存搜索条件，并使用 AI 投标助手。",
+    "registerBtn": "免费注册"
+  },
+  "bid": {
+    "upload": {
+      "title": "上传招标文件",
+      "subtitle": "上传 TOR/RFP 文件，AI 将自动解析文档结构并建立向量索引",
+      "dragHint": "拖拽文件到此处，或点击选择文件",
+      "formatHint": "支持 PDF、DOCX 格式，单文件最大 50MB",
+      "selectFile": "选择文件",
+      "uploading": "上传中...",
+      "uploadedFiles": "已上传文件",
+      "nextStep": "下一步：文档解读 →"
+    },
+    "overview": {
+      "title": "文档解读",
+      "subtitle": "AI 已解析文档结构，以下是招标文件的核心内容概览",
+      "docStructure": "文档结构",
+      "noDocs": "暂无文档",
+      "aiSummary": "AI 分析摘要",
+      "bidType": "投标类型",
+      "keyDates": "关键日期",
+      "datesIdentified": "{count} 个日期已识别",
+      "qualificationReqs": "资质要求",
+      "evaluationCriteria": "评分标准",
+      "extracted": "已提取",
+      "nextStep": "下一步：投标分析 →"
+    },
+    "analysis": {
+      "title": "投标分析",
+      "subtitle": "8 维度 AI 深度分析招标文件",
+      "reanalyze": "重新分析",
+      "analyzing": "分析中...",
+      "startAnalysis": "开始 AI 分析",
+      "noAnalysis": "尚未运行分析",
+      "completed": "已完成",
+      "pending": "待分析",
+      "clickToRun": "点击\"重新分析\"运行此维度",
+      "dimensions": {
+        "qualification": "资质要求",
+        "evaluation": "评分标准",
+        "key_dates": "关键日期",
+        "submission": "提交要求",
+        "bds_modification": "BDS修改",
+        "methodology": "方法论",
+        "commercial": "商务条款",
+        "risk_assessment": "风险评估"
+      },
+      "nextStep": "下一步：投标计划 →"
+    },
+    "plan": {
+      "title": "投标计划",
+      "subtitle": "管理投标任务，跟踪进度",
+      "taskList": "任务清单",
+      "noTasks": "暂无任务",
+      "addTaskPlaceholder": "添加新任务...",
+      "statusPending": "待处理",
+      "statusInProgress": "进行中",
+      "statusCompleted": "已完成",
+      "addButton": "添加",
+      "nextStep": "下一步：AI编制指导 →"
+    },
+    "qa": {
+      "title": "AI 编制指导",
+      "subtitle": "AI 顾问指导标书编写：提问关于格式要求、内容要点、评分对标",
+      "userLabel": "🙋 您",
+      "aiLabel": "🤖 AI 顾问",
+      "inputPlaceholder": "输入关于标书编写的问题...",
+      "suggestedQuestions": [
+        "这个项目的资质要求是什么？",
+        "评分标准中技术方案的权重是多少？",
+        "关键日期和截止时间是什么？",
+        "BDS 中有哪些对标准采购文件的修改？",
+        "提交投标书时有哪些格式要求？",
+        "商务条款中有哪些特殊规定？"
+      ],
+      "send": "发送",
+      "stop": "停止",
+      "nextStep": "下一步：质量审查 →"
+    },
+    "quality": {
+      "title": "质量审查",
+      "subtitle": "AI 4 维度审查：完整性、合规性、一致性、风险识别",
+      "proposalContent": "投标内容",
+      "placeholder": "粘贴您的投标内容在此处，AI 将进行质量审查...",
+      "fullReview": "完整审查",
+      "quickReview": "快速检查",
+      "reviewing": "审查中...",
+      "checking": "检查中...",
+      "overallScore": "总体评分",
+      "outOf100": "/ 100",
+      "findings": "发现",
+      "suggestions": "建议",
+      "riskItems": "风险项",
+      "highRisk": "高风险",
+      "mediumRisk": "中风险",
+      "lowRisk": "低风险",
+      "recommendation": "建议：{text}",
+      "nextStep": "下一步：进度跟踪 →"
+    },
+    "generation": {
+      "title": "AI 编制指导",
+      "currentSection": "当前章节: {title}",
+      "guideHint": "我会根据招标文件要求，指导您逐步完成标书编写。",
+      "inputPlaceholder": "输入您的问题，AI 将指导您编写...",
+      "generating": "生成中...",
+      "errorMessage": "抱歉，生成失败，请稍后再试。",
+      "send": "发送",
+      "sectionPrompts": {
+        "technical_approach": [
+          "请帮我分析技术方案部分的要求",
+          "关键技术方法有哪些需要重点描述？",
+          "如何突出我们的技术优势？"
+        ],
+        "qualification": [
+          "资质要求的关键点是什么？",
+          "如何展示相关项目经验？",
+          "团队配置有什么建议？"
+        ],
+        "financial": [
+          "预算编制有什么注意事项？",
+          "各科目比例如何分配？",
+          "有哪些常见的预算问题？"
+        ],
+        "default": [
+          "这个部分的核心要求是什么？",
+          "有哪些评分要点需要关注？",
+          "如何提高这部分的得分？"
+        ]
+      }
+    },
+    "tracking": {
+      "title": "进度跟踪",
+      "subtitle": "投标项目整体进度概览",
+      "stepsProgress": "步骤完成情况",
+      "stepsCompleted": "已完成 {completed} / 6 个步骤",
+      "taskProgress": "任务进度",
+      "tasksCompleted": "{completed} / {total} 任务已完成",
+      "dueDate": "截止: {date}",
+      "noDueDate": "未设截止日"
+    }
+  },
+  "payment": {
+    "title": "充值积分",
+    "selectPackage": "选择套餐",
+    "paymentMethod": "支付方式",
+    "alipay": "支付宝",
+    "wechatPay": "微信支付",
+    "pay": "支付 ¥{amount}"
+  }
+}

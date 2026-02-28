@@ -1,150 +1,96 @@
-# BidAgent Copilot Instructions
+# BidAgent V2 Copilot Instructions
 
 ## 项目概述
 
-BidAgent 是一个多边机构投标 AI Agent Web 平台，帮助用户完成 ADB/WB/UN 等机构的投标工作。核心流程：**招标机会爬取 → TOR/RFP 文档分析 → AI 标书生成**。
+BidAgent V2 是多边机构投标 AI Agent Web 平台，支持 ADB/WB/UN 投标。核心流程：**招标爬取 → TOR/RFP 分析 → AI 指导标书编制**
+
+**状态**: V2 重构中 — 开发文档完成，代码从零搭建。
+
+**核心理念**: AI 不直接生成标书文档，而是通过问答式交互指导用户按招标文件要求自行编写。
 
 **技术栈**: Next.js 15 + FastAPI + PostgreSQL 16 (pgvector) + Redis + LangGraph + DeepSeek
 
-## 开发模式：文档驱动开发
+## 开发文档 (必读)
 
-本项目采用 **文档驱动开发 (Doc-Driven Development)** 模式：
+所有设计文档在 `docs/v2/`，写代码前请先阅读：
 
-```
-任务文档 (task-specs) → Mini-Agent 读取执行 → 代码产出 → Opus 4.5 审查
-```
+| 文档 | 内容 |
+|------|------|
+| `docs/v2/01-prd.md` | 产品需求、用户流程、功能优先级 |
+| `docs/v2/02-architecture.md` | 系统架构、三层 Agent (MCP + Skills + LangGraph) |
+| `docs/v2/03-data-model.md` | 34 表设计、枚举、向量索引、ER 图 |
+| `docs/v2/04-openapi.md` | 97 个 API 端点及请求/响应 schema |
+| `docs/v2/05-agent-workflow.md` | LLM Client、Skills、LangGraph 工作流、RAG、Prompt |
+| `docs/v2/06-frontend-design.md` | 路由、组件、Zustand、TanStack Query、SSE |
+| `docs/v2/07-dev-standards.md` | 代码风格、Git 工作流、测试、环境配置 |
 
-### AI 角色分工
-
-| AI 工具 | 角色 | 使用场景 |
-|---------|------|---------|
-| **Opus 4.5** (Copilot Chat) | 架构师/文档作者 | 编写任务文档、架构设计、代码审查、疑难诊断 |
-| **Mini-Agent** (CLI) | 主执行者 | 读取 task-specs 自动执行开发任务 |
-| **Claude Code** (独立客户端) | 补充编码 | 交互式修改、实时调试、细节补充 |
-
-### Opus 4.5 核心职责
-
-作为 Copilot Chat 中的 Opus 4.5，你的主要职责是：
-
-1. **编写任务规格文档** - 按 `docs/task-spec-template.md` 格式生成 Mini-Agent 可执行的任务文档
-2. **架构设计** - 设计新模块架构、数据模型、API 接口
-3. **代码审查** - 审查 Mini-Agent 生成的代码，检查安全性、性能、规范符合性
-4. **疑难诊断** - 分析复杂 bug、提供技术方案
-
-### 任务文档格式要点
-
-当需要编写任务文档时，使用以下结构：
-
-```yaml
----
-id: M1-03                    # 任务ID: M{里程碑}-{序号}
-title: 任务标题
-executor: mini-agent         # mini-agent | opus
-priority: P0                 # P0(阻塞) | P1(重要) | P2(一般)
-task_type: coding            # coding | testing | documentation | design | research
-dependencies: [M1-01, M1-02] # 依赖任务
-outputs:                     # 输出文件列表
-  - backend/app/xxx.py
-acceptance_criteria:         # 验收标准
-  - 标准1
-  - 标准2
----
-
-## 描述 / 输入 / 输出文件 / 验收标准 / 详细步骤 / 代码模板
-```
-
-## 架构与代码位置
+## 架构分层
 
 ```
 backend/app/
-├── api/v1/           # REST 路由 → 对应 docs/api-contracts/openapi.yaml
-├── models/           # SQLAlchemy 模型 → 对应 docs/architecture/data-model.md
-├── schemas/          # Pydantic 请求/响应模型
-├── services/         # 业务逻辑层
-├── agents/           # LangGraph 工作流 → 对应 docs/architecture/agent-workflow.md
-│   ├── workflows/    # 状态机定义 (Intake → Analysis → Planning → Generation)
+├── api/v1/           # REST 路由
+├── models/           # SQLAlchemy ORM (继承 Base)
+├── schemas/          # Pydantic 请求/响应
+├── services/         # 业务逻辑 (注入 AsyncSession)
+├── agents/           # LangGraph + Skills + MCP + Prompts
+│   ├── llm_client.py # DeepSeek API 封装
+│   ├── skills/       # 分析能力单元
+│   ├── workflows/    # LangGraph 工作流
+│   ├── mcp/          # MCP Tools
 │   └── prompts/      # Prompt 模板
-└── core/             # 安全、配置、工具
+├── crawlers/         # 爬虫 (继承 BaseCrawler)
+├── tasks/            # Celery 异步任务
+└── core/             # 安全、异常、配置
 
 frontend/src/
-├── app/[locale]/     # Next.js App Router 页面 (支持 zh/en)
-├── components/       # React 组件 (使用 shadcn/ui)
-├── hooks/            # 自定义 Hooks
-├── services/         # API 调用层
-└── i18n/messages/    # 翻译文件 (zh.json, en.json)
+├── app/[locale]/     # App Router 页面 (zh/en)
+├── components/       # shadcn/ui 组件
+├── stores/           # Zustand 状态管理
+├── services/         # API 客户端 (axios)
+├── hooks/            # TanStack Query hooks
+└── i18n/messages/    # 翻译 JSON
 ```
 
-## 关键开发模式
+## 关键模式
 
-### CRUD API 开发流程
-1. 查看 `docs/api-contracts/openapi.yaml` 获取端点定义
-2. 查看 `docs/architecture/data-model.md` 获取表结构
-3. 创建 `schemas/{entity}.py` (Pydantic)
-4. 创建 `services/{entity}_service.py` (业务逻辑)
-5. 创建 `api/v1/{entity}.py` (路由)
+### Service 层
+```python
+class UserService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    async def get_by_email(self, email: str) -> User | None:
+        result = await self.db.execute(select(User).where(User.email == email))
+        return result.scalar_one_or_none()
+```
 
-### Agent 节点开发流程
-1. 理解 `docs/architecture/agent-workflow.md` 中的状态定义
-2. 节点放在 `agents/workflows/{workflow}/nodes/`
-3. 更新 `agents/workflows/{workflow}/graph.py`
-4. Prompt 模板放在 `agents/prompts/templates/`
+### 三层 Agent 架构
+```
+MCP Tools (数据检索) → Skills (分析单元) → LangGraph Workflows (编排)
+```
 
-### 前端页面开发
-1. 页面放在 `app/[locale]/{path}/page.tsx`
-2. 组件使用 shadcn/ui，放在 `components/{module}/`
-3. 所有 UI 文本必须通过 `next-intl` 国际化，键定义在 `i18n/messages/`
+### 异常处理
+```python
+raise NotFoundError(resource_type="User", resource_id=user_id)
+raise InsufficientCreditsError(required=100, available=50)
+```
 
 ## 代码规范
 
-### Python (后端)
-- 使用 **Ruff** 格式化，行长 88
-- **必须**有类型提示：`async def get_user(db: AsyncSession, email: str) -> User | None:`
-- 异步：使用 `asyncio.gather()` 并行处理，避免阻塞 IO (`aiofiles` 代替 `open`)
-- 异常：继承 `BidAgentException`，包含 `code` 和 `message` 字段
-- 命名：`snake_case` (函数/变量)，`PascalCase` (类)
+| 后端 (Python) | 前端 (TypeScript) |
+|---------------|-------------------|
+| Ruff 格式化，行长 88 | Prettier, tabWidth 2 |
+| **必须**有类型提示 | 禁止 `any` |
+| `snake_case` 函数 | `camelCase` 函数 |
+| `datetime.now(UTC)` | `next-intl` 国际化 |
+| UUID v4 主键 | Zustand + TanStack Query |
 
-### TypeScript (前端)
-- 文件名：小写短横线 (`use-auth.ts`, `project-card.tsx`)
-- 函数名：`camelCase`；常量：`UPPER_SNAKE_CASE`
-- 组件：使用函数组件 + `memo()`，Props 接口明确定义
-- 禁止 `any`，使用 `unknown` 或具体类型
+## LLM 集成
 
-### Git 提交
-- 格式：`<type>(<scope>): <description>` 例如 `feat(auth): 添加JWT刷新`
-- type: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- **调用入口**: `agents/llm_client.py` (AsyncOpenAI, DeepSeek 兼容)
+- **模型**: DeepSeek-V3 (通用) / DeepSeek-R1 (推理)
+- **Embedding**: 腾讯混元 (主, 1024 维) + 智谱 (降级)
+- **积分**: `X-Credits-Consumed` / `X-Credits-Remaining`
 
-## LLM 集成要点
+## Git 提交格式
 
-- **主模型**: DeepSeek-V3 (通用任务)，DeepSeek-R1 (复杂推理)
-- 所有 LLM 调用通过 `agents/llm_client.py` 统一封装
-- 调用需要扣积分：响应头含 `X-Credits-Consumed`, `X-Credits-Remaining`
-- 积分不足抛出 `InsufficientCreditsError(required, available)`
-
-## 开发环境
-
-```bash
-# 开发环境: 原生 Ubuntu 系统
-# 环境搭建: docs/development-environment.md
-
-# 启动服务
-docker compose up -d postgres redis
-cd backend && uvicorn app.main:app --reload  # :8000
-cd frontend && npm run dev                    # :3000
-
-# Mini-Agent 执行任务
-mini-agent run docs/task-specs/M1-user-system/README.md --task M1-03
-```
-
-## 核心文档参考
-
-| 需求 | 文档路径 |
-|------|---------|
-| 开发环境搭建 | `docs/development-environment.md` |
-| 开发工作流 | `docs/development-workflow.md` |
-| AI 协作指南 | `docs/ai-collaboration-guide.md` |
-| 任务文档模板 | `docs/task-spec-template.md` |
-| API 定义 | `docs/api-contracts/openapi.yaml` |
-| 数据库表 | `docs/architecture/data-model.md` |
-| Agent 状态机 | `docs/architecture/agent-workflow.md` |
-| 国际化 | `docs/i18n-guide.md` |
-| 任务规格 | `docs/task-specs/M{0-8}-*/README.md` |
+`<type>(<scope>): <description>` — 例如 `feat(crawler): 添加WB爬虫`

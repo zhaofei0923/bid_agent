@@ -1,0 +1,144 @@
+"""Payment and credits API routes."""
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import get_current_user
+from app.database import get_db
+from app.models.user import User
+from app.services.payment_service import PaymentService
+from app.models.payment import RechargePackage as RechargePackageModel
+
+router = APIRouter()
+
+
+class DeductCreditsRequest(BaseModel):
+    """Request body for credit deduction."""
+
+    amount: int = Field(gt=0)
+    description: str
+
+
+class RechargeRequest(BaseModel):
+    """Request body for credit recharge."""
+
+    amount: int = Field(gt=0)
+    description: str = "manual_recharge"
+
+
+class CreateOrderRequest(BaseModel):
+    """Request body for creating a payment order."""
+
+    package_id: UUID
+    payment_method: str = "alipay"
+
+
+class PackageResponse(BaseModel):
+    """Response schema for recharge packages."""
+
+    id: UUID
+    name: str
+    description: str | None = None
+    credits: int
+    price: float
+    currency: str
+    is_active: bool
+    sort_order: int
+    bonus_credits: int
+    bonus_description: str | None = None
+
+    model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm_model(cls, obj: "RechargePackage") -> "PackageResponse":
+        return cls(
+            id=obj.id,
+            name=obj.name,
+            description=obj.description,
+            credits=obj.credit_amount,
+            price=float(obj.price),
+            currency=obj.currency,
+            is_active=obj.is_active,
+            sort_order=obj.sort_order,
+            bonus_credits=obj.bonus_credits,
+            bonus_description=obj.bonus_description,
+        )
+
+
+@router.get("/balance")
+async def get_balance(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current user's credit balance."""
+    service = PaymentService(db)
+    balance = await service.get_balance(current_user.id)
+    return {"balance": balance}
+
+
+@router.post("/credits/deduct")
+async def deduct_credits(
+    request: DeductCreditsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Deduct credits from user's balance."""
+    service = PaymentService(db)
+    new_balance = await service.deduct_credits(
+        current_user.id, request.amount, request.description
+    )
+    return {"balance": new_balance}
+
+
+@router.post("/credits/recharge")
+async def recharge_credits(
+    request: RechargeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add credits to user's balance."""
+    service = PaymentService(db)
+    new_balance = await service.add_credits(
+        current_user.id, request.amount, request.description
+    )
+    return {"balance": new_balance}
+
+
+@router.get("/transactions")
+async def list_transactions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List user's credit transactions."""
+    service = PaymentService(db)
+    return await service.list_transactions(
+        current_user.id, page=page, page_size=page_size
+    )
+
+
+@router.get("/packages", response_model=list[PackageResponse])
+async def list_packages(
+    db: AsyncSession = Depends(get_db),
+):
+    """List available recharge packages."""
+    service = PaymentService(db)
+    packages = await service.list_packages()
+    return [PackageResponse.from_orm_model(p) for p in packages]
+
+
+@router.post("/orders")
+async def create_order(
+    request: CreateOrderRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a payment order for a recharge package."""
+    service = PaymentService(db)
+    return await service.create_order(
+        current_user.id, request.package_id, request.payment_method
+    )

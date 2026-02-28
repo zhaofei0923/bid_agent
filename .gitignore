@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+.env
+
+# Node
+node_modules/
+.next/
+out/
+playwright-report/
+*.tsbuildinfo
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+test-results/
+
+# Cache
+.ruff_cache/
+.mypy_cache/
+
+# Data
+data/
+uploads/

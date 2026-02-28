@@ -1,0 +1,156 @@
+"""Credits deduction dependency and middleware utilities.
+
+Provides:
+- ``require_credits``: FastAPI dependency that checks balance *before* the
+  endpoint runs and deducts credits *after* via a background task / response hook.
+- ``add_credits_headers``: Add ``X-Credits-Consumed`` / ``X-Credits-Remaining``
+  to any response.
+
+Pricing table (per 05-agent-workflow §6):
+  - bid_analysis_trigger: 20 credits
+  - guidance_qa: 5 credits
+  - guidance_stream: 8 credits
+  - quality_review_full: 30 credits
+  - quality_review_quick: 10 credits
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from fastapi import Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BidAgentException
+from app.core.security import get_current_user
+from app.database import get_db
+from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+# ── Pricing Constants ────────────────────────────────────────
+CREDIT_COST: dict[str, int] = {
+    "bid_analysis_trigger": 20,
+    "guidance_qa": 5,
+    "guidance_stream": 8,
+    "quality_review_full": 30,
+    "quality_review_quick": 10,
+}
+
+
+class InsufficientCreditsError(BidAgentException):
+    """Raised when user doesn't have enough credits."""
+
+    code = "INSUFFICIENT_CREDITS"
+
+    def __init__(self, required: int, available: int) -> None:
+        super().__init__(
+            message=f"积分不足: 需要 {required} 积分, 剩余 {available} 积分",
+        )
+        self.required = required
+        self.available = available
+
+
+# ── Core Functions ───────────────────────────────────────────
+
+async def check_credits(
+    user: User,
+    action: str,
+    db: AsyncSession,
+) -> int:
+    """Check that user has enough credits for *action*. Returns cost.
+
+    Raises:
+        InsufficientCreditsError: if balance < cost.
+        KeyError: if action is unknown.
+    """
+    cost = CREDIT_COST.get(action)
+    if cost is None:
+        raise KeyError(f"Unknown billable action: {action}")
+
+    balance = user.credits_balance or 0
+    if balance < cost:
+        raise InsufficientCreditsError(required=cost, available=balance)
+    return cost
+
+
+async def deduct_credits(
+    user: User,
+    action: str,
+    cost: int,
+    db: AsyncSession,
+    *,
+    reference_id: str | None = None,
+) -> int:
+    """Atomically deduct *cost* credits from user and log a transaction.
+
+    Returns the new balance.
+    """
+    from app.models.payment import PaymentTransaction
+    import uuid
+
+    # Optimistic decrement
+    new_balance = (user.credits_balance or 0) - cost
+    if new_balance < 0:
+        raise InsufficientCreditsError(required=cost, available=user.credits_balance or 0)
+
+    user.credits_balance = new_balance
+
+    # Record transaction
+    tx = PaymentTransaction(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        type="consume",
+        amount=-cost,
+        balance_after=new_balance,
+        description=f"[{action}] 操作消耗",
+        reference_type=action,
+        reference_id=uuid.UUID(reference_id) if reference_id else None,
+    )
+    db.add(tx)
+    await db.commit()
+
+    logger.info(
+        "Credits deducted: user=%s action=%s cost=%d balance=%d",
+        user.id,
+        action,
+        cost,
+        new_balance,
+    )
+    return new_balance
+
+
+def add_credits_headers(
+    response: Response,
+    consumed: int,
+    remaining: int,
+) -> None:
+    """Attach credit tracking headers to response."""
+    response.headers["X-Credits-Consumed"] = str(consumed)
+    response.headers["X-Credits-Remaining"] = str(remaining)
+
+
+# ── Dependency Factories ─────────────────────────────────────
+
+def require_credits(action: str):
+    """FastAPI dependency factory that guards an endpoint with credits check.
+
+    Usage::
+
+        @router.post("/analysis/trigger")
+        async def trigger(
+            cost_info: dict = Depends(require_credits("bid_analysis_trigger")),
+            ...
+        ):
+            # cost_info = {"cost": 20, "action": "bid_analysis_trigger"}
+    """
+
+    async def _check(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> dict[str, Any]:
+        cost = await check_credits(current_user, action, db)
+        return {"cost": cost, "action": action, "user": current_user, "db": db}
+
+    return _check
