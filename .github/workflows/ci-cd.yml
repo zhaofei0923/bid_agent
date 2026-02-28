@@ -122,51 +122,59 @@ jobs:
     environment: production
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy deployment files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: "docker-compose.prod.yml,.env.production.example,deploy/"
+          target: /opt/bid_agent
+          overwrite: true
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
+          port: ${{ secrets.SERVER_PORT }}
           script: |
             set -e
-            PROJECT_DIR="/opt/bid_agent"
+            cd /opt/bid_agent
 
-            # First-time setup: create dir + clone repo
-            if [ ! -d "${PROJECT_DIR}/.git" ]; then
-              echo ">>> First-time setup: cloning repository..."
-              sudo mkdir -p "${PROJECT_DIR}"
-              sudo chown $(whoami):$(whoami) "${PROJECT_DIR}"
-              git clone https://github.com/zhaofei0923/bid_agent.git "${PROJECT_DIR}"
-            else
-              echo ">>> Pulling latest code..."
-              cd "${PROJECT_DIR}"
-              git pull origin main
-            fi
-
-            cd "${PROJECT_DIR}"
+            # Ensure data directory exists
+            mkdir -p data/uploads
 
             # Ensure .env exists
             if [ ! -f .env ]; then
-              echo "⚠️  No .env file found. Copying from template..."
+              echo ">>> Creating .env from template..."
               cp .env.production.example .env
-              echo "⚠️  IMPORTANT: Edit /opt/bid_agent/.env with real secrets before services work properly!"
+              # Generate random secrets
+              SECRET_KEY=$(openssl rand -hex 32)
+              JWT_SECRET=$(openssl rand -hex 32)
+              DB_PASS=$(openssl rand -hex 16)
+              sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$SECRET_KEY/" .env
+              sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$JWT_SECRET/" .env
+              sed -i "s/REPLACE_STRONG_DB_PASSWORD/$DB_PASS/g" .env
+              echo "⚠️  .env created with random secrets. Edit /opt/bid_agent/.env to add API keys!"
             fi
 
-            # Login to GHCR (uses pre-configured docker credentials)
-            # Pull latest images
+            # Pull latest images from GHCR
             docker compose -f docker-compose.prod.yml pull
 
-            # Restart services
+            # Start / restart services
             docker compose -f docker-compose.prod.yml up -d
 
-            # Wait for DB to be healthy, then migrate
+            # Wait for DB, then migrate
             echo ">>> Waiting for database..."
             sleep 15
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head || echo "⚠️  Migration failed — DB may need .env config"
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head || echo "⚠️  Migration may need .env config"
 
-            # Clean up old images to save disk
+            # Clean up
             docker image prune -f
 
             echo "✅ Deploy complete: $(date)"
