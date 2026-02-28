@@ -36,7 +36,7 @@ export const LandingV2Nav = memo(function LandingV2Nav({
             : "border-stone-200/70 bg-[rgba(255,252,247,0.86)]"
         }`}
       >
-        <Link href={`/${locale}/home-v2-preview`} className="flex items-center gap-3">
+        <Link href={`/${locale}`} className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 bg-white text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-700">
             BA
           </div>
@@ -59,7 +59,7 @@ export const LandingV2Nav = memo(function LandingV2Nav({
 
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
-            href={`/${altLocale}/home-v2-preview`}
+            href={`/${altLocale}`}
             className="hidden h-11 items-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-slate-900 sm:flex"
           >
             <Globe2 className="h-4 w-4" />

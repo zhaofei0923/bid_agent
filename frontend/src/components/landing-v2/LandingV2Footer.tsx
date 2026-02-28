@@ -35,7 +35,7 @@ export const LandingV2Footer = memo(function LandingV2Footer({
       items: [
         { label: t("footer.companyAbout"), href: `/${locale}` },
         { label: t("footer.companyContact"), href: "#cta" },
-        { label: t("footer.companyLanguage"), href: `/${altLocale}/home-v2-preview` },
+        { label: t("footer.companyLanguage"), href: `/${altLocale}` },
       ],
     },
   ]
@@ -77,7 +77,7 @@ export const LandingV2Footer = memo(function LandingV2Footer({
       <div className="mx-auto mt-10 flex w-full max-w-[1320px] flex-col gap-3 border-t border-stone-200 px-6 pt-6 text-xs uppercase tracking-[0.18em] text-stone-500 sm:flex-row sm:items-center sm:justify-between">
         <span>{t("footer.copyright")}</span>
         <Link
-          href={`/${altLocale}/home-v2-preview`}
+          href={`/${altLocale}`}
           className="transition-colors duration-200 hover:text-slate-900"
         >
           {t("footer.companyLanguage")}
