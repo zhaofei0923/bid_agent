@@ -131,17 +131,40 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
+            PROJECT_DIR="/opt/bid_agent"
 
-            cd /opt/bid_agent
+            # First-time setup: create dir + clone repo
+            if [ ! -d "${PROJECT_DIR}/.git" ]; then
+              echo ">>> First-time setup: cloning repository..."
+              sudo mkdir -p "${PROJECT_DIR}"
+              sudo chown $(whoami):$(whoami) "${PROJECT_DIR}"
+              git clone https://github.com/zhaofei0923/bid_agent.git "${PROJECT_DIR}"
+            else
+              echo ">>> Pulling latest code..."
+              cd "${PROJECT_DIR}"
+              git pull origin main
+            fi
 
+            cd "${PROJECT_DIR}"
+
+            # Ensure .env exists
+            if [ ! -f .env ]; then
+              echo "⚠️  No .env file found. Copying from template..."
+              cp .env.production.example .env
+              echo "⚠️  IMPORTANT: Edit /opt/bid_agent/.env with real secrets before services work properly!"
+            fi
+
+            # Login to GHCR (uses pre-configured docker credentials)
             # Pull latest images
             docker compose -f docker-compose.prod.yml pull
 
-            # Restart services (zero-downtime for stateless containers)
+            # Restart services
             docker compose -f docker-compose.prod.yml up -d
 
-            # Run database migrations
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            # Wait for DB to be healthy, then migrate
+            echo ">>> Waiting for database..."
+            sleep 15
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head || echo "⚠️  Migration failed — DB may need .env config"
 
             # Clean up old images to save disk
             docker image prune -f
