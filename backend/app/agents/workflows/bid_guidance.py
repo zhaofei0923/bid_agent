@@ -9,7 +9,6 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
-
 # ── State Definition ─────────────────────────────────
 
 
@@ -60,7 +59,7 @@ async def analyze_tor_node(state: BidGuidanceState) -> dict:
 
 async def extract_criteria_node(state: BidGuidanceState) -> dict:
     """Refine evaluation criteria into a structured scoring list."""
-    tor = state.get("tor_analysis", {})
+    _tor = state.get("tor_analysis", {})
     # TODO: Extract from tor_analysis or fallback to 4-dimension defaults
     criteria = [
         {"criterion": "公司经验", "weight": 30},

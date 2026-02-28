@@ -7,15 +7,15 @@ and reads the database URL from app.config.
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from app.config import get_settings
 from app.database import Base
 
 # Import all models so Base.metadata is populated
-from app.models import *  # noqa: F401, F403
+from app.models import *  # noqa: F403
 
 config = context.config
 if config.config_file_name is not None:
@@ -40,7 +40,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):  # noqa: ANN001
+def do_run_migrations(connection):
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()

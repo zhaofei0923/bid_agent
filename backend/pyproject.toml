@@ -10,7 +10,14 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line too long — handled by formatter
+    "B008",   # function call in default argument — FastAPI Depends() pattern
+    "RUF001", # ambiguous unicode — Chinese comments are intentional
+    "N818",   # exception name should end with Error — our convention uses Exception
+    "B905",   # zip without explicit strict — not critical
+    "UP035",  # deprecated typing imports — compatibility
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

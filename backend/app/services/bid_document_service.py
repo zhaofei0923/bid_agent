@@ -3,7 +3,6 @@
 import hashlib
 import logging
 import os
-from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -12,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models.bid_document import BidDocument, BidDocumentChunk, BidDocumentSection
+from app.models.bid_document import BidDocument, BidDocumentSection
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

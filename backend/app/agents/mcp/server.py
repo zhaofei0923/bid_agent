@@ -10,8 +10,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.agents.mcp.bid_document_search import bid_document_search
 from app.agents.mcp.knowledge_search import knowledge_search
 from app.agents.mcp.opportunity_query import opportunity_query

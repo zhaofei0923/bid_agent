@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -11,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.rag import answer_question
 from app.core.credits import (
-    add_credits_headers,
     deduct_credits,
     require_credits,
 )
@@ -49,7 +47,7 @@ async def get_guidance(
     )
 
     # Deduct credits after successful invocation
-    new_balance = await deduct_credits(
+    await deduct_credits(
         current_user,
         cost_info["action"],
         cost_info["cost"],

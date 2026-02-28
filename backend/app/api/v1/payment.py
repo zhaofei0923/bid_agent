@@ -1,5 +1,8 @@
 """Payment and credits API routes."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -10,7 +13,9 @@ from app.core.security import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.services.payment_service import PaymentService
-from app.models.payment import RechargePackage as RechargePackageModel
+
+if TYPE_CHECKING:
+    from app.models.payment import RechargePackage
 
 router = APIRouter()
 
@@ -53,7 +58,7 @@ class PackageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_model(cls, obj: "RechargePackage") -> "PackageResponse":
+    def from_orm_model(cls, obj: RechargePackage) -> PackageResponse:
         return cls(
             id=obj.id,
             name=obj.name,

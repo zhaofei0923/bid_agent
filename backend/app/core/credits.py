@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import Depends, Request, Response
+from fastapi import Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BidAgentException
@@ -87,8 +87,9 @@ async def deduct_credits(
 
     Returns the new balance.
     """
-    from app.models.payment import PaymentTransaction
     import uuid
+
+    from app.models.payment import PaymentTransaction
 
     # Optimistic decrement
     new_balance = (user.credits_balance or 0) - cost

@@ -1,11 +1,8 @@
 """knowledge_search — semantic search across knowledge base chunks."""
 
-from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.knowledge_base import KnowledgeBase, KnowledgeChunk, KnowledgeDocument
 
 
 async def knowledge_search(

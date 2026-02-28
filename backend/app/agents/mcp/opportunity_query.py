@@ -53,7 +53,6 @@ async def opportunity_query(
 
     if keyword:
         # Use PostgreSQL full-text search via search_vector column
-        tsquery = keyword.replace(" ", " & ")
         conditions.append(
             or_(
                 Opportunity.search_vector.op("@@")(

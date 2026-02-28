@@ -1,6 +1,5 @@
 """AnalyzeQualification — extract qualification requirements from bid documents."""
 
-from app.agents.llm_client import Message
 from app.agents.skills.base import Skill, SkillContext, SkillResult
 
 SYSTEM_PROMPT = (

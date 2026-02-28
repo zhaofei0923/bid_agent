@@ -217,7 +217,7 @@ def process_document(self, document_id: str) -> dict:
         return result
     except Exception as exc:
         logger.exception("Failed to process document %s", document_id)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @celery_app.task

@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
@@ -93,7 +93,7 @@ class KnowledgeBaseService:
             List of matched chunks with metadata and scores.
         """
         try:
-            from pgvector.sqlalchemy import Vector
+            from pgvector.sqlalchemy import Vector  # noqa: F401
         except ImportError:
             logger.warning("pgvector not available, returning empty results")
             return []

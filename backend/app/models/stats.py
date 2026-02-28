@@ -12,7 +12,6 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID

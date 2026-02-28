@@ -185,7 +185,6 @@ def _parse_wb_date(value: str | None) -> datetime | None:
     """
     if not value:
         return None
-    from datetime import timezone
 
     for fmt in (
         "%Y-%m-%dT%H:%M:%SZ",
@@ -198,7 +197,7 @@ def _parse_wb_date(value: str | None) -> datetime | None:
             dt = datetime.strptime(value, fmt)
             # Ensure the result is always UTC-aware
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             return dt
         except (ValueError, TypeError):
             continue

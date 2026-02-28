@@ -102,7 +102,7 @@ def crawl_opportunities(self, source: str, max_pages: int = 5) -> dict:
         return result
     except Exception as exc:
         logger.exception("[%s] Crawl failed", source)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @celery_app.task

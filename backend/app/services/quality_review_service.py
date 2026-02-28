@@ -7,8 +7,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import get_llm_client
-from app.agents.skills.quality_review import QualityReview
 from app.agents.skills.base import SkillContext
+from app.agents.skills.quality_review import QualityReview
 
 logger = logging.getLogger(__name__)
 

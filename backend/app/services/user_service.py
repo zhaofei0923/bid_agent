@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import AuthenticationError, NotFoundError, ValidationError
 from app.core.security import (
     create_access_token,
@@ -13,7 +14,6 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.config import settings
 from app.models.user import User
 from app.schemas.user import (
     PasswordChange,

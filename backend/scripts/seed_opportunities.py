@@ -16,10 +16,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import delete, select  # noqa: E402
+from sqlalchemy import delete, select
 
-from app.database import async_session  # noqa: E402
-from app.models.opportunity import Opportunity  # noqa: E402
+from app.database import async_session
+from app.models.opportunity import Opportunity
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s")
 logger = logging.getLogger("seed")

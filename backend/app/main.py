@@ -12,10 +12,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api import api_router
 from app.config import get_settings
 from app.core.exceptions import BidAgentException
 from app.core.middleware import RequestLoggingMiddleware
-from app.api import api_router
 
 logger = logging.getLogger("bidagent")
 
@@ -33,8 +33,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Validate database connection
     try:
-        from app.database import engine
         from sqlalchemy import text
+
+        from app.database import engine
 
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))

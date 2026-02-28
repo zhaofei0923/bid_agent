@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import asyncio
-import hashlib
 import logging
 import random
 import sys
@@ -22,10 +21,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import select  # noqa: E402
+from sqlalchemy import select
 
-from app.database import async_session  # noqa: E402
-from app.models.opportunity import Opportunity  # noqa: E402
+from app.database import async_session
+from app.models.opportunity import Opportunity
 
 logging.basicConfig(
     level=logging.INFO,
@@ -236,8 +235,6 @@ def _generate_tender(
     project_id = _generate_project_id()
     notice_id = _generate_notice_id()
 
-    # Deterministic URL using hash
-    url_hash = hashlib.md5(f"wb-{notice_id}".encode()).hexdigest()[:8]
     url = f"https://projects.worldbank.org/en/projects-operations/procurement-detail/{notice_id}"
 
     return {

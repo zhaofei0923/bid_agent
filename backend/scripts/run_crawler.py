@@ -11,20 +11,20 @@ import argparse
 import asyncio
 import logging
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Ensure the backend package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import select  # noqa: E402
+from sqlalchemy import select
 
-from app.crawlers.adb import ADBCrawler  # noqa: E402
-from app.crawlers.base import BaseCrawler, TenderInfo  # noqa: E402
-from app.crawlers.ungm import UNGMCrawler  # noqa: E402
-from app.crawlers.wb import WBCrawler  # noqa: E402
-from app.database import async_session  # noqa: E402
-from app.models.opportunity import Opportunity  # noqa: E402
+from app.crawlers.adb import ADBCrawler
+from app.crawlers.base import BaseCrawler, TenderInfo
+from app.crawlers.ungm import UNGMCrawler
+from app.crawlers.wb import WBCrawler
+from app.database import async_session
+from app.models.opportunity import Opportunity
 
 CRAWLER_MAP: dict[str, type[BaseCrawler]] = {
     "adb": ADBCrawler,
@@ -104,7 +104,7 @@ async def upsert_tenders(tenders: list[TenderInfo]) -> dict:
 
 async def cleanup_expired(source: str | None = None) -> int:
     """Delete opportunities whose deadline has passed or status is closed/archived."""
-    from sqlalchemy import or_  # noqa: E402
+    from sqlalchemy import or_
 
     now = datetime.now(UTC)
     async with async_session() as db:
@@ -132,7 +132,7 @@ async def cleanup_stale(source: str, crawl_start: datetime) -> int:
     Any record whose ``updated_at`` is before *crawl_start* no longer
     appears in the active source listing and should be purged.
     """
-    from sqlalchemy import or_  # noqa: E402
+    from sqlalchemy import or_
 
     async with async_session() as db:
         query = select(Opportunity).where(
