@@ -1,0 +1,112 @@
+## BidAgent V2 — Production Docker Compose
+## Usage: docker compose -f docker-compose.prod.yml up -d
+## Images are pre-built via GitHub Actions and stored in GHCR.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bidagent-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bidagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bidagent}
+      POSTGRES_DB: ${POSTGRES_DB:-bidagent}
+    volumes:
+      - bidagent-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bidagent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - bidagent-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bidagent-redis
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - bidagent-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - bidagent-net
+
+  backend:
+    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    container_name: bidagent-backend
+    env_file: .env
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - bidagent-net
+
+  celery-worker:
+    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    container_name: bidagent-celery
+    env_file: .env
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - bidagent-net
+
+  frontend:
+    image: ghcr.io/zhaofei0923/bid_agent-frontend:latest
+    container_name: bidagent-frontend
+    environment:
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - bidagent-net
+
+volumes:
+  bidagent-pgdata:
+  bidagent-redisdata:
+
+networks:
+  bidagent-net:
+    driver: bridge
