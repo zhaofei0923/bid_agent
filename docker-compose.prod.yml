@@ -85,6 +85,24 @@ services:
     networks:
       - bidagent-net
 
+  celery-beat:
+    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    container_name: bidagent-celery-beat
+    env_file: .env
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - bidagent-net
+
   frontend:
     image: ghcr.io/zhaofei0923/bid_agent-frontend:latest
     container_name: bidagent-frontend

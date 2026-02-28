@@ -29,9 +29,15 @@ async def _run_crawler(source: str, max_pages: int = 5) -> dict:
     if not crawler_cls:
         raise ValueError(f"Unknown crawler source: {source}")
 
+    def _trunc(value: str | None, max_len: int = 100) -> str | None:
+        """Truncate a string to fit database column limits."""
+        if value and len(value) > max_len:
+            return value[: max_len - 3] + "..."
+        return value
+
     tenders: list[TenderInfo] = []
     async with crawler_cls() as crawler:
-        tenders = await crawler.crawl_all(max_pages=max_pages, fetch_details=True)
+        tenders = await crawler.crawl_all(max_pages=max_pages, fetch_details=False)
 
     created = 0
     updated = 0
@@ -49,9 +55,16 @@ async def _run_crawler(source: str, max_pages: int = 5) -> dict:
             if existing:
                 # Update fields
                 existing.title = tender.title
-                existing.description = tender.description
-                existing.deadline = tender.deadline
+                existing.description = tender.description or existing.description
+                existing.organization = _trunc(tender.organization) or existing.organization
+                existing.project_number = _trunc(tender.project_number) or existing.project_number
+                existing.published_at = tender.published_at or existing.published_at
+                existing.deadline = tender.deadline or existing.deadline
+                existing.country = _trunc(tender.country) or existing.country
+                existing.sector = _trunc(tender.sector) or existing.sector
+                existing.procurement_type = _trunc(tender.procurement_type) or existing.procurement_type
                 existing.status = tender.status
+                existing.url = tender.url or existing.url
                 existing.updated_at = datetime.now(UTC)
                 updated += 1
             else:
@@ -61,17 +74,17 @@ async def _run_crawler(source: str, max_pages: int = 5) -> dict:
                     url=tender.url,
                     title=tender.title,
                     description=tender.description,
-                    organization=tender.organization,
-                    project_number=tender.project_number,
+                    organization=_trunc(tender.organization),
+                    project_number=_trunc(tender.project_number),
                     published_at=tender.published_at,
                     deadline=tender.deadline,
                     budget_min=tender.budget_min,
                     budget_max=tender.budget_max,
                     currency=tender.currency,
-                    location=tender.location,
-                    country=tender.country,
-                    sector=tender.sector,
-                    procurement_type=tender.procurement_type,
+                    location=_trunc(tender.location),
+                    country=_trunc(tender.country),
+                    sector=_trunc(tender.sector),
+                    procurement_type=_trunc(tender.procurement_type),
                     status=tender.status,
                 )
                 db.add(opp)
