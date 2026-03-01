@@ -163,6 +163,9 @@ jobs:
               echo "⚠️  .env created with random secrets. Edit /opt/bid_agent/.env to add API keys!"
             fi
 
+            # Keep nginx sites and TLS in sync with the repo
+            bash deploy/install-nginx-sites.sh
+
             # Pull latest images from GHCR
             docker compose -f docker-compose.prod.yml pull
 

@@ -67,27 +67,9 @@ else
     echo ">>> .env already exists, skipping."
 fi
 
-# ── 6. SSL certificate ───────────────────────────────
-if [ ! -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
-    echo ">>> Requesting SSL certificate for ${DOMAIN}..."
-    # Use webroot if nginx is running, standalone otherwise
-    if systemctl is-active --quiet nginx; then
-        sudo certbot certonly --webroot -w /var/www/html -d "${DOMAIN}" --non-interactive --agree-tos --email admin@easudata.com
-    else
-        sudo certbot certonly --standalone -d "${DOMAIN}" --non-interactive --agree-tos --email admin@easudata.com
-    fi
-    echo "    SSL certificate obtained."
-else
-    echo ">>> SSL certificate already exists for ${DOMAIN}."
-fi
-
-# ── 7. Nginx configuration ───────────────────────────
-echo ">>> Installing Nginx config..."
-sudo cp "${PROJECT_DIR}/deploy/nginx-bid.conf" "/etc/nginx/sites-available/bid"
-sudo ln -sf "/etc/nginx/sites-available/bid" "/etc/nginx/sites-enabled/bid"
-sudo nginx -t
-sudo systemctl reload nginx
-echo "    Nginx configured and reloaded."
+# ── 6. Nginx configuration + SSL ─────────────────────
+echo ">>> Installing nginx sites and ensuring SSL..."
+bash "${PROJECT_DIR}/deploy/install-nginx-sites.sh"
 
 # ── 8. Login to GHCR ─────────────────────────────────
 echo ">>> Logging in to GitHub Container Registry..."
