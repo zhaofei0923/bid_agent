@@ -37,5 +37,6 @@ celery_app.conf.update(
     },
 )
 
-# Auto-discover tasks from app.tasks sub-modules
-celery_app.autodiscover_tasks(["app.tasks"])
+# Explicitly register task modules (autodiscover looks for "tasks.py" by
+# default, but our file is "crawler_tasks.py").
+celery_app.conf.include = ["app.tasks.crawler_tasks"]
