@@ -160,7 +160,9 @@ jobs:
             bash deploy/install-nginx-sites.sh
 
             # Build images locally on server (uses Docker layer cache)
+            # Use npmmirror CDN for Playwright Chromium (Google Storage blocked in China)
             echo ">>> Building Docker images on server..."
+            export PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://registry.npmmirror.com/-/binary/chrome-for-testing"
             docker compose -f docker-compose.prod.yml build
 
             # Start / restart services

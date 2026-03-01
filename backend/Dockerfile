@@ -11,11 +11,14 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright: install system deps (X11, fonts, etc.) then download
-# the Playwright-compatible Chromium binary via China mirror (npmmirror)
-# to avoid blocked storage.googleapis.com.
+# Playwright: install system deps (X11 libs, fonts, etc.)
 RUN playwright install-deps chromium
-ENV PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
+
+# Download Playwright-compatible Chromium.
+# On GitHub Actions: default cdn.playwright.dev works fine.
+# On China server: pass --build-arg to use npmmirror CDN.
+ARG PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=
+ENV PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST}
 RUN playwright install chromium && \
     echo "Playwright Chromium installed successfully"
 
