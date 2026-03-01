@@ -27,10 +27,10 @@ export const BidChatPanel = memo(function BidChatPanel({
 
   if (!isChatPanelOpen) {
     return (
-      <div className="w-10 shrink-0 border-l flex flex-col items-center pt-4">
+      <div className="ml-4 flex w-12 shrink-0 flex-col items-center rounded-[22px] border border-stone-200 bg-[rgba(255,255,255,0.92)] pt-4">
         <button
           onClick={toggleChatPanel}
-          className="writing-mode-vertical text-sm text-muted-foreground hover:text-foreground"
+          className="writing-mode-vertical text-sm font-medium text-stone-500 hover:text-slate-900"
           style={{ writingMode: "vertical-rl" }}
         >
           {t("chat.collapsed")}
@@ -47,18 +47,18 @@ export const BidChatPanel = memo(function BidChatPanel({
   }
 
   return (
-    <div className="w-[380px] shrink-0 border-l flex flex-col bg-background">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+    <div className="app-surface ml-4 flex w-[380px] shrink-0 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
         <h3 className="text-sm font-semibold">{t("chat.title")}</h3>
         <button
           onClick={toggleChatPanel}
-          className="text-muted-foreground hover:text-foreground text-sm"
+          className="text-sm text-stone-500 transition-colors duration-200 hover:text-slate-900"
         >
           ×
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && !isStreaming && (
           <div className="text-center text-sm text-muted-foreground py-8">
             <p className="mb-2">{t("chat.greeting")}</p>
@@ -109,8 +109,8 @@ export const BidChatPanel = memo(function BidChatPanel({
             <div
               className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
+                  ? "bg-slate-900 text-white"
+                  : "bg-stone-100 text-stone-700"
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -120,7 +120,7 @@ export const BidChatPanel = memo(function BidChatPanel({
 
         {isStreaming && streamingContent && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-muted">
+            <div className="max-w-[85%] rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-700">
               <div className="whitespace-pre-wrap">{streamingContent}</div>
               <span className="animate-pulse">▌</span>
             </div>
@@ -130,7 +130,7 @@ export const BidChatPanel = memo(function BidChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t border-stone-200 p-4">
         <div className="flex gap-2">
           <Input
             value={input}

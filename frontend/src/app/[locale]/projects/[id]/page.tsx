@@ -8,6 +8,9 @@ import { usePathname } from "next/navigation"
 import { projectService } from "@/services/projects"
 import { formatDate } from "@/lib/utils"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { AppPageShell } from "@/components/layout/AppPageShell"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 export default function ProjectDetailPage({
   params,
@@ -30,56 +33,59 @@ export default function ProjectDetailPage({
 
   return (
     <MainLayout>
-      <main className="container mx-auto px-6 py-8">
-        <Link href={`/${locale}/projects`} className="text-gray-500 hover:text-gray-700 text-sm">
-          {tc("backToList")}
-        </Link>
-
-        <div className="mt-4 rounded-xl bg-white p-8 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{project.name}</h1>
-              <p className="mt-1 text-gray-500">
-                {t("createdOn", { date: formatDate(project.created_at) })}
-              </p>
-            </div>
-            <Link
-              href={`/${locale}/projects/${id}/workspace`}
-              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition"
-            >
-              {t("openWorkspace")}
-            </Link>
+      <AppPageShell
+        eyebrow={t("createdAt")}
+        title={project.name}
+        description={
+          project.description ||
+          t("createdOn", { date: formatDate(project.created_at) })
+        }
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/${locale}/projects`}>{tc("backToList")}</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${locale}/projects/${id}/workspace`}>
+                {t("openWorkspace")}
+              </Link>
+            </Button>
+          </>
+        }
+      >
+        <div className="app-surface px-6 py-8 sm:px-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary">{project.status}</Badge>
+            <span className="text-sm font-medium text-stone-500">
+              {t("createdOn", { date: formatDate(project.created_at) })}
+            </span>
           </div>
 
-          {project.description && (
-            <p className="mt-4 text-gray-700">{project.description}</p>
-          )}
-
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="text-sm text-gray-500">{t("status")}</p>
-              <p className="mt-1 font-semibold">{project.status}</p>
+            <div className="app-surface-muted px-5 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("status")}</p>
+              <p className="mt-2 font-semibold text-slate-900">{project.status}</p>
             </div>
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="text-sm text-gray-500">{t("progress")}</p>
-              <p className="mt-1 font-semibold">{project.progress}%</p>
+            <div className="app-surface-muted px-5 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("progress")}</p>
+              <p className="mt-2 font-semibold text-slate-900">{project.progress}%</p>
             </div>
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="text-sm text-gray-500">{t("currentStep")}</p>
-              <p className="mt-1 font-semibold">{project.current_step || t("notStarted")}</p>
+            <div className="app-surface-muted px-5 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("currentStep")}</p>
+              <p className="mt-2 font-semibold text-slate-900">{project.current_step || t("notStarted")}</p>
             </div>
           </div>
 
           <div className="mt-6">
-            <div className="h-3 rounded-full bg-gray-100">
+            <div className="h-3 rounded-full bg-stone-100">
               <div
-                className="h-3 rounded-full bg-blue-600 transition-all"
+                className="h-3 rounded-full bg-slate-900 transition-all"
                 style={{ width: `${project.progress}%` }}
               />
             </div>
           </div>
         </div>
-      </main>
+      </AppPageShell>
     </MainLayout>
   )
 }

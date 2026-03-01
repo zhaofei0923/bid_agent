@@ -4,9 +4,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import OppSearchPanel from "@/components/opportunities/OppSearchPanel"
-import OppList from "@/components/opportunities/OppList"
 import OppCard from "@/components/opportunities/OppCard"
 import { usePublicOpportunities } from "@/hooks/use-opportunities"
+import { Button } from "@/components/ui/button"
+import { AppEmptyState } from "@/components/layout/AppEmptyState"
 import type { OpportunitySearchParams } from "@/types"
 
 const MAX_PUBLIC_PAGE = 5
@@ -34,7 +35,8 @@ export default function PublicSearchClient({ locale }: PublicSearchClientProps) 
 
   const handleSearch = (newParams: OpportunitySearchParams) => {
     // Strip status since public endpoint forces open
-    const { status, ...rest } = newParams
+    const rest = { ...newParams }
+    delete rest.status
     setParams(rest)
   }
 
@@ -44,19 +46,19 @@ export default function PublicSearchClient({ locale }: PublicSearchClientProps) 
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 md:text-4xl">
+    <div className="pb-8">
+      <section className="app-panel px-6 py-10 text-center sm:px-8">
+        <p className="app-page-kicker">{t("title")}</p>
+        <h1 className="landing-v2-display mt-4 text-4xl font-semibold text-slate-900 md:text-5xl">
           {t("title")}
         </h1>
-        <p className="mt-3 text-lg text-gray-600">
+        <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-stone-600 sm:text-lg">
           {t("subtitle")}
         </p>
-      </div>
+      </section>
 
       {/* Search Panel — hide status filter since we only show open */}
-      <div className="mb-6">
+      <div className="mt-8">
         <OppSearchPanel
           params={{ ...params, status: "open" }}
           onSearch={handleSearch}
@@ -66,21 +68,21 @@ export default function PublicSearchClient({ locale }: PublicSearchClientProps) 
 
       {/* Results */}
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="mt-6 space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-xl border bg-gray-100"
+              className="app-surface h-32 animate-pulse"
             />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border bg-white py-16 text-center text-gray-500">
-          {t("noResults")}
+        <div className="mt-6">
+          <AppEmptyState title={t("noResults")} description={t("registerCtaDesc")} />
         </div>
       ) : (
-        <div>
-          <p className="mb-4 text-sm text-gray-500">
+        <div className="mt-6">
+          <p className="mb-4 text-sm text-stone-500">
             {tc("totalResults", {
               total,
               page,
@@ -96,54 +98,53 @@ export default function PublicSearchClient({ locale }: PublicSearchClientProps) 
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <button
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <Button
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
-                className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
+                variant="outline"
+                size="sm"
               >
                 {tc("prevPage")}
-              </button>
+              </Button>
               {Array.from({
                 length: Math.min(totalPages, MAX_PUBLIC_PAGE),
               }).map((_, i) => {
                 const pageNum = i + 1
                 return (
-                  <button
+                  <Button
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`rounded-lg px-3 py-1.5 text-sm ${
-                      page === pageNum
-                        ? "bg-blue-600 text-white"
-                        : "border hover:bg-gray-50"
-                    }`}
+                    variant={page === pageNum ? "default" : "outline"}
+                    size="sm"
                   >
                     {pageNum}
-                  </button>
+                  </Button>
                 )
               })}
-              <button
+              <Button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= Math.min(totalPages, MAX_PUBLIC_PAGE)}
-                className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
+                variant="outline"
+                size="sm"
               >
                 {tc("nextPage")}
-              </button>
+              </Button>
             </div>
           )}
 
           {/* Registration CTA when page limit reached */}
           {isAtLimit && (
-            <div className="mt-8 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 p-8 text-center">
-              <p className="text-lg font-semibold text-gray-900">
+            <div className="app-surface-muted mt-10 px-6 py-8 text-center sm:px-8">
+              <p className="landing-v2-display text-2xl font-semibold text-slate-900">
                 {t("registerCta")}
               </p>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-stone-600">
                 {t("registerCtaDesc")}
               </p>
               <Link
                 href={`/${locale}/auth/register`}
-                className="mt-4 inline-block rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition"
+                className="mt-5 inline-flex h-11 items-center rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition-colors duration-200 hover:bg-slate-800"
               >
                 {t("registerBtn")}
               </Link>

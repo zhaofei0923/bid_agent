@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation"
 import { opportunityService } from "@/services/opportunities"
 import { formatDate, formatCurrency, truncate } from "@/lib/utils"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { AppPageShell } from "@/components/layout/AppPageShell"
+import { AppEmptyState } from "@/components/layout/AppEmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -37,31 +39,35 @@ export default function OpportunitiesPage() {
 
   return (
     <MainLayout>
-      <main className="container mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-
+      <AppPageShell
+        eyebrow={t("institution")}
+        title={t("title")}
+        description={t("noResultsHint")}
+      >
         {/* Search Bar */}
-        <div className="mt-8 flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder={t("search")}
-              className="pl-10"
-            />
+        <div className="app-surface px-6 py-6">
+          <div className="flex flex-col gap-3 md:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder={t("search")}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={handleSearch} className="gap-2">
+              <Filter className="h-4 w-4" />
+              {t("filters")}
+            </Button>
           </div>
-          <Button onClick={handleSearch} className="gap-2">
-            <Filter className="h-4 w-4" />
-            {t("filters")}
-          </Button>
         </div>
 
         {/* Results */}
         {isLoading ? (
-          <div className="mt-8 space-y-4">
+          <div className="space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Card key={i}>
                 <CardContent className="p-6">
@@ -81,14 +87,13 @@ export default function OpportunitiesPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-8 space-y-4">
+          <div className="space-y-4">
             {data?.items.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Search className="h-8 w-8 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">{t("noResults")}</p>
-                </CardContent>
-              </Card>
+              <AppEmptyState
+                title={t("noResults")}
+                description={t("noResultsHint")}
+                icon={<Search className="h-5 w-5" />}
+              />
             )}
             {data?.items.map((opp) => (
               <Link
@@ -96,7 +101,7 @@ export default function OpportunitiesPage() {
                 href={`/${locale}/opportunities/${opp.id}`}
                 className="block group"
               >
-                <Card className="hover:shadow-md hover:border-blue-200 transition-all duration-200">
+                <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)]">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -108,15 +113,15 @@ export default function OpportunitiesPage() {
                             {opp.project_number}
                           </span>
                         </div>
-                        <h3 className="mt-3 text-lg font-semibold group-hover:text-blue-600 transition-colors">
+                        <h3 className="mt-3 text-lg font-semibold transition-colors group-hover:text-slate-700">
                           {opp.title}
                         </h3>
                         {opp.description && (
-                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                          <p className="mt-2 line-clamp-2 text-sm leading-7 text-stone-600">
                             {truncate(opp.description, 200)}
                           </p>
                         )}
-                        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                        <div className="mt-4 flex flex-wrap gap-4 text-sm text-stone-500">
                           {opp.country && (
                             <div className="flex items-center gap-1">
                               <MapPin className="h-4 w-4" />
@@ -153,7 +158,7 @@ export default function OpportunitiesPage() {
 
         {/* Pagination */}
         {data && data.total_pages > 1 && (
-          <div className="mt-8 flex justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {Array.from({ length: Math.min(data.total_pages, 10) }, (_, i) => (
               <Button
                 key={i + 1}
@@ -166,7 +171,7 @@ export default function OpportunitiesPage() {
             ))}
           </div>
         )}
-      </main>
+      </AppPageShell>
     </MainLayout>
   )
 }

@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectOption } from "@/components/ui/select"
 import type { OpportunitySearchParams } from "@/types"
 
 const SOURCES = ["all", "adb", "wb", "ungm"] as const
@@ -41,89 +44,80 @@ export default function OppSearchPanel({ params, onSearch, hideStatus }: OppSear
   }
 
   return (
-    <div className="rounded-xl border bg-white p-6">
+    <div className="app-surface px-6 py-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end">
         {/* Keyword */}
         <div className="flex-1">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-2 block text-sm font-medium text-stone-700">
             {t("search")}
           </label>
-          <input
+          <Input
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder={t("search")}
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         {/* Source Filter */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-2 block text-sm font-medium text-stone-700">
             {t("institution")}
           </label>
-          <select
+          <Select
             value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="rounded-lg border bg-white px-3 py-2 text-sm"
+            onValueChange={setSource}
           >
             {SOURCES.map((s) => (
-              <option key={s} value={s}>
+              <SelectOption key={s} value={s}>
                 {s === "all" ? tc("all") : s.toUpperCase()}
-              </option>
+              </SelectOption>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Status Filter */}
         {!hideStatus && (
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-stone-700">
               {t("status")}
             </label>
-            <select
+            <Select
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg border bg-white px-3 py-2 text-sm"
+              onValueChange={setStatus}
             >
               {STATUSES.map((s) => (
-                <option key={s} value={s}>
+                <SelectOption key={s} value={s}>
                   {s === "all" ? tc("all") : s === "open" ? t("statusOpen") : t("statusClosed")}
-                </option>
+                </SelectOption>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
         {/* Country */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-2 block text-sm font-medium text-stone-700">
             {t("country")}
           </label>
-          <input
+          <Input
             type="text"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            placeholder="e.g. China"
-            className="w-28 rounded-lg border px-3 py-2 text-sm"
+            placeholder={t("country")}
+            className="w-full md:w-36"
           />
         </div>
 
         {/* Buttons */}
         <div className="flex gap-2">
-          <button
-            onClick={handleSearch}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 transition"
-          >
+          <Button onClick={handleSearch}>
             {t("filters")}
-          </button>
-          <button
-            onClick={handleReset}
-            className="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition"
-          >
+          </Button>
+          <Button onClick={handleReset} variant="outline">
             {tc("reset")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

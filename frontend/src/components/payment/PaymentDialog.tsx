@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 interface PaymentDialogProps {
   open: boolean
@@ -53,16 +54,16 @@ export default function PaymentDialog({ open, onOpenChange, onSuccess }: Payment
 
         {/* Package Selection */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">{t("selectPackage")}</label>
+          <label className="text-sm font-medium text-stone-700">{t("selectPackage")}</label>
           <div className="space-y-2">
             {pkgList.map((pkg) => (
               <button
                 key={pkg.id}
                 onClick={() => setSelectedPackage(pkg.id)}
-                className={`w-full rounded-lg border p-4 text-left transition ${
+                className={`w-full rounded-[24px] border p-4 text-left transition ${
                   selectedPackage === pkg.id
-                    ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
-                    : "hover:border-gray-300"
+                    ? "border-slate-900 bg-stone-50 ring-1 ring-slate-900"
+                    : "border-stone-200 hover:border-stone-300"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -70,8 +71,8 @@ export default function PaymentDialog({ open, onOpenChange, onSuccess }: Payment
                     <span className="font-medium">{pkg.name}</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-blue-600">¥{pkg.price}</p>
-                    <p className="text-xs text-gray-500">{pkg.credits} {tCredits("creditsUnit")}</p>
+                    <p className="font-semibold text-slate-900">¥{pkg.price}</p>
+                    <p className="text-xs text-stone-500">{pkg.credits} {tCredits("creditsUnit")}</p>
                   </div>
                 </div>
               </button>
@@ -81,7 +82,7 @@ export default function PaymentDialog({ open, onOpenChange, onSuccess }: Payment
 
         {/* Payment Method */}
         <div className="mt-4 space-y-3">
-          <label className="text-sm font-medium text-gray-700">{t("paymentMethod")}</label>
+          <label className="text-sm font-medium text-stone-700">{t("paymentMethod")}</label>
           <div className="flex gap-3">
             {[
               { id: "alipay", name: t("alipay"), icon: "💳" },
@@ -90,10 +91,10 @@ export default function PaymentDialog({ open, onOpenChange, onSuccess }: Payment
               <button
                 key={method.id}
                 onClick={() => setPaymentMethod(method.id)}
-                className={`flex-1 rounded-lg border p-3 text-center transition ${
+                className={`flex-1 rounded-[22px] border p-3 text-center transition ${
                   paymentMethod === method.id
-                    ? "border-blue-500 bg-blue-50"
-                    : "hover:border-gray-300"
+                    ? "border-slate-900 bg-stone-50"
+                    : "border-stone-200 hover:border-stone-300"
                 }`}
               >
                 <span className="text-xl">{method.icon}</span>
@@ -104,21 +105,17 @@ export default function PaymentDialog({ open, onOpenChange, onSuccess }: Payment
         </div>
 
         <DialogFooter>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="rounded-lg border px-4 py-2 text-sm"
-          >
+          <Button onClick={() => onOpenChange(false)} variant="outline">
             {tc("cancel")}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => selectedPackage && createOrderMutation.mutate(selectedPackage)}
             disabled={createOrderMutation.isPending || !selectedPackage}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
           >
             {createOrderMutation.isPending
               ? tc("processing")
               : t("pay", { amount: selectedPkg?.price ?? 0 })}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -7,10 +7,13 @@ import { creditsService } from "@/services/credits"
 import { useAuthStore } from "@/stores/auth"
 import PaymentDialog from "@/components/payment/PaymentDialog"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { AppPageShell } from "@/components/layout/AppPageShell"
+import { AppEmptyState } from "@/components/layout/AppEmptyState"
+import { Button } from "@/components/ui/button"
+import { CreditCard } from "lucide-react"
 
 export default function CreditsPage() {
   const t = useTranslations("credits")
-  const tc = useTranslations("common")
   const user = useAuthStore((s) => s.user)
   const [showPayment, setShowPayment] = useState(false)
 
@@ -31,57 +34,55 @@ export default function CreditsPage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <button
-            onClick={() => setShowPayment(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition"
-          >
-            {t("recharge")}
-          </button>
-        </div>
+      <AppPageShell
+        eyebrow={t("creditsUnit")}
+        title={t("title")}
+        actions={<Button onClick={() => setShowPayment(true)}>{t("recharge")}</Button>}
+      >
 
         {/* Balance Card */}
-        <div className="mt-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white">
-          <p className="text-sm opacity-80">{t("balance")}</p>
-          <p className="mt-2 text-4xl font-bold">
+        <div className="app-panel px-6 py-8 text-slate-900 sm:px-8">
+          <p className="app-page-kicker">{t("balance")}</p>
+          <p className="landing-v2-display mt-4 text-5xl font-semibold">
             {balance ?? user?.credits_balance ?? 0}
           </p>
-          <p className="mt-1 text-sm opacity-80">{t("creditsUnit")}</p>
+          <p className="mt-2 text-sm font-medium text-stone-600">{t("creditsUnit")}</p>
         </div>
 
         {/* Packages */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold">{t("packages")}</h2>
+        <div>
+          <h2 className="app-section-title">{t("packages")}</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {(packages ?? []).map((pkg: { id: string; name: string; credits: number; price: number }) => (
               <div
                 key={pkg.id}
-                className="rounded-xl border p-6 hover:shadow-md transition cursor-pointer"
+                className="app-surface cursor-pointer px-6 py-6 transition-all duration-200 hover:-translate-y-0.5"
                 onClick={() => setShowPayment(true)}
               >
-                <h3 className="font-semibold">{pkg.name}</h3>
-                <p className="mt-2 text-3xl font-bold text-blue-600">
+                <h3 className="text-lg font-semibold text-slate-900">{pkg.name}</h3>
+                <p className="landing-v2-display mt-3 text-4xl font-semibold text-slate-900">
                   {pkg.credits}
                 </p>
-                <p className="text-sm text-gray-500">{t("creditsUnit")}</p>
-                <p className="mt-3 text-lg font-semibold">¥{pkg.price}</p>
+                <p className="text-sm text-stone-500">{t("creditsUnit")}</p>
+                <p className="mt-4 text-lg font-semibold text-stone-700">¥{pkg.price}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Transaction History */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold">{t("transactionHistory")}</h2>
-          <div className="mt-4 rounded-xl border bg-white">
+        <div>
+          <h2 className="app-section-title">{t("transactionHistory")}</h2>
+          <div className="app-surface mt-4 overflow-hidden">
             {(!transactions || transactions.length === 0) ? (
-              <p className="p-8 text-center text-gray-500">{t("noTransactions")}</p>
+              <AppEmptyState
+                title={t("noTransactions")}
+                icon={<CreditCard className="h-5 w-5" />}
+              />
             ) : (
               <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-sm text-gray-500">
+                <thead className="bg-stone-50/80">
+                  <tr className="border-b border-stone-200 text-left text-sm text-stone-500">
                     <th className="px-6 py-3">{t("typeCol")}</th>
                     <th className="px-6 py-3">{t("creditsCol")}</th>
                     <th className="px-6 py-3">{t("descriptionCol")}</th>
@@ -90,13 +91,13 @@ export default function CreditsPage() {
                 </thead>
                 <tbody>
                   {transactions.map((tx: { id: string; type: string; amount: number; description: string; created_at: string }) => (
-                    <tr key={tx.id} className="border-b last:border-0">
+                    <tr key={tx.id} className="border-b border-stone-100 last:border-0">
                       <td className="px-6 py-3">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
                             tx.type === "consume"
                               ? "bg-red-100 text-red-700"
-                              : "bg-green-100 text-green-700"
+                              : "bg-emerald-100 text-emerald-700"
                           }`}
                         >
                           {tx.type === "consume" ? t("consume") : t("rechargeType")}
@@ -106,10 +107,10 @@ export default function CreditsPage() {
                         {tx.type === "consume" ? "-" : "+"}
                         {tx.amount}
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-600">
+                      <td className="px-6 py-3 text-sm text-stone-600">
                         {tx.description}
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-500">
+                      <td className="px-6 py-3 text-sm text-stone-500">
                         {new Date(tx.created_at).toLocaleDateString("zh-CN")}
                       </td>
                     </tr>
@@ -124,7 +125,7 @@ export default function CreditsPage() {
           open={showPayment}
           onOpenChange={setShowPayment}
         />
-      </div>
+      </AppPageShell>
     </MainLayout>
   )
 }

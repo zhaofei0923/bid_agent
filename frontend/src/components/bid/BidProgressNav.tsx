@@ -20,7 +20,7 @@ export const BidProgressNav = memo(function BidProgressNav() {
   const t = useTranslations("workspace")
 
   return (
-    <nav className="w-[220px] shrink-0 border-r bg-muted/30 p-4">
+    <nav className="app-surface mr-4 w-[240px] shrink-0 overflow-y-auto px-4 py-5">
       <h3 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
         {t("stepsTitle")}
       </h3>
@@ -35,17 +35,17 @@ export const BidProgressNav = memo(function BidProgressNav() {
               <button
                 onClick={() => canNavigate && goToStep(step.key)}
                 disabled={!canNavigate}
-                className={`w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition-colors ${
                   isActive
-                    ? "bg-primary text-primary-foreground font-medium"
+                    ? "bg-slate-900 text-white font-medium"
                     : isCompleted
-                      ? "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-400"
+                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                       : canNavigate
-                        ? "text-foreground hover:bg-muted"
+                        ? "text-foreground hover:bg-stone-100"
                         : "text-muted-foreground/50 cursor-not-allowed"
                 }`}
               >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-xs">
                   {isCompleted ? "✓" : step.icon}
                 </span>
                 <span>{t(`steps.${step.key}`)}</span>

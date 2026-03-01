@@ -13,7 +13,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   return (
     <div className="fixed inset-0 z-50">
       <div
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-[2px]"
         onClick={() => onOpenChange?.(false)}
       />
       <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -32,7 +32,7 @@ export function DialogContent({
 }) {
   return (
     <div
-      className={`relative z-50 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl ${className}`}
+      className={`relative z-50 w-full max-w-lg rounded-[28px] border border-stone-200/90 bg-[rgba(255,252,247,0.97)] p-6 shadow-[0_36px_90px_-44px_rgba(15,23,42,0.25)] ${className}`}
     >
       {children}
     </div>
@@ -46,7 +46,7 @@ export function DialogHeader({
   children: React.ReactNode
   className?: string
 }) {
-  return <div className={`mb-4 ${className}`}>{children}</div>
+  return <div className={`mb-5 ${className}`}>{children}</div>
 }
 
 export function DialogTitle({
@@ -56,7 +56,11 @@ export function DialogTitle({
   children: React.ReactNode
   className?: string
 }) {
-  return <h2 className={`text-lg font-semibold ${className}`}>{children}</h2>
+  return (
+    <h2 className={`font-semibold tracking-[-0.02em] text-slate-900 sm:text-xl ${className}`}>
+      {children}
+    </h2>
+  )
 }
 
 export function DialogDescription({
@@ -66,7 +70,7 @@ export function DialogDescription({
   children: React.ReactNode
   className?: string
 }) {
-  return <p className={`text-sm text-gray-500 ${className}`}>{children}</p>
+  return <p className={`text-sm leading-7 text-stone-600 ${className}`}>{children}</p>
 }
 
 export function DialogFooter({

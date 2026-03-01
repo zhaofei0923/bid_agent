@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useLocale } from "next-intl"
 import { formatDate, formatCurrency, truncate } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 import type { Opportunity } from "@/types"
 
 interface OppCardProps {
@@ -28,17 +29,17 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="block rounded-xl border bg-white p-6 hover:shadow-md transition"
+        className="app-surface block px-6 py-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)]"
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 uppercase">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">
                 {opp.source}
-              </span>
+              </Badge>
               {opp.status && (
                 <span
-                  className={`rounded px-2 py-0.5 text-xs font-medium ${
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
                     statusColors[opp.status] ?? statusColors.open
                   }`}
                 >
@@ -46,22 +47,22 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
                 </span>
               )}
               {opp.project_number && (
-                <span className="text-xs text-gray-400">{opp.project_number}</span>
+                <span className="text-xs text-stone-400">{opp.project_number}</span>
               )}
-              <span className="ml-auto text-xs text-blue-500">↗</span>
+              <span className="ml-auto text-xs text-stone-400">↗</span>
             </div>
 
-            <h3 className="mt-2 text-lg font-semibold text-gray-900">
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-slate-900">
               {opp.title}
             </h3>
 
             {opp.description && (
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-2 text-sm leading-7 text-stone-600">
                 {truncate(opp.description, 200)}
               </p>
             )}
 
-            <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500">
+            <div className="mt-4 flex flex-wrap gap-4 text-sm text-stone-500">
               {opp.country && <span>📍 {opp.country}</span>}
               {opp.sector && <span>📂 {opp.sector}</span>}
               {opp.deadline && <span>⏰ {formatDate(opp.deadline)}</span>}
@@ -80,17 +81,17 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
   return (
     <Link
       href={href}
-      className="block rounded-xl border bg-white p-6 hover:shadow-md transition"
+      className="app-surface block px-6 py-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)]"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 uppercase">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
               {opp.source}
-            </span>
+            </Badge>
             {opp.status && (
               <span
-                className={`rounded px-2 py-0.5 text-xs font-medium ${
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
                   statusColors[opp.status] ?? statusColors.open
                 }`}
               >
@@ -98,21 +99,21 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
               </span>
             )}
             {opp.project_number && (
-              <span className="text-xs text-gray-400">{opp.project_number}</span>
+              <span className="text-xs text-stone-400">{opp.project_number}</span>
             )}
           </div>
 
-          <h3 className="mt-2 text-lg font-semibold text-gray-900">
+          <h3 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-slate-900">
             {opp.title}
           </h3>
 
           {opp.description && (
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-2 text-sm leading-7 text-stone-600">
               {truncate(opp.description, 200)}
             </p>
           )}
 
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500">
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-stone-500">
             {opp.country && <span>📍 {opp.country}</span>}
             {opp.sector && <span>📂 {opp.sector}</span>}
             {opp.deadline && <span>⏰ {formatDate(opp.deadline)}</span>}

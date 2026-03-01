@@ -8,6 +8,9 @@ import { usePathname } from "next/navigation"
 import { opportunityService } from "@/services/opportunities"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { AppPageShell } from "@/components/layout/AppPageShell"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 export default function OpportunityDetailPage({
   params,
@@ -30,54 +33,65 @@ export default function OpportunityDetailPage({
 
   return (
     <MainLayout>
-      <main className="container mx-auto px-6 py-8">
-        <Link href={`/${locale}/opportunities`} className="text-gray-500 hover:text-gray-700 text-sm">
-          {tc("backToList")}
-        </Link>
-
-        <div className="mt-4 rounded-xl bg-white p-8 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="rounded bg-blue-100 px-2 py-1 text-sm font-medium text-blue-700 uppercase">
+      <AppPageShell
+        eyebrow={t("projectNumber")}
+        title={opp.title}
+        description={opp.description || undefined}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/${locale}/opportunities`}>{tc("backToList")}</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${locale}/projects?opportunity_id=${opp.id}`}>
+                {t("createProject")}
+              </Link>
+            </Button>
+          </>
+        }
+      >
+        <div className="app-surface px-6 py-8 sm:px-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary">
               {opp.source}
-            </span>
-            <span className={`rounded px-2 py-1 text-sm ${
+            </Badge>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
               opp.status === "open"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-600"
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-stone-100 text-stone-600"
             }`}>
               {opp.status === "open" ? t("statusOpen") : t("statusClosed")}
             </span>
+            {opp.project_number && (
+              <span className="text-xs font-medium uppercase tracking-[0.12em] text-stone-400">
+                {opp.project_number}
+              </span>
+            )}
           </div>
-
-          <h1 className="mt-4 text-2xl font-bold">{opp.title}</h1>
-
-          {opp.project_number && (
-            <p className="mt-1 text-gray-500">{t("projectNumber")}: {opp.project_number}</p>
-          )}
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {opp.organization && (
-              <div>
-                <p className="text-sm text-gray-500">{t("organization")}</p>
-                <p className="font-medium">{opp.organization}</p>
+              <div className="app-surface-muted px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("organization")}</p>
+                <p className="mt-2 font-medium text-slate-900">{opp.organization}</p>
               </div>
             )}
             {opp.country && (
-              <div>
-                <p className="text-sm text-gray-500">{t("country")}</p>
-                <p className="font-medium">{opp.country}</p>
+              <div className="app-surface-muted px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("country")}</p>
+                <p className="mt-2 font-medium text-slate-900">{opp.country}</p>
               </div>
             )}
             {opp.deadline && (
-              <div>
-                <p className="text-sm text-gray-500">{t("deadline")}</p>
-                <p className="font-medium">{formatDate(opp.deadline)}</p>
+              <div className="app-surface-muted px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("deadline")}</p>
+                <p className="mt-2 font-medium text-slate-900">{formatDate(opp.deadline)}</p>
               </div>
             )}
             {opp.budget_max && (
-              <div>
-                <p className="text-sm text-gray-500">{t("budget")}</p>
-                <p className="font-medium">
+              <div className="app-surface-muted px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("budget")}</p>
+                <p className="mt-2 font-medium text-slate-900">
                   {formatCurrency(opp.budget_max, opp.currency || "USD")}
                 </p>
               </div>
@@ -86,33 +100,24 @@ export default function OpportunityDetailPage({
 
           {opp.description && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold">{t("description")}</h2>
-              <p className="mt-2 whitespace-pre-wrap text-gray-700">
+              <h2 className="app-section-title">{t("description")}</h2>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-8 text-stone-600">
                 {opp.description}
               </p>
             </div>
           )}
 
-          <div className="mt-8 flex gap-4">
-            <Link
-              href={`/${locale}/projects?opportunity_id=${opp.id}`}
-              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition"
-            >
-              {t("createProject")}
-            </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
             {opp.url && (
-              <a
-                href={opp.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg border px-6 py-2 hover:bg-gray-50 transition"
-              >
-                {t("viewOriginal")}
-              </a>
+              <Button asChild variant="outline">
+                <a href={opp.url} target="_blank" rel="noopener noreferrer">
+                  {t("viewOriginal")}
+                </a>
+              </Button>
             )}
           </div>
         </div>
-      </main>
+      </AppPageShell>
     </MainLayout>
   )
 }

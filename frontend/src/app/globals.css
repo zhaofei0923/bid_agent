@@ -54,11 +54,143 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    font-family:
+      var(--font-ui),
+      "Noto Sans SC",
+      "PingFang SC",
+      "Microsoft YaHei",
+      sans-serif;
+    background:
+      radial-gradient(circle at top right, rgba(15, 23, 42, 0.04), transparent 24%),
+      radial-gradient(circle at 14% 22%, rgba(214, 204, 186, 0.2), transparent 18%),
+      linear-gradient(180deg, #f8f4ec 0%, #fbf8f3 22%, #ffffff 52%, #f7f3ec 100%);
+    @apply bg-background text-foreground antialiased;
   }
 }
 
 @layer components {
+  .app-shell {
+    position: relative;
+    color: #0f172a;
+  }
+
+  .app-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 85% 8%, rgba(15, 23, 42, 0.04), transparent 20%),
+      radial-gradient(circle at 10% 18%, rgba(214, 204, 186, 0.16), transparent 16%);
+    z-index: 0;
+  }
+
+  .app-shell > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-page-wrap {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 80rem;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  .app-page-wrap--wide {
+    max-width: 88rem;
+  }
+
+  .app-page-kicker {
+    color: #7c5a3a;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .app-page-title {
+    font-family:
+      var(--font-heading),
+      "Noto Serif SC",
+      "Songti SC",
+      serif;
+    color: #0f172a;
+    font-size: clamp(2rem, 4vw, 3.35rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+  }
+
+  .app-section-title {
+    font-family:
+      var(--font-heading),
+      "Noto Serif SC",
+      "Songti SC",
+      serif;
+    color: #0f172a;
+    font-size: clamp(1.35rem, 2.1vw, 2rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.14;
+  }
+
+  .app-page-subtitle {
+    color: #57534e;
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .app-panel {
+    border: 1px solid rgba(214, 211, 209, 0.9);
+    border-radius: 32px;
+    background: rgba(255, 252, 247, 0.88);
+    box-shadow:
+      0 32px 80px -56px rgba(15, 23, 42, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .app-surface {
+    border: 1px solid rgba(231, 229, 228, 1);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow:
+      0 24px 64px -50px rgba(15, 23, 42, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .app-surface-muted {
+    border: 1px solid rgba(231, 229, 228, 0.92);
+    border-radius: 24px;
+    background: rgba(248, 245, 239, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .app-inline-label {
+    color: #57534e;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .app-grid-line {
+    background-image: linear-gradient(
+      to right,
+      rgba(231, 229, 228, 0.55) 1px,
+      transparent 1px
+    );
+    background-size: 24px 24px;
+    border-radius: 28px;
+  }
+
+  .app-empty-state {
+    border: 1px dashed rgba(214, 211, 209, 0.95);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
   .landing-v2-page {
     position: relative;
     background:

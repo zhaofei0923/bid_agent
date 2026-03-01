@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
-import { LandingNav } from "@/components/landing/LandingNav"
-import { LandingFooter } from "@/components/landing/LandingFooter"
+import { LandingV2Nav } from "@/components/landing-v2/LandingV2Nav"
+import { LandingV2Footer } from "@/components/landing-v2/LandingV2Footer"
 import PublicSearchClient from "./PublicSearchClient"
 
 export async function generateMetadata({
@@ -32,14 +32,14 @@ export default async function PublicSearchPage({
   const { locale } = await params
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <LandingNav />
-      <main className="flex-1 pt-24 pb-16 bg-gray-50">
-        <div className="container">
+    <div className="landing-v2-page landing-v2-body min-h-screen text-slate-900">
+      <LandingV2Nav locale={locale} />
+      <main className="flex-1 pb-16 pt-6">
+        <div className="mx-auto w-full max-w-[1320px] px-6">
           <PublicSearchClient locale={locale} />
         </div>
       </main>
-      <LandingFooter />
+      <LandingV2Footer locale={locale} />
     </div>
   )
 }

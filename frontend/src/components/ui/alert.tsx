@@ -1,10 +1,10 @@
 import * as React from "react"
 
 const variants: Record<string, string> = {
-  default: "bg-gray-50 border-gray-200 text-gray-800",
+  default: "bg-[rgba(255,255,255,0.94)] border-stone-200 text-slate-800",
   destructive: "bg-red-50 border-red-200 text-red-800",
-  success: "bg-green-50 border-green-200 text-green-800",
-  warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
+  success: "bg-emerald-50 border-emerald-200 text-emerald-800",
+  warning: "bg-amber-50 border-amber-200 text-amber-800",
 }
 
 export function Alert({
@@ -17,7 +17,7 @@ export function Alert({
   className?: string
 }) {
   return (
-    <div className={`rounded-lg border p-4 ${variants[variant]} ${className}`}>
+    <div className={`rounded-[24px] border p-4 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.2)] ${variants[variant]} ${className}`}>
       {children}
     </div>
   )

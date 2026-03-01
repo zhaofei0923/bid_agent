@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { AppPageShell } from "@/components/layout/AppPageShell"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 export default function HelpPage() {
   const t = useTranslations("help")
@@ -13,51 +16,51 @@ export default function HelpPage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="mt-2 text-gray-600">
-          {t("subtitle")}
-        </p>
+      <AppPageShell
+        eyebrow={t("guides")}
+        title={t("title")}
+        description={t("subtitle")}
+      >
 
         {/* Search */}
-        <div className="mt-6">
-          <input
+        <div className="app-surface px-6 py-6">
+          <Input
             type="text"
             placeholder={t("searchPlaceholder")}
-            className="w-full max-w-lg rounded-lg border px-4 py-2.5 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="max-w-xl"
           />
         </div>
 
         {/* Guides */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold">{t("guides")}</h2>
+        <div>
+          <h2 className="app-section-title">{t("guides")}</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {guideItems.map((guide) => (
               <div
                 key={guide.title}
-                className="rounded-xl border p-6 hover:shadow-md transition cursor-pointer"
+                className="app-surface cursor-pointer px-6 py-6 transition-all duration-200 hover:-translate-y-0.5"
               >
                 <span className="text-2xl">{guide.icon}</span>
-                <h3 className="mt-3 font-semibold">{guide.title}</h3>
-                <p className="mt-1 text-sm text-gray-500">{guide.desc}</p>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">{guide.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-stone-600">{guide.desc}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* FAQ */}
-        <div className="mt-10">
-          <h2 className="text-lg font-semibold">{t("faq")}</h2>
+        <div>
+          <h2 className="app-section-title">{t("faq")}</h2>
           <div className="mt-4 space-y-2">
             {faqItems.map((item, idx) => (
-              <div key={idx} className="rounded-lg border bg-white">
+              <div key={idx} className="app-surface overflow-hidden rounded-[24px]">
                 <button
                   onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
-                  className="flex w-full items-center justify-between p-4 text-left"
+                  className="flex w-full items-center justify-between px-5 py-4 text-left"
                 >
-                  <span className="font-medium">{item.q}</span>
+                  <span className="font-medium text-slate-900">{item.q}</span>
                   <span
-                    className={`text-gray-400 transition-transform ${
+                    className={`text-stone-400 transition-transform ${
                       openIndex === idx ? "rotate-180" : ""
                     }`}
                   >
@@ -65,7 +68,7 @@ export default function HelpPage() {
                   </span>
                 </button>
                 {openIndex === idx && (
-                  <div className="border-t px-4 pb-4 pt-3 text-sm text-gray-600">
+                  <div className="border-t border-stone-200 px-5 pb-5 pt-4 text-sm leading-7 text-stone-600">
                     {item.a}
                   </div>
                 )}
@@ -75,19 +78,16 @@ export default function HelpPage() {
         </div>
 
         {/* Contact */}
-        <div className="mt-10 rounded-xl bg-gray-50 p-8 text-center">
-          <h2 className="text-lg font-semibold">{t("moreQuestions")}</h2>
-          <p className="mt-2 text-gray-600">
+        <div className="app-panel px-6 py-8 text-center sm:px-8">
+          <h2 className="app-section-title">{t("moreQuestions")}</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-stone-600">
             {t("moreQuestionsDesc")}
           </p>
-          <a
-            href="mailto:support@bidagent.ai"
-            className="mt-4 inline-block rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition"
-          >
-            {t("contactSupport")}
-          </a>
+          <Button asChild className="mt-5">
+            <a href="mailto:support@bidagent.ai">{t("contactSupport")}</a>
+          </Button>
         </div>
-      </div>
+      </AppPageShell>
     </MainLayout>
   )
 }

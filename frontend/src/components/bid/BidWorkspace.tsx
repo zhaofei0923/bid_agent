@@ -32,7 +32,7 @@ export const BidWorkspace = memo(function BidWorkspace({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="app-surface flex-1 overflow-y-auto px-6 py-6 sm:px-8">
       {stepComponents[currentStep] || (
         <div className="text-center text-muted-foreground py-12">
           {t("unknownStep")}

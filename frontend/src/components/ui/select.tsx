@@ -15,7 +15,7 @@ export function Select({
     <select
       value={value}
       onChange={(e) => onValueChange?.(e.target.value)}
-      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      className="h-11 rounded-2xl border border-stone-300/90 bg-[rgba(255,255,255,0.92)] px-4 py-2 text-sm text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2"
     >
       {children}
     </select>

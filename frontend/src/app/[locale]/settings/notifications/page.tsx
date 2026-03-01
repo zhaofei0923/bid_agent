@@ -56,23 +56,23 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold">{t("notificationsPage.title")}</h2>
-      <p className="mt-1 text-sm text-gray-500">{t("notificationsPage.subtitle")}</p>
+      <h2 className="app-section-title">{t("notificationsPage.title")}</h2>
+      <p className="mt-2 text-sm leading-7 text-stone-600">{t("notificationsPage.subtitle")}</p>
 
       <div className="mt-6 space-y-4">
         {ITEMS.map((item) => (
           <div
             key={item.key}
-            className="flex items-center justify-between rounded-lg border p-4"
+            className="app-surface-muted flex items-center justify-between px-5 py-4"
           >
             <div>
-              <p className="font-medium">{item.label}</p>
-              <p className="text-sm text-gray-500">{item.desc}</p>
+              <p className="font-medium text-slate-900">{item.label}</p>
+              <p className="text-sm leading-7 text-stone-600">{item.desc}</p>
             </div>
             <button
               onClick={() => toggle(item.key)}
               className={`relative h-6 w-11 rounded-full transition ${
-                settings[item.key] ? "bg-blue-600" : "bg-gray-300"
+                settings[item.key] ? "bg-slate-900" : "bg-stone-300"
               }`}
             >
               <span
@@ -88,12 +88,12 @@ export default function NotificationsPage() {
       <div className="mt-6 flex items-center gap-3">
         <button
           onClick={handleSave}
-          className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition"
+          className="inline-flex h-11 items-center rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition-colors duration-200 hover:bg-slate-800"
         >
           {t("notificationsPage.saveSettings")}
         </button>
         {saved && (
-          <span className="text-sm text-green-600">✓ {tc("saveSuccess")}</span>
+          <span className="text-sm text-emerald-600">✓ {tc("saveSuccess")}</span>
         )}
       </div>
     </div>
