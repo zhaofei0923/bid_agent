@@ -15,6 +15,7 @@ Pagination: ?page=N (0-based), 20 items/page.
 """
 
 import asyncio
+import contextlib
 import logging
 import re
 from datetime import datetime
@@ -60,12 +61,10 @@ class ADBCrawler(PlaywrightCrawler):
             await self._wait_for_cloudflare(pw_page, timeout=30)
 
             # Wait for the tender items to render
-            try:
+            with contextlib.suppress(Exception):
                 await pw_page.wait_for_selector(
                     "div.item", timeout=15000
                 )
-            except Exception:
-                pass  # items may already be available
 
             html = await pw_page.content()
         finally:
