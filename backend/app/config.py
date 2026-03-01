@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     CRAWLER_IMPERSONATE: str = "safari17_0"
     PLAYWRIGHT_HEADLESS: bool = True
     PLAYWRIGHT_TIMEOUT: int = 90000  # ms
+    # Proxy for Playwright-based crawlers (Cloudflare bypass on DC IPs)
+    # Format: http://user:pass@host:port  or  socks5://host:port
+    CRAWLER_PROXY: str = ""
 
     # ── Upload ───────────────────────────────────────────────────
     UPLOAD_DIR: str = "data/uploads"

@@ -38,18 +38,37 @@ class ADBCrawler(PlaywrightCrawler):
     source_name = "adb"
     base_url = "https://www.adb.org"
 
-    async def _wait_for_cloudflare(self, pw_page, timeout: int = 30) -> None:
+    async def _wait_for_cloudflare(self, pw_page, timeout: int = 45) -> None:
         """Wait for Cloudflare JS challenge to resolve.
 
-        Polls the page body text for up to *timeout* seconds until
-        the "just a moment" challenge page is replaced with real content.
+        Polls the page body text for up to *timeout* seconds.  If a
+        Cloudflare Turnstile checkbox iframe is detected, click it
+        automatically to complete the challenge.
         """
-        for _ in range(timeout * 2):  # check every 0.5s
+        turnstile_clicked = False
+        for i in range(timeout * 2):  # check every 0.5s
             content = await pw_page.content()
             if "just a moment" not in content[:3000].lower():
                 return
+
+            # Try clicking the Turnstile checkbox once (appears ~2-5s in)
+            if not turnstile_clicked and i >= 4:
+                with contextlib.suppress(Exception):
+                    frame = pw_page.frame_locator(
+                        "iframe[src*='challenges.cloudflare.com']"
+                    )
+                    await frame.locator(
+                        "input[type='checkbox'], .cb-lb"
+                    ).click(timeout=2000)
+                    turnstile_clicked = True
+                    logger.info("[adb] Clicked Cloudflare Turnstile checkbox")
+
             await asyncio.sleep(0.5)
-        raise RuntimeError("Cloudflare challenge did not resolve")
+        raise RuntimeError(
+            "Cloudflare challenge did not resolve — "
+            "datacenter IP may be blocked. Set CRAWLER_PROXY in .env "
+            "to a residential proxy (e.g. http://user:pass@host:port)."
+        )
 
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch one page of ADB tender listings."""

@@ -277,19 +277,27 @@ class PlaywrightCrawler(BaseCrawler):
         from playwright.async_api import async_playwright
 
         self._pw = await async_playwright().start()
-        # Use Playwright's bundled Chromium (downloaded via China mirror
-        # during Docker build).  Playwright 1.49+ uses --headless=new by
-        # default, which runs the full Chrome binary in new headless mode
-        # (not the old headless_shell that Cloudflare detects).
-        self._browser = await self._pw.chromium.launch(
-            headless=True,
-            args=[
+
+        # Proxy support for datacenter IPs blocked by Cloudflare.
+        # Set CRAWLER_PROXY in .env, e.g. http://user:pass@host:port
+        launch_kwargs: dict = {
+            "headless": True,
+            "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-gpu",
                 "--disable-software-rasterizer",
             ],
-        )
+        }
+        if settings.CRAWLER_PROXY:
+            launch_kwargs["proxy"] = {"server": settings.CRAWLER_PROXY}
+            logger.info(
+                "[%s] Using proxy: %s",
+                self.source_name,
+                settings.CRAWLER_PROXY.split("@")[-1],  # hide credentials
+            )
+
+        self._browser = await self._pw.chromium.launch(**launch_kwargs)
         self._context = await self._browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
