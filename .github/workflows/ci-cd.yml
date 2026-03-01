@@ -131,36 +131,17 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           command_timeout: 15m
           script: |
-            set -e
+            # Manual error handling — no set -e so we can report which step fails
+            cd /opt/bid_agent || { echo "FATAL: cannot cd /opt/bid_agent"; exit 1; }
 
-            # On any failure, dump diagnostics
-            cleanup() {
-              echo ""; echo ">>> DEPLOY DIAGNOSTICS <<<"
-              cd /opt/bid_agent
-              echo "--- Container status ---"
-              docker compose -f docker-compose.prod.yml ps -a 2>/dev/null || true
-              echo "--- Backend logs (last 30 lines) ---"
-              docker compose -f docker-compose.prod.yml logs --tail=30 backend 2>/dev/null || true
-              echo "--- Celery worker logs (last 10 lines) ---"
-              docker compose -f docker-compose.prod.yml logs --tail=10 celery-worker 2>/dev/null || true
-            }
-            trap cleanup EXIT
+            echo "=== Step 1/6: Git sync ==="
+            git fetch origin main && git reset --hard origin/main && git clean -fd
+            if [ $? -ne 0 ]; then echo "FAILED at: git sync"; exit 1; fi
+            echo "    HEAD: $(git log --oneline -1)"
 
-            cd /opt/bid_agent
-
-            # Pull latest code from GitHub (force reset to match remote)
-            echo ">>> [1/7] Syncing code..."
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
-            echo "    Code synced: $(git log --oneline -1)"
-
-            # Ensure data directory exists
+            echo "=== Step 2/6: Ensure .env & data dir ==="
             mkdir -p data/uploads
-
-            # Ensure .env exists
             if [ ! -f .env ]; then
-              echo ">>> Creating .env from template..."
               cp .env.production.example .env
               SECRET_KEY=$(openssl rand -hex 32)
               JWT_SECRET=$(openssl rand -hex 32)
@@ -168,48 +149,41 @@ jobs:
               sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$SECRET_KEY/" .env
               sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$JWT_SECRET/" .env
               sed -i "s/REPLACE_STRONG_DB_PASSWORD/$DB_PASS/g" .env
-              echo "⚠️  .env created. Edit /opt/bid_agent/.env to add API keys!"
+              echo "    .env created from template"
+            else
+              echo "    .env exists"
             fi
 
-            # Keep nginx in sync
-            echo ">>> [2/7] Configuring nginx..."
+            echo "=== Step 3/6: Nginx ==="
             bash deploy/install-nginx-sites.sh
-            echo "    Nginx configured."
+            if [ $? -ne 0 ]; then echo "FAILED at: nginx config"; exit 1; fi
+            echo "    OK"
 
-            # Build images locally on server (uses Docker layer cache)
-            # Use npmmirror CDN for Playwright Chromium (Google Storage blocked in China)
-            echo ">>> [3/7] Building Docker images on server..."
+            echo "=== Step 4/6: Docker build ==="
             export PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://registry.npmmirror.com/-/binary/chrome-for-testing"
-            docker compose -f docker-compose.prod.yml build
-            echo "    Images built."
+            docker compose -f docker-compose.prod.yml build 2>&1
+            if [ $? -ne 0 ]; then echo "FAILED at: docker compose build"; exit 1; fi
+            echo "    OK"
 
-            # Start / restart services
-            echo ">>> [4/7] Starting services..."
-            docker compose -f docker-compose.prod.yml up -d
-            echo "    Services started."
+            echo "=== Step 5/6: Docker up ==="
+            docker compose -f docker-compose.prod.yml up -d 2>&1
+            if [ $? -ne 0 ]; then echo "FAILED at: docker compose up"; exit 1; fi
+            echo "    Container status:"
+            docker compose -f docker-compose.prod.yml ps -a
 
-            # Wait for backend container to be ready
-            echo ">>> [5/7] Waiting for backend container..."
-            for i in $(seq 1 30); do
-              if docker compose -f docker-compose.prod.yml exec -T backend echo "ready" 2>/dev/null; then
-                echo "    Backend is running."
-                break
-              fi
-              if [ "$i" -eq 30 ]; then
-                echo "    ERROR: Backend not ready after 60s"
-                exit 1
-              fi
-              echo "    Waiting... ($i/30)"
-              sleep 2
-            done
+            echo "=== Step 6/6: Database migration ==="
+            echo "    Waiting 15s for containers..."
+            sleep 15
+            echo "    Running alembic..."
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head 2>&1
+            ALEMBIC_RC=$?
+            if [ $ALEMBIC_RC -ne 0 ]; then
+              echo "FAILED at: alembic upgrade head (rc=$ALEMBIC_RC)"
+              echo "    Backend logs:"
+              docker compose -f docker-compose.prod.yml logs --tail=50 backend 2>&1 || true
+              exit $ALEMBIC_RC
+            fi
+            echo "    Migration OK"
 
-            # Run database migrations
-            echo ">>> [6/7] Running database migrations..."
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
-            echo "    Migrations applied."
-
-            # Clean up old images
-            echo ">>> [7/7] Cleaning up..."
-            docker image prune -f
-
-            echo "✅ Deploy complete: $(date)"
+            docker image prune -f > /dev/null 2>&1
+            echo "=== Deploy complete: $(date) ==="
