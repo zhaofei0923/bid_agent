@@ -11,8 +11,10 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright: install Chromium browser + OS deps (for ADB Cloudflare bypass)
-RUN playwright install --with-deps chromium
+# Playwright: install only system deps for Chromium (no browser binary download).
+# The browser binary (~400MB) is installed at deploy time into a mounted volume
+# to keep the Docker image small and avoid slow GHCR pulls.
+RUN playwright install-deps chromium
 
 # Application code
 COPY . .

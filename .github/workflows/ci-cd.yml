@@ -142,7 +142,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 30m
+          command_timeout: 15m
           script: |
             set -e
             cd /opt/bid_agent
@@ -167,7 +167,7 @@ jobs:
             # Keep nginx sites and TLS in sync with the repo
             bash deploy/install-nginx-sites.sh
 
-            # Pull latest images from GHCR (with retry for large images)
+            # Pull latest images from GHCR
             for i in 1 2 3; do
               echo ">>> Pull attempt $i..."
               docker compose -f docker-compose.prod.yml pull && break
@@ -177,6 +177,14 @@ jobs:
 
             # Start / restart services
             docker compose -f docker-compose.prod.yml up -d
+
+            # Install Playwright Chromium into data volume (one-time, skips if exists)
+            if [ ! -d data/playwright-browsers ]; then
+              echo ">>> Installing Playwright Chromium browser (first time)..."
+              docker compose -f docker-compose.prod.yml exec -T celery-worker \
+                playwright install chromium
+              echo "    Playwright browser installed."
+            fi
 
             # Wait for DB, then migrate
             echo ">>> Waiting for database..."
