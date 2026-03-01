@@ -11,13 +11,13 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Chromium browser from Debian apt repos.
-# This avoids downloading from storage.googleapis.com (blocked/slow in China).
-# Playwright will use this system Chromium via executable_path.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends chromium && \
-    rm -rf /var/lib/apt/lists/* && \
-    echo "Chromium installed: $(chromium --version)"
+# Playwright: install system deps (X11, fonts, etc.) then download
+# the Playwright-compatible Chromium binary via China mirror (npmmirror)
+# to avoid blocked storage.googleapis.com.
+RUN playwright install-deps chromium
+ENV PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
+RUN playwright install chromium && \
+    echo "Playwright Chromium installed successfully"
 
 # Application code
 COPY . .

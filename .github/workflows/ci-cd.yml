@@ -167,9 +167,10 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d
 
             # Wait for DB, then migrate
-            echo ">>> Waiting for database..."
-            sleep 15
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head || echo "⚠️  Migration may need .env config"
+            echo ">>> Running database migrations..."
+            sleep 5
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            echo "    Migrations applied."
 
             # Clean up old images
             docker image prune -f

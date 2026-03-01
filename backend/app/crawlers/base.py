@@ -273,44 +273,14 @@ class PlaywrightCrawler(BaseCrawler):
     ``self._goto()`` instead of ``self._get()`` / ``self._post()``.
     """
 
-    @staticmethod
-    def _find_chromium() -> str:
-        """Locate system Chromium binary.
-
-        Search order:
-        1. CHROMIUM_PATH env var (explicit override)
-        2. Common system paths: /usr/bin/chromium, /usr/bin/chromium-browser
-        3. Fall back to None (let Playwright use its bundled browser)
-        """
-        import shutil
-
-        env_path = os.environ.get("CHROMIUM_PATH")
-        if env_path and os.path.isfile(env_path):
-            return env_path
-
-        for candidate in ("/usr/bin/chromium", "/usr/bin/chromium-browser"):
-            if os.path.isfile(candidate):
-                return candidate
-
-        # Try PATH lookup
-        found = shutil.which("chromium") or shutil.which("chromium-browser")
-        if found:
-            return found
-
-        # Fall back — Playwright will try its bundled browser
-        logger.warning("System Chromium not found; falling back to Playwright bundled browser")
-        return None  # type: ignore[return-value]
-
     async def __aenter__(self):
         from playwright.async_api import async_playwright
 
         self._pw = await async_playwright().start()
-        # Use system Chromium (installed via apt) with --headless=new
-        # flag.  This avoids downloading from Google (blocked in China)
-        # and bypasses Cloudflare detection of headless_shell.
-        chromium_path = self._find_chromium()
+        # Use Playwright's bundled Chromium (downloaded via China mirror
+        # during Docker build).  headless=False + --headless=new bypasses
+        # Cloudflare detection of the old headless_shell binary.
         self._browser = await self._pw.chromium.launch(
-            executable_path=chromium_path,
             headless=False,
             args=[
                 "--headless=new",
