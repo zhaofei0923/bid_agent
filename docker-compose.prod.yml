@@ -45,7 +45,10 @@ services:
       - bidagent-net
 
   backend:
-    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    image: bidagent-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: bidagent-backend
     env_file: .env
     ports:
@@ -66,7 +69,7 @@ services:
       - bidagent-net
 
   celery-worker:
-    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    image: bidagent-backend:latest
     container_name: bidagent-celery
     env_file: .env
     environment:
@@ -90,7 +93,7 @@ services:
       - bidagent-net
 
   celery-beat:
-    image: ghcr.io/zhaofei0923/bid_agent-backend:latest
+    image: bidagent-backend:latest
     container_name: bidagent-celery-beat
     env_file: .env
     command: celery -A app.tasks.celery_app beat --loglevel=info
@@ -110,7 +113,12 @@ services:
       - bidagent-net
 
   frontend:
-    image: ghcr.io/zhaofei0923/bid_agent-frontend:latest
+    image: bidagent-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://bid.easudata.com
     container_name: bidagent-frontend
     environment:
       - HOSTNAME=0.0.0.0
