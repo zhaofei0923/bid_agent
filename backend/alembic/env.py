@@ -5,10 +5,16 @@ and reads the database URL from app.config.
 """
 
 import asyncio
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+# Ensure the project root (/app in Docker) is on sys.path so that
+# ``from app.config import ...`` works regardless of how alembic is invoked.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from alembic import context
 from app.config import get_settings

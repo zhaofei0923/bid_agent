@@ -175,7 +175,7 @@ jobs:
             echo "    Waiting 15s for containers..."
             sleep 15
             echo "    Running alembic..."
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head 2>&1
+            docker compose -f docker-compose.prod.yml exec -T backend python -m alembic upgrade head 2>&1
             ALEMBIC_RC=$?
             if [ $ALEMBIC_RC -ne 0 ]; then
               echo "FAILED at: alembic upgrade head (rc=$ALEMBIC_RC)"
