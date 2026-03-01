@@ -72,8 +72,6 @@ services:
     image: bidagent-backend:latest
     container_name: bidagent-celery
     env_file: .env
-    environment:
-      - PLAYWRIGHT_BROWSERS_PATH=/app/data/playwright-browsers
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
     healthcheck:
       disable: true

@@ -166,14 +166,6 @@ jobs:
             # Start / restart services
             docker compose -f docker-compose.prod.yml up -d
 
-            # Install Playwright Chromium into data volume (one-time)
-            if [ ! -d data/playwright-browsers ]; then
-              echo ">>> Installing Playwright Chromium browser (first time)..."
-              docker compose -f docker-compose.prod.yml exec -T celery-worker \
-                playwright install chromium
-              echo "    Playwright browser installed."
-            fi
-
             # Wait for DB, then migrate
             echo ">>> Waiting for database..."
             sleep 15

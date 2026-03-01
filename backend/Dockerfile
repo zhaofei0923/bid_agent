@@ -11,10 +11,13 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright: install only system deps for Chromium (no browser binary download).
-# The browser binary (~400MB) is installed at deploy time into a mounted volume
-# to keep the Docker image small and avoid slow GHCR pulls.
-RUN playwright install-deps chromium
+# Install Chromium browser from Debian apt repos.
+# This avoids downloading from storage.googleapis.com (blocked/slow in China).
+# Playwright will use this system Chromium via executable_path.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends chromium && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "Chromium installed: $(chromium --version)"
 
 # Application code
 COPY . .
