@@ -278,14 +278,16 @@ class PlaywrightCrawler(BaseCrawler):
 
         self._pw = await async_playwright().start()
         # Use Playwright's bundled Chromium (downloaded via China mirror
-        # during Docker build).  headless=False + --headless=new bypasses
-        # Cloudflare detection of the old headless_shell binary.
+        # during Docker build).  Playwright 1.49+ uses --headless=new by
+        # default, which runs the full Chrome binary in new headless mode
+        # (not the old headless_shell that Cloudflare detects).
         self._browser = await self._pw.chromium.launch(
-            headless=False,
+            headless=True,
             args=[
-                "--headless=new",
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
             ],
         )
         self._context = await self._browser.new_context(
