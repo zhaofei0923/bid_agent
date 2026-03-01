@@ -142,7 +142,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 10m
+          command_timeout: 30m
           script: |
             set -e
             cd /opt/bid_agent
@@ -167,8 +167,13 @@ jobs:
             # Keep nginx sites and TLS in sync with the repo
             bash deploy/install-nginx-sites.sh
 
-            # Pull latest images from GHCR
-            docker compose -f docker-compose.prod.yml pull
+            # Pull latest images from GHCR (with retry for large images)
+            for i in 1 2 3; do
+              echo ">>> Pull attempt $i..."
+              docker compose -f docker-compose.prod.yml pull && break
+              echo "⚠️  Pull failed, retrying in 10s..."
+              sleep 10
+            done
 
             # Start / restart services
             docker compose -f docker-compose.prod.yml up -d
