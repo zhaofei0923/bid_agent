@@ -11,6 +11,9 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Playwright: install Chromium browser + OS deps (for ADB Cloudflare bypass)
+RUN playwright install --with-deps chromium
+
 # Application code
 COPY . .
 

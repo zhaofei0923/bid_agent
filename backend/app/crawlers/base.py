@@ -277,13 +277,15 @@ class PlaywrightCrawler(BaseCrawler):
         from playwright.async_api import async_playwright
 
         self._pw = await async_playwright().start()
+        # Use full Chromium binary (headless=False) with --headless=new
+        # flag.  This avoids chromium_headless_shell which is easily
+        # detected and blocked by Cloudflare on datacenter IPs.
         self._browser = await self._pw.chromium.launch(
-            headless=settings.PLAYWRIGHT_HEADLESS,
+            headless=False,
             args=[
-                "--disable-blink-features=AutomationControlled",
-                "--disable-features=IsolateOrigins,site-per-process",
-                "--no-sandbox",
                 "--headless=new",
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
             ],
         )
         self._context = await self._browser.new_context(

@@ -1,7 +1,7 @@
 """ADB (Asian Development Bank) opportunity crawler.
 
-Uses curl_cffi with Safari TLS fingerprint to bypass Cloudflare WAF and
-scrape the Drupal-based tenders listing at www.adb.org/projects/tenders.
+Uses Playwright headless Chromium to bypass Cloudflare WAF and scrape the
+Drupal-based tenders listing at www.adb.org/projects/tenders.
 
 Page structure (per item):
     <div class="item">
@@ -14,11 +14,12 @@ Page structure (per item):
 Pagination: ?page=N (0-based), 20 items/page.
 """
 
+import asyncio
 import logging
 import re
 from datetime import datetime
 
-from app.crawlers.base import CurlCffiCrawler, TenderInfo
+from app.crawlers.base import PlaywrightCrawler, TenderInfo
 
 logger = logging.getLogger(__name__)
 
@@ -26,25 +27,52 @@ logger = logging.getLogger(__name__)
 _LIST_URL = "https://www.adb.org/projects/tenders/status/active-1576"
 
 
-class ADBCrawler(CurlCffiCrawler):
+class ADBCrawler(PlaywrightCrawler):
     """Crawler for ADB procurement/consulting opportunities.
 
-    Uses curl_cffi with Safari TLS fingerprint impersonation to
-    bypass Cloudflare WAF — no headless browser needed.
+    Uses Playwright headless Chromium to bypass Cloudflare WAF on
+    datacenter IPs where curl_cffi fingerprinting is insufficient.
     """
 
     source_name = "adb"
     base_url = "https://www.adb.org"
 
+    async def _wait_for_cloudflare(self, pw_page, timeout: int = 30) -> None:
+        """Wait for Cloudflare JS challenge to resolve.
+
+        Polls the page body text for up to *timeout* seconds until
+        the "just a moment" challenge page is replaced with real content.
+        """
+        for _ in range(timeout * 2):  # check every 0.5s
+            content = await pw_page.content()
+            if "just a moment" not in content[:3000].lower():
+                return
+            await asyncio.sleep(0.5)
+        raise RuntimeError("Cloudflare challenge did not resolve")
+
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch one page of ADB tender listings."""
         url = _LIST_URL if page == 1 else f"{_LIST_URL}?page={page - 1}"
 
-        response = await self._get(url)
-        html = response.text
+        pw_page = await self._goto(url, wait_until="domcontentloaded")
+        try:
+            # Wait for Cloudflare challenge to resolve (if present)
+            await self._wait_for_cloudflare(pw_page, timeout=30)
 
-        # Verify we didn't get a Cloudflare challenge page
-        if "just a moment" in html[:2000].lower():
+            # Wait for the tender items to render
+            try:
+                await pw_page.wait_for_selector(
+                    "div.item", timeout=15000
+                )
+            except Exception:
+                pass  # items may already be available
+
+            html = await pw_page.content()
+        finally:
+            await pw_page.close()
+
+        # Final check — if still on Cloudflare page, fail
+        if "just a moment" in html[:3000].lower():
             raise RuntimeError(
                 f"Cloudflare blocked page {page}"
             )
@@ -65,8 +93,13 @@ class ADBCrawler(CurlCffiCrawler):
             if not tender_id.startswith("http")
             else tender_id
         )
-        response = await self._get(url)
-        return _parse_detail_html(response.text, url, tender_id)
+        pw_page = await self._goto(url, wait_until="domcontentloaded")
+        try:
+            await self._wait_for_cloudflare(pw_page, timeout=30)
+            html = await pw_page.content()
+        finally:
+            await pw_page.close()
+        return _parse_detail_html(html, url, tender_id)
 
     async def crawl_all(
         self,
