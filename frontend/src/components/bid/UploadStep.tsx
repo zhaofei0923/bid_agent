@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState, useCallback } from "react"
+import { memo, useState, useCallback, useRef } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useDocuments, useUploadDocument } from "@/hooks/use-documents"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ export const UploadStep = memo(function UploadStep({
   const { data: documents } = useDocuments(projectId)
   const uploadMutation = useUploadDocument(projectId)
   const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = useCallback(
     async (files: FileList | null) => {
@@ -81,18 +82,21 @@ export const UploadStep = memo(function UploadStep({
         <p className="text-xs text-muted-foreground mb-4">
           {t("upload.formatHint")}
         </p>
-        <label>
-          <input
-            type="file"
-            accept=".pdf,.docx"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files)}
-          />
-          <Button variant="outline" size="sm" asChild>
-            <span>{t("upload.selectFile")}</span>
-          </Button>
-        </label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFileSelect(e.target.files)}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {t("upload.selectFile")}
+        </Button>
         {uploadMutation.isPending && (
           <p className="mt-4 text-sm text-muted-foreground animate-pulse">
             {t("upload.uploading")}
