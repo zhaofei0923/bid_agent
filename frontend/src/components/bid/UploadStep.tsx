@@ -2,11 +2,12 @@
 
 import { memo, useState, useCallback, useRef } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
-import { useDocuments, useUploadDocument } from "@/hooks/use-documents"
+import { useDocuments, useUploadDocument, useDeleteDocument } from "@/hooks/use-documents"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "next-intl"
+import { Trash2 } from "lucide-react"
 
 interface UploadStepProps {
   projectId: string
@@ -19,9 +20,26 @@ export const UploadStep = memo(function UploadStep({
   const t = useTranslations("bid")
   const { data: documents } = useDocuments(projectId)
   const uploadMutation = useUploadDocument(projectId)
+  const deleteMutation = useDeleteDocument(projectId)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleDelete = useCallback(
+    async (documentId: string) => {
+      if (!window.confirm("确定要删除这个文件吗？")) return
+      setDeletingId(documentId)
+      try {
+        await deleteMutation.mutateAsync(documentId)
+      } catch {
+        // silent — list will not update on error
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [deleteMutation]
+  )
 
   const handleFileSelect = useCallback(
     async (files: FileList | null) => {
@@ -144,9 +162,18 @@ export const UploadStep = memo(function UploadStep({
                       {doc.original_filename || doc.filename}
                     </span>
                   </div>
-                  <Badge variant="secondary">
-                    {doc.status}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="secondary">{doc.status}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      disabled={deletingId === doc.id}
+                      onClick={() => handleDelete(doc.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
             </Card>

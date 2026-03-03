@@ -9,6 +9,10 @@ export const documentService = {
     return res.data
   },
 
+  async delete(projectId: string, documentId: string): Promise<void> {
+    await apiClient.delete(`/projects/${projectId}/bid-documents/${documentId}`)
+  },
+
   async upload(projectId: string, file: File): Promise<ProjectDocument> {
     const formData = new FormData()
     formData.append("file", file)

@@ -18,3 +18,14 @@ export function useUploadDocument(projectId: string) {
     },
   })
 }
+
+export function useDeleteDocument(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      documentService.delete(projectId, documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents", projectId] })
+    },
+  })
+}

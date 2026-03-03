@@ -61,6 +61,27 @@ async def list_bid_documents(
     return await doc_svc.list_by_project(project_id)
 
 
+@router.delete(
+    "/{project_id}/bid-documents/{document_id}",
+    status_code=204,
+)
+async def delete_bid_document(
+    project_id: UUID,
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a bid document and its file from disk."""
+    from app.services.bid_document_service import BidDocumentService
+    from app.services.project_service import ProjectService
+
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    doc_svc = BidDocumentService(db)
+    await doc_svc.delete(document_id)
+
+
 @router.get(
     "/{project_id}/bid-documents/{document_id}/sections",
     response_model=list[BidDocumentSectionResponse],
