@@ -28,6 +28,8 @@ class BidAnalysis(Base):
     commercial_terms: Mapped[dict | None] = mapped_column(JSONB)
     submission_checklist: Mapped[dict | None] = mapped_column(JSONB)
     key_dates: Mapped[dict | None] = mapped_column(JSONB)
+    bds_modifications: Mapped[dict | None] = mapped_column(JSONB)
+    risk_assessment: Mapped[dict | None] = mapped_column(JSONB)
     budget_info: Mapped[dict | None] = mapped_column(JSONB)
     special_notes: Mapped[str | None] = mapped_column(Text)
     quality_review: Mapped[dict | None] = mapped_column(JSONB)

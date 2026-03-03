@@ -11,10 +11,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import get_llm_client
+from app.agents.rag import build_analysis_context
+from app.agents.skills.analyze_bds import AnalyzeBDS
+from app.agents.skills.analyze_commercial import AnalyzeCommercial
 from app.agents.skills.analyze_qualification import AnalyzeQualification
+from app.agents.skills.assess_risk import AssessRisk
 from app.agents.skills.base import Skill, SkillContext
 from app.agents.skills.evaluate_criteria import EvaluateCriteria
-from app.agents.skills.quality_review import QualityReview
+from app.agents.skills.evaluate_methodology import EvaluateMethodology
+from app.agents.skills.extract_dates import ExtractDates
+from app.agents.skills.extract_submission import ExtractSubmission
 from app.models.bid_analysis import BidAnalysis
 
 logger = logging.getLogger(__name__)
@@ -30,18 +36,28 @@ ALL_STEPS = [
     "risk_assessment",
 ]
 
-# Maps step names → Skill classes.
-# Steps without a dedicated Skill use a generic AnalyzeQualification as placeholder.
+# Maps step names → Skill classes (each dedicated Skill).
 STEP_SKILL_MAP: dict[str, type[Skill]] = {
     "qualification": AnalyzeQualification,
     "evaluation": EvaluateCriteria,
-    # TODO: Implement dedicated skills for these steps
-    "key_dates": AnalyzeQualification,
-    "submission": AnalyzeQualification,
-    "bds_modification": AnalyzeQualification,
-    "methodology": EvaluateCriteria,
-    "commercial": AnalyzeQualification,
-    "risk_assessment": QualityReview,
+    "key_dates": ExtractDates,
+    "submission": ExtractSubmission,
+    "bds_modification": AnalyzeBDS,
+    "methodology": EvaluateMethodology,
+    "commercial": AnalyzeCommercial,
+    "risk_assessment": AssessRisk,
+}
+
+# Map step → RAG dimension (for build_analysis_context)
+STEP_DIMENSION_MAP: dict[str, str] = {
+    "qualification": "qualification",
+    "evaluation": "evaluation",
+    "key_dates": "dates",
+    "submission": "submission",
+    "bds_modification": "bds",
+    "methodology": "evaluation",
+    "commercial": "commercial",
+    "risk_assessment": "qualification",  # uses prior results, not new retrieval
 }
 
 
@@ -59,12 +75,12 @@ async def _get_cached_analysis(
 def _step_field_name(step: str) -> str:
     """Map a step name to the BidAnalysis JSONB column."""
     mapping = {
-        "qualification": "qualification_analysis",
+        "qualification": "qualification_requirements",
         "evaluation": "evaluation_criteria",
         "key_dates": "key_dates",
-        "submission": "submission_requirements",
+        "submission": "submission_checklist",
         "bds_modification": "bds_modifications",
-        "methodology": "methodology_analysis",
+        "methodology": "evaluation_methodology",
         "commercial": "commercial_terms",
         "risk_assessment": "risk_assessment",
     }
@@ -115,11 +131,48 @@ async def run_bid_analysis_pipeline(
             logger.warning("No Skill mapped for step '%s', skipping", step)
             continue
 
+        # Retrieve context via RAG for this step's dimension
+        dimension = STEP_DIMENSION_MAP.get(step, step)
+        try:
+            bid_context, kb_context = await build_analysis_context(
+                project_id=project_id,
+                dimension=dimension,
+                db=db,
+            )
+        except Exception:
+            logger.warning("Context retrieval failed for step '%s'", step, exc_info=True)
+            bid_context, kb_context = "", ""
+
+        # Build extra parameters for AssessRisk: pass prior result summaries
+        extra_params: dict[str, Any] = {}
+        if step == "risk_assessment":
+            import json as _json
+            def _summarise(data: Any, max_chars: int = 500) -> str:
+                if not data:
+                    return "未分析"
+                s = _json.dumps(data, ensure_ascii=False) if isinstance(data, dict) else str(data)
+                return s[:max_chars]
+
+            extra_params = {
+                "qualification_summary": _summarise(results.get("qualification")),
+                "criteria_summary": _summarise(results.get("evaluation")),
+                "dates_summary": _summarise(results.get("key_dates")),
+                "submission_summary": _summarise(results.get("submission")),
+                "bds_summary": _summarise(results.get("bds_modification")),
+                "commercial_summary": _summarise(results.get("commercial")),
+                "kb_context": kb_context,
+            }
+
         ctx = SkillContext(
             project_id=project_id,
             db=db,
             llm_client=llm_client,
-            parameters={**results},  # prior results available to later steps
+            parameters={
+                **results,
+                "bid_context": bid_context,
+                "kb_context": kb_context,
+                **extra_params,
+            },
         )
 
         skill = skill_cls()
@@ -161,7 +214,7 @@ async def _save_analysis(
         if hasattr(analysis, field):
             setattr(analysis, field, data)
 
-    analysis.total_tokens_consumed = (analysis.total_tokens_consumed or 0) + total_tokens
+    analysis.tokens_consumed = (analysis.tokens_consumed or 0) + total_tokens
     analysis.updated_at = datetime.now(UTC)
 
     await db.commit()

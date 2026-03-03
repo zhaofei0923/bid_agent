@@ -1,6 +1,5 @@
 """ExtractDates — extract key dates and timeline from bid documents."""
 
-from app.agents.llm_client import Message
 from app.agents.skills.base import Skill, SkillContext, SkillResult
 
 SYSTEM_PROMPT = (
@@ -51,13 +50,14 @@ class ExtractDates(Skill):
             )
 
         prompt = EXTRACTION_PROMPT.format(bid_context=bid_context)
-        messages: list[Message] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ]
 
         try:
-            result = await ctx.llm_client.extract_json(messages)
+            result = await ctx.llm_client.extract_json(
+                prompt=prompt,
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.2,
+                max_tokens=2000,
+            )
             return SkillResult(
                 success=True,
                 data=result,

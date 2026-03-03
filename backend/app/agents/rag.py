@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.embedding_client import get_embedding_client
 from app.agents.llm_client import get_llm_client
 from app.agents.mcp.bid_document_search import bid_document_search
 from app.agents.mcp.knowledge_search import knowledge_search
@@ -99,18 +100,25 @@ async def build_analysis_context(
     if not config:
         return "", ""
 
+    embedding_client = get_embedding_client()
+
     # 1. Multi-query search on bid documents
     all_chunks: list[dict] = []
+    section_types = config.get("section_types")
     for query in config.get("doc_queries", []):
-        chunks = await bid_document_search(
-            project_id=project_id,
-            query=query,
-            db=db,
-            section_type=config.get("section_types", [None])[0],
-            top_k=5,
-            score_threshold=0.3,
-        )
-        all_chunks.extend(chunks)
+        try:
+            emb_result = await embedding_client.embed_text(query)
+            chunks = await bid_document_search(
+                db=db,
+                project_id=project_id,
+                query_embedding=emb_result.embedding,
+                section_types=section_types if section_types else None,
+                top_k=5,
+                score_threshold=0.3,
+            )
+            all_chunks.extend(chunks)
+        except Exception:
+            logger.warning("Embedding/search failed for query '%s'", query, exc_info=True)
 
     unique_chunks = _deduplicate_by_id(all_chunks)
     top_chunks = sorted(unique_chunks, key=lambda c: c.get("score", 0), reverse=True)[:15]
@@ -118,13 +126,18 @@ async def build_analysis_context(
     # 2. Knowledge base search
     kb_chunks: list[dict] = []
     for query in config.get("kb_queries", []):
-        results = await knowledge_search(
-            query=query,
-            db=db,
-            institution=institution,
-            top_k=3,
-        )
-        kb_chunks.extend(results)
+        try:
+            emb_result = await embedding_client.embed_text(query)
+            results = await knowledge_search(
+                db=db,
+                query_embedding=emb_result.embedding,
+                institution=institution,
+                top_k=3,
+            )
+            kb_chunks.extend(results)
+        except Exception:
+            logger.warning("KB search failed for query '%s'", query, exc_info=True)
+
     top_kb = sorted(kb_chunks, key=lambda c: c.get("score", 0), reverse=True)[:5]
 
     # 3. Format
@@ -176,28 +189,51 @@ async def answer_question(
         Dict with answer text and source chunks.
     """
     llm_client = get_llm_client()
+    embedding_client = get_embedding_client()
 
-    # 1. Search bid documents
+    # 1. Generate embedding for the question
+    try:
+        emb_result = await embedding_client.embed_text(question)
+        query_embedding = emb_result.embedding
+    except Exception:
+        logger.error("Failed to embed question", exc_info=True)
+        return {
+            "answer": "embedding服务暂时不可用，无法检索相关内容。",
+            "sources": [],
+            "tokens_consumed": 0,
+        }
+
+    # 2. Search bid documents
     doc_results = await bid_document_search(
-        project_id=project_id,
-        query=question,
         db=db,
+        project_id=project_id,
+        query_embedding=query_embedding,
         top_k=top_k,
     )
 
-    # 2. Optionally search knowledge base
+    # 3. Optionally search knowledge base
     kb_results: list[dict] = []
     if use_knowledge_base:
-        kb_results = await knowledge_search(
-            query=question,
-            db=db,
-            top_k=3,
-        )
+        try:
+            kb_results = await knowledge_search(
+                db=db,
+                query_embedding=query_embedding,
+                top_k=3,
+            )
+        except Exception:
+            logger.warning("KB search failed", exc_info=True)
 
-    # 3. Build context
-    context = [chunk.get("content", "") for chunk in doc_results + kb_results]
+    # 4. Build context
+    all_results = doc_results + kb_results
+    context = []
+    for i, chunk in enumerate(all_results):
+        source_label = f"[来源 {i + 1}]"
+        section_info = chunk.get("section_title") or chunk.get("section_type", "")
+        page = chunk.get("page_number", "?")
+        content = chunk.get("content", "")
+        context.append(f"{source_label} {section_info} (第{page}页)\n{content}")
 
-    # 4. Generate answer with LLM
+    # 5. Generate answer with LLM
     response = await llm_client.generate_with_context(
         question=question,
         context=context,
@@ -206,6 +242,16 @@ async def answer_question(
 
     return {
         "answer": response.content,
-        "sources": doc_results + kb_results,
-        "tokens_consumed": response.total_tokens,
+        "sources": [
+            {
+                "id": r.get("id", ""),
+                "content": r.get("content", ""),
+                "filename": r.get("filename") or r.get("source_document", ""),
+                "section_title": r.get("section_title", ""),
+                "page_number": r.get("page_number"),
+                "score": r.get("score", 0),
+            }
+            for r in all_results
+        ],
+        "tokens_consumed": response.usage.get("total_tokens", 0),
     }

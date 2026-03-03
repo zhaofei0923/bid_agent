@@ -87,16 +87,21 @@ async def stream_guidance(
 
     async def event_generator():
         try:
+            from app.agents.embedding_client import get_embedding_client
             from app.agents.llm_client import get_llm_client
             from app.agents.mcp.bid_document_search import bid_document_search
 
             llm = get_llm_client()
+            emb_client = get_embedding_client()
 
-            # Retrieve context
+            # Generate embedding for the question
+            emb_result = await emb_client.embed_text(request.question)
+
+            # Retrieve context using vector similarity
             doc_results = await bid_document_search(
-                project_id=str(project_id),
-                query=request.question,
                 db=db,
+                project_id=str(project_id),
+                query_embedding=emb_result.embedding,
                 top_k=5,
             )
             context = [c.get("content", "") for c in doc_results]
@@ -130,8 +135,10 @@ async def stream_guidance(
                     "sources": [
                         {
                             "content": s.get("content", "")[:200],
+                            "filename": s.get("filename", ""),
                             "section_title": s.get("section_title", ""),
                             "page_number": s.get("page_number"),
+                            "score": s.get("score", 0),
                         }
                         for s in doc_results
                     ],

@@ -1,17 +1,29 @@
+export interface Source {
+  id?: string
+  content: string
+  filename: string
+  section_title: string
+  page_number?: number | null
+  score?: number
+}
+
 export interface GuidanceMessage {
   role: "user" | "assistant"
   content: string
   timestamp: string
+  sources?: Source[]
 }
 
 export interface GuidanceResponse {
-  content: string
-  credits_consumed: number
+  answer: string
+  sources: Source[]
+  tokens_consumed: number
 }
 
 export interface GuidanceStreamEvent {
-  type: "token" | "done" | "error"
+  type: "token" | "sources" | "done" | "error"
   content?: string
+  sources?: Source[]
   credits_consumed?: number
 }
 

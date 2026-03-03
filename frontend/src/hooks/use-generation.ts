@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { generationService } from "@/services/generation"
-import type { GuidanceMessage, GuidanceStreamEvent } from "@/types/generation"
+import type { GuidanceMessage, GuidanceStreamEvent, Source } from "@/types/generation"
 
 export function useGuidance(projectId: string) {
   const queryClient = useQueryClient()
@@ -20,6 +20,7 @@ export function useGuidanceStream(projectId: string) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
   const abortRef = useRef<(() => void) | null>(null)
+  const pendingSourcesRef = useRef<Source[]>([])
 
   const send = useCallback(
     (message: string) => {
@@ -29,6 +30,7 @@ export function useGuidanceStream(projectId: string) {
       ])
       setIsStreaming(true)
       setStreamingContent("")
+      pendingSourcesRef.current = []
 
       let accumulated = ""
 
@@ -39,6 +41,8 @@ export function useGuidanceStream(projectId: string) {
           if (event.type === "token" && event.content) {
             accumulated += event.content
             setStreamingContent(accumulated)
+          } else if (event.type === "sources" && event.sources) {
+            pendingSourcesRef.current = event.sources
           } else if (event.type === "done") {
             setMessages((prev) => [
               ...prev,
@@ -46,10 +50,12 @@ export function useGuidanceStream(projectId: string) {
                 role: "assistant",
                 content: accumulated,
                 timestamp: new Date().toISOString(),
+                sources: pendingSourcesRef.current,
               },
             ])
             setStreamingContent("")
             setIsStreaming(false)
+            pendingSourcesRef.current = []
           } else if (event.type === "error") {
             setIsStreaming(false)
             setStreamingContent("")

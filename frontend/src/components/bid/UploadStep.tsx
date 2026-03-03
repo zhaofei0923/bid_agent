@@ -6,11 +6,26 @@ import { useDocuments, useUploadDocument, useDeleteDocument } from "@/hooks/use-
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { useTranslations } from "next-intl"
-import { Trash2 } from "lucide-react"
+import { Trash2, Loader2 } from "lucide-react"
 
 interface UploadStepProps {
   projectId: string
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "待处理",
+  processing: "解析中",
+  processed: "已就绪",
+  error: "失败",
+}
+
+const STATUS_VARIANTS: Record<string, "secondary" | "outline" | "default" | "destructive"> = {
+  pending: "secondary",
+  processing: "secondary",
+  processed: "default",
+  error: "destructive",
 }
 
 export const UploadStep = memo(function UploadStep({
@@ -25,6 +40,10 @@ export const UploadStep = memo(function UploadStep({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const hasProcessingDocs = documents?.some(
+    (d) => d.status === "pending" || d.status === "processing"
+  ) ?? false
 
   const handleDelete = useCallback(
     async (documentId: string) => {
@@ -158,12 +177,33 @@ export const UploadStep = memo(function UploadStep({
                     <span className="text-lg flex-shrink-0">
                       {getFileTypeIcon(doc.original_filename || doc.filename)}
                     </span>
-                    <span className="text-sm font-medium truncate">
-                      {doc.original_filename || doc.filename}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium truncate block">
+                        {doc.original_filename || doc.filename}
+                      </span>
+                      {(doc.status === "processing" || doc.status === "pending") && (
+                        <div className="mt-1 flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                          <Progress
+                            value={doc.processing_progress || 0}
+                            className="h-1.5 w-24"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {doc.processing_progress || 0}%
+                          </span>
+                        </div>
+                      )}
+                      {doc.error_message && (
+                        <p className="text-xs text-destructive mt-0.5 truncate">
+                          {doc.error_message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <Badge variant="secondary">{doc.status}</Badge>
+                    <Badge variant={STATUS_VARIANTS[doc.status] || "secondary"}>
+                      {STATUS_LABELS[doc.status] || doc.status}
+                    </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -181,11 +221,19 @@ export const UploadStep = memo(function UploadStep({
         </div>
       )}
 
+      {/* Status hint for processing documents */}
+      {hasProcessingDocs && (
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          文件正在后台解析向量化，完成后可进入下一步
+        </p>
+      )}
+
       {/* Next button */}
       {documents && documents.length > 0 && (
         <div className="flex justify-end">
-          <Button onClick={handleNext}>
-            {t("upload.nextStep")}
+          <Button onClick={handleNext} disabled={hasProcessingDocs}>
+            {hasProcessingDocs ? "等待处理完成..." : t("upload.nextStep")}
           </Button>
         </div>
       )}

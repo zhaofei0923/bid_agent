@@ -18,7 +18,7 @@ async def bid_document_search(
         db: Database session.
         project_id: Restrict to this project's documents.
         query_embedding: Query vector (1024-dim).
-        section_types: Optional filter on section type.
+        section_types: Optional filter on section type (matches ch.section_type).
         top_k: Number of results.
         score_threshold: Minimum cosine similarity.
 
@@ -35,20 +35,22 @@ async def bid_document_search(
 
     section_filter = ""
     if section_types:
-        section_filter = "AND s.section_type = ANY(:section_types)"
+        section_filter = "AND ch.section_type = ANY(:section_types)"
         params["section_types"] = section_types
 
     sql = text(f"""
         SELECT ch.content, ch.page_number,
                1 - (ch.embedding <=> :embedding::vector) AS similarity,
-               s.section_type, s.title AS section_title,
+               ch.section_type,
+               COALESCE(s.section_title, '') AS section_title,
                ch.clause_reference,
-               d.file_name AS filename
+               d.filename AS filename,
+               ch.id::text AS chunk_id
         FROM bid_document_chunks ch
-        JOIN bid_document_sections s ON ch.section_id = s.id
-        JOIN bid_documents d ON s.document_id = d.id
+        JOIN bid_documents d ON ch.bid_document_id = d.id
+        LEFT JOIN bid_document_sections s ON ch.section_id = s.id
         WHERE d.project_id = :project_id
-          AND d.processing_status = 'completed'
+          AND d.status = 'processed'
           AND ch.embedding IS NOT NULL
           {section_filter}
         ORDER BY ch.embedding <=> :embedding::vector
@@ -60,6 +62,7 @@ async def bid_document_search(
 
     return [
         {
+            "id": row.chunk_id,
             "content": row.content,
             "page_number": row.page_number,
             "score": float(row.similarity),

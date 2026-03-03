@@ -33,12 +33,24 @@ async def upload_bid_document(
 
     doc_svc = BidDocumentService(db)
     content = await file.read()
-    return await doc_svc.upload(
+    doc = await doc_svc.upload(
         project_id,
         filename=file.filename or "upload",
         content=content,
         content_type=file.content_type or "",
     )
+
+    # Dispatch async processing task (PDF parse → chunk → vectorize)
+    try:
+        from app.tasks.document_tasks import process_document
+        process_document.delay(str(doc.id))
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Celery not available — document %s will remain in 'pending' status", doc.id
+        )
+
+    return doc
 
 
 @router.get(

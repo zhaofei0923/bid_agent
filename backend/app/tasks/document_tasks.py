@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -110,6 +111,30 @@ class DocumentChunker:
 # ── Async Processing ───────────────────────────────────
 
 
+async def _parse_pdf(file_path: str) -> list[dict]:
+    """Parse PDF using pdfplumber, returning pages with text.
+
+    Returns:
+        List of {page_number, text} dicts.
+    """
+    try:
+        import pdfplumber  # noqa: PLC0415
+    except ImportError:
+        logger.error("pdfplumber not installed — run: pip install pdfplumber")
+        return []
+
+    pages = []
+    try:
+        with pdfplumber.open(file_path) as pdf:
+            for i, page in enumerate(pdf.pages):
+                text = page.extract_text() or ""
+                pages.append({"page_number": i + 1, "text": text})
+    except Exception:
+        logger.exception("Failed to parse PDF: %s", file_path)
+
+    return pages
+
+
 async def _process_document(document_id: str) -> dict:
     """Parse, chunk, and vectorize a bid document."""
     embedding_client = get_embedding_client()
@@ -124,77 +149,142 @@ async def _process_document(document_id: str) -> dict:
         if not doc:
             raise ValueError(f"Document not found: {document_id}")
 
-        # 2. Parse PDF → text (placeholder: assume parsed_content exists)
-        parsed_text = doc.parsed_content or ""
-        if not parsed_text:
-            logger.warning("Document %s has no parsed content", document_id)
-            doc.status = "error"
+        # Update status to processing
+        doc.status = "processing"
+        doc.processing_progress = 5
+        await db.commit()
+
+        pages: list[dict] = []
+        section_tuples: list[tuple] = []
+        all_chunk_records: list[dict] = []
+        total_vectorized = 0
+
+        try:
+            # 2. Parse PDF → pages
+            pages = await _parse_pdf(doc.file_path)
+            if not pages:
+                logger.warning("Document %s has no parseable content", document_id)
+                doc.status = "error"
+                doc.error_message = "PDF parsing failed or no text content found"
+                await db.commit()
+                return {"status": "error", "reason": "no_content"}
+
+            doc.page_count = len(pages)
+            doc.processing_progress = 20
             await db.commit()
-            return {"status": "error", "reason": "no_content"}
 
-        # 3. Create sections (if not already parsed into sections)
-        result = await db.execute(
-            select(BidDocumentSection).where(
-                BidDocumentSection.document_id == document_id
-            )
-        )
-        sections = result.scalars().all()
-
-        if not sections:
-            # Create a single section for the whole document
-            section = BidDocumentSection(
-                document_id=document_id,
-                section_type="full_document",
-                title=doc.original_filename or "Full Document",
-                content=parsed_text,
-                page_start=1,
-                page_end=1,
-                order_index=0,
-            )
-            db.add(section)
-            await db.flush()
-            sections = [section]
-
-        # 4. Chunk each section
-        all_chunks: list[dict] = []
-        for section in sections:
-            section_text = section.content or ""
-            section_chunks = chunker.chunk_text(
-                section_text,
-                metadata={
-                    "section_id": str(section.id),
-                    "section_type": section.section_type,
-                    "page_number": section.page_start or 1,
-                },
-            )
-            all_chunks.extend(section_chunks)
-
-        # 5. Vectorize chunks
-        texts = [c["content"] for c in all_chunks]
-        if texts:
-            embeddings = await embedding_client.embed_texts(texts)
-
-            for chunk, emb_result in zip(all_chunks, embeddings):
-                db_chunk = BidDocumentChunk(
-                    section_id=chunk["section_id"],
-                    content=chunk["content"],
-                    chunk_index=chunk["chunk_index"],
-                    page_number=chunk.get("page_number", 1),
-                    embedding=emb_result.embedding,
+            # 3. Delete old sections/chunks (in case of re-processing)
+            old_sections = await db.execute(
+                select(BidDocumentSection).where(
+                    BidDocumentSection.bid_document_id == document_id
                 )
-                db.add(db_chunk)
+            )
+            for section in old_sections.scalars().all():
+                await db.delete(section)
+            await db.commit()
 
-        # 6. Update document status
+            # 4. Create sections — one per page group or logical section
+            # Simple strategy: group pages into 5-page sections
+            group_size = 5
+            for start_idx in range(0, len(pages), group_size):
+                page_group = pages[start_idx : start_idx + group_size]
+                content = "\n\n".join(
+                    f"=== 第{p['page_number']}页 ===\n{p['text']}"
+                    for p in page_group
+                    if p["text"].strip()
+                )
+                if not content.strip():
+                    continue
+
+                section = BidDocumentSection(
+                    bid_document_id=doc.id,
+                    section_type="full_document",
+                    section_title=f"第{page_group[0]['page_number']}-{page_group[-1]['page_number']}页",
+                    start_page=page_group[0]["page_number"],
+                    end_page=page_group[-1]["page_number"],
+                    content_preview=content[:500],
+                )
+                db.add(section)
+                section_tuples.append((section, content))
+
+            await db.flush()  # Assign IDs to sections
+
+            doc.processing_progress = 40
+            await db.commit()
+
+            # 5. Chunk each section
+            for section, content in section_tuples:
+                section_chunks = chunker.chunk_text(
+                    content,
+                    metadata={
+                        "section_id": str(section.id),
+                        "section_type": section.section_type,
+                        "page_number": section.start_page,
+                    },
+                )
+                all_chunk_records.extend(section_chunks)
+
+            doc.chunk_count = len(all_chunk_records)
+            doc.processing_progress = 60
+            await db.commit()
+
+            # 6. Vectorize chunks in batches
+            total_vectorized = 0
+            batch_size = 16
+            for i in range(0, len(all_chunk_records), batch_size):
+                batch = all_chunk_records[i : i + batch_size]
+                texts = [c["content"] for c in batch]
+
+                try:
+                    embeddings = await embedding_client.embed_texts(texts)
+
+                    for chunk_data, emb_result in zip(batch, embeddings):
+                        db_chunk = BidDocumentChunk(
+                            bid_document_id=doc.id,
+                            project_id=doc.project_id,
+                            section_id=chunk_data.get("section_id"),
+                            content=chunk_data["content"],
+                            chunk_index=chunk_data["chunk_index"],
+                            page_number=chunk_data.get("page_number", 1),
+                            start_char=chunk_data.get("char_start"),
+                            end_char=chunk_data.get("char_end"),
+                            section_type=chunk_data.get("section_type"),
+                            embedding=emb_result.embedding,
+                        )
+                        db.add(db_chunk)
+                        total_vectorized += 1
+
+                    await db.flush()
+
+                except Exception:
+                    logger.warning(
+                        "Vectorization failed for batch %d-%d", i, i + batch_size,
+                        exc_info=True,
+                    )
+
+            doc.vectorized_chunk_count = total_vectorized
+            doc.processing_progress = 90
+            await db.commit()
+
+        except Exception:
+            logger.exception("Processing failed for document %s", document_id)
+            doc.status = "error"
+            doc.error_message = "Internal processing error"
+            await db.commit()
+            return {"status": "error", "reason": "internal_error"}
+
+        # 7. Update document to processed
         doc.status = "processed"
-        doc.vectorized_chunk_count = len(all_chunks)
-        doc.updated_at = datetime.now(UTC)
-
+        doc.processing_progress = 100
+        doc.processed_at = datetime.now(UTC)
         await db.commit()
 
     return {
         "document_id": document_id,
-        "sections": len(sections),
-        "chunks": len(all_chunks),
+        "pages": len(pages) if pages else 0,
+        "sections": len(section_tuples) if "section_tuples" in dir() else 0,
+        "chunks": len(all_chunk_records) if "all_chunk_records" in dir() else 0,
+        "vectorized": total_vectorized if "total_vectorized" in dir() else 0,
         "status": "processed",
     }
 

@@ -62,7 +62,20 @@ export const generationService = {
             }
             try {
               const parsed = JSON.parse(payload)
-              onEvent({ type: "token", content: parsed.content || parsed.token })
+              // Route by event type from backend
+              if (parsed.type === "content" && parsed.content) {
+                onEvent({ type: "token", content: parsed.content })
+              } else if (parsed.type === "sources" && parsed.sources) {
+                onEvent({ type: "sources", sources: parsed.sources })
+              } else if (parsed.type === "done") {
+                onEvent({ type: "done" })
+                return
+              } else if (parsed.type === "error") {
+                onEvent({ type: "error", content: parsed.message || "Stream error" })
+              } else if (parsed.content) {
+                // Fallback: treat any content field as token
+                onEvent({ type: "token", content: parsed.content })
+              }
             } catch {
               onEvent({ type: "token", content: payload })
             }
