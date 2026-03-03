@@ -32,12 +32,14 @@ REMOTE_CONTAINER="${REMOTE_CONTAINER:-bidagent-backend}"
 
 # ── Defaults ──────────────────────────────────────────────────────
 ADB_PAGES=1          # ADB RSS has no pagination; all active items come in 1 page
-WB_PAGES=50          # WB self-stops when all items are expired — this is a safety cap
-CLEAR_FLAG=""        # --clear passed to import_tenders / run_fetcher when set
+WB_PAGES=50          # WB self-stops when all items are expired — safety cap
+CLEAR_FLAG=""
 RUN_ADB=true
 RUN_WB=true
 LOCAL_TMP="/tmp/adb_export.json"
 REMOTE_TMP="/tmp/adb_export.json"
+_LOG_TMP="$(mktemp /tmp/sync_step.XXXXXX)"
+trap 'rm -f "$_LOG_TMP"' EXIT
 
 # ── Arg parsing ───────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -53,17 +55,29 @@ done
 
 SSH_CMD="ssh -i $SSH_KEY -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP}"
 
+# ── Helper: extract last occurrence of "key=N" from captured log ──
+_parse_stat() {
+  local log="$1" key="$2"
+  grep -oE "${key}=[0-9]+" "$log" | tail -1 | grep -oE '[0-9]+' || echo "0"
+}
+
+# ── Summary state ─────────────────────────────────────────────────
+ADB_FETCHED="-"; ADB_CREATED="-"; ADB_UPDATED="-"; ADB_SKIPPED="-"
+WB_CREATED="-";  WB_UPDATED="-";  WB_SKIPPED="-"
+
 # ── Banner ────────────────────────────────────────────────────────
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║              Bid Agent — Full Tender Sync                ║"
 echo "╠══════════════════════════════════════════════════════════╣"
-echo "║  Server     : ${SSH_USER}@${SERVER_IP}"
-echo "║  Container  : ${REMOTE_CONTAINER}"
-echo "║  ADB sync   : ${RUN_ADB}  (pages=${ADB_PAGES})"
-echo "║  WB  sync   : ${RUN_WB}  (pages=${WB_PAGES})"
-echo "║  Clear first: ${CLEAR_FLAG:-no}"
+printf "║  %-54s║\n" "Server     : ${SSH_USER}@${SERVER_IP}"
+printf "║  %-54s║\n" "Container  : ${REMOTE_CONTAINER}"
+printf "║  %-54s║\n" "ADB sync   : ${RUN_ADB}  (pages=${ADB_PAGES})"
+printf "║  %-54s║\n" "WB  sync   : ${RUN_WB}  (pages=${WB_PAGES})"
+printf "║  %-54s║\n" "Clear first: ${CLEAR_FLAG:-no}"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
+
+START_TIME=$(date +%s)
 
 # ══════════════════════════════════════════════════════════════════
 # PART A — ADB  (local fetch → SCP → docker import)
@@ -72,12 +86,15 @@ if $RUN_ADB; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "  ADB  [1/3] Fetching locally (max_pages=${ADB_PAGES}) …"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  > "$_LOG_TMP"
   (
     cd "$BACKEND_DIR"
     python3 -m scripts.export_adb \
       --output "$LOCAL_TMP" \
       --max-pages "$ADB_PAGES"
-  )
+  ) 2>&1 | tee "$_LOG_TMP"
+  # "Fetched N ADB tenders"
+  ADB_FETCHED=$(grep -oE 'Fetched [0-9]+' "$_LOG_TMP" | tail -1 | grep -oE '[0-9]+' || echo "0")
   echo ""
 
   echo "  ADB  [2/3] Uploading JSON to ${SERVER_IP}:${REMOTE_TMP} …"
@@ -86,9 +103,16 @@ if $RUN_ADB; then
   echo ""
 
   echo "  ADB  [3/3] Importing into database on server …"
-  $SSH_CMD "docker cp ${REMOTE_TMP} ${REMOTE_CONTAINER}:${REMOTE_TMP} && \
-            docker exec ${REMOTE_CONTAINER} python -m scripts.import_tenders \
-              ${REMOTE_TMP} ${CLEAR_FLAG}"
+  > "$_LOG_TMP"
+  $SSH_CMD \
+    "docker cp ${REMOTE_TMP} ${REMOTE_CONTAINER}:${REMOTE_TMP} && \
+     docker exec ${REMOTE_CONTAINER} python -m scripts.import_tenders \
+       ${REMOTE_TMP} ${CLEAR_FLAG}" \
+    2>&1 | tee "$_LOG_TMP"
+  # "Import complete: created=N, updated=N, skipped=N"
+  ADB_CREATED=$(_parse_stat "$_LOG_TMP" "created")
+  ADB_UPDATED=$(_parse_stat "$_LOG_TMP" "updated")
+  ADB_SKIPPED=$(_parse_stat "$_LOG_TMP" "skipped")
   echo ""
 fi
 
@@ -100,14 +124,39 @@ if $RUN_WB; then
   echo "  WB   Fetching on server (max_pages=${WB_PAGES}) …"
   echo "       (Stops automatically when all open-type items are expired)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  $SSH_CMD "docker exec ${REMOTE_CONTAINER} python -m scripts.run_fetcher \
-              --source wb \
-              --max-pages ${WB_PAGES} \
-              ${CLEAR_FLAG}"
+  > "$_LOG_TMP"
+  $SSH_CMD \
+    "docker exec ${REMOTE_CONTAINER} python -m scripts.run_fetcher \
+       --source wb \
+       --max-pages ${WB_PAGES} \
+       ${CLEAR_FLAG}" \
+    2>&1 | tee "$_LOG_TMP"
+  # "DB upsert: created=N, updated=N, skipped=N"
+  WB_CREATED=$(_parse_stat "$_LOG_TMP" "created")
+  WB_UPDATED=$(_parse_stat "$_LOG_TMP" "updated")
+  WB_SKIPPED=$(_parse_stat "$_LOG_TMP" "skipped")
   echo ""
 fi
 
-# ── Done ──────────────────────────────────────────────────────────
+# ── Elapsed time ──────────────────────────────────────────────────
+END_TIME=$(date +%s)
+ELAPSED=$(( END_TIME - START_TIME ))
+ELAPSED_FMT="$(( ELAPSED / 60 ))m $(( ELAPSED % 60 ))s"
+
+# ── Summary box ───────────────────────────────────────────────────
 echo "╔══════════════════════════════════════════════════════════╗"
-echo "║  ✓  Sync complete                                        ║"
+echo "║                    同步结果汇总                          ║"
+echo "╠══════════════════════════════════════════════════════════╣"
+if $RUN_ADB; then
+  printf "║  %-54s║\n" "ADB  抓取: ${ADB_FETCHED} 条"
+  printf "║  %-54s║\n" "ADB  入库: 新增 ${ADB_CREATED}  更新 ${ADB_UPDATED}  跳过 ${ADB_SKIPPED}"
+fi
+if $RUN_ADB && $RUN_WB; then
+  echo "╠══════════════════════════════════════════════════════════╣"
+fi
+if $RUN_WB; then
+  printf "║  %-54s║\n" "WB   入库: 新增 ${WB_CREATED}  更新 ${WB_UPDATED}  跳过 ${WB_SKIPPED}"
+fi
+echo "╠══════════════════════════════════════════════════════════╣"
+printf "║  %-54s║\n" "耗时: ${ELAPSED_FMT}"
 echo "╚══════════════════════════════════════════════════════════╝"
