@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""  # 腾讯云 SES 发件人邮箱
     SMTP_PASSWORD: str = ""  # 腾讯云 SES SMTP 密钥
     EMAIL_FROM_NAME: str = "BidAgent"
-    EMAIL_ENABLED: bool = False  # 开关：False 时只打印验证码到日志
+    EMAIL_ENABLED: bool = False  # 开关: False 时只打印验证码到日志
 
     # ── Verification Code ───────────────────────────────────────
     VERIFY_CODE_TTL: int = 600  # 验证码有效期 (秒)
