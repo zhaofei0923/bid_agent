@@ -1,5 +1,7 @@
 """Opportunity service — listing, searching, CRUD."""
 
+from __future__ import annotations
+
 import math
 from uuid import UUID
 

@@ -51,6 +51,40 @@ banner() {
     echo -e "${NC}"
 }
 
+# ── 启动 Docker Engine/Desktop ───────────────────────────────────
+ensure_docker() {
+    # 已经能用就直接返回
+    if docker info >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log_warn "Docker 未运行，尝试自动启动..."
+
+    # macOS — Docker Desktop
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        open -a Docker 2>/dev/null || true
+    # Linux — 优先 systemd，其次 service
+    elif command -v systemctl >/dev/null 2>&1; then
+        sudo systemctl start docker 2>/dev/null || true
+    elif command -v service >/dev/null 2>&1; then
+        sudo service docker start 2>/dev/null || true
+    fi
+
+    # 等待 Docker 就绪（最多 30 秒）
+    local retries=30
+    while [[ $retries -gt 0 ]]; do
+        if docker info >/dev/null 2>&1; then
+            log_success "Docker 已就绪"
+            return 0
+        fi
+        retries=$((retries - 1))
+        sleep 1
+    done
+
+    log_error "Docker 启动超时。请手动启动 Docker 后重试。"
+    exit 1
+}
+
 # ── 检测依赖 ─────────────────────────────────────────────────────
 check_deps() {
     local missing=()
@@ -320,8 +354,12 @@ start_backend() {
     source venv/bin/activate
     export PYTHONPATH="$BACKEND_DIR:${PYTHONPATH:-}"
 
+    # 使用 venv 内的绝对路径，避免 deactivate 后找不到命令
+    local VENV_PYTHON="$BACKEND_DIR/venv/bin/python3"
+    local VENV_CELERY="$BACKEND_DIR/venv/bin/celery"
+
     # 启动 FastAPI
-    nohup python3 -m uvicorn app.main:app \
+    nohup "$VENV_PYTHON" -m uvicorn app.main:app \
         --host 0.0.0.0 \
         --port 8000 \
         --reload \
@@ -331,7 +369,7 @@ start_backend() {
     log_info "FastAPI 已启动 (PID $(cat "$PID_DIR/backend.pid"))"
 
     # 启动 Celery Worker（后台，可选失败）
-    nohup python3 -m celery -A app.tasks:celery_app worker \
+    nohup "$VENV_CELERY" -A app.tasks:celery_app worker \
         --loglevel=info \
         --concurrency=2 \
         > "$LOG_DIR/celery.log" 2>&1 &
@@ -465,6 +503,7 @@ main() {
     echo ""
 
     # 前置检查
+    ensure_docker
     check_deps
     ensure_env
 
