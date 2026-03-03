@@ -41,15 +41,16 @@ REMOTE_TMP="/tmp/adb_export.json"
 _LOG_TMP="$(mktemp /tmp/sync_step.XXXXXX)"
 trap 'rm -f "$_LOG_TMP"' EXIT
 
-# ── Python virtualenv (auto-create on first run) ───────────────────
+# ── Python: ensure local deps are available ───────────────────────
+# Uses --system-site-packages --without-pip to bypass ensurepip restrictions
+# on Ubuntu 24+, then installs via python3 -m pip (inherits user pip).
 VENV_DIR="${BACKEND_DIR}/.venv"
-if [[ ! -f "${VENV_DIR}/bin/activate" ]]; then
-  echo "▶ 首次运行：创建本地 Python 虚拟环境并安装依赖…"
-  python3 -m venv "${VENV_DIR}"
-  "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
-  "${VENV_DIR}/bin/pip" install --quiet -r "${BACKEND_DIR}/requirements-sync.txt"
-  echo "  ✓ 依赖安装完成"
-  echo ""
+if [[ ! -f "${VENV_DIR}/bin/python3" ]]; then
+  echo "▶ 首次运行：初始化本地 Python 环境并安装依赖 …"
+  python3 -m venv "${VENV_DIR}" --system-site-packages --without-pip
+  "${VENV_DIR}/bin/python3" -m pip install --quiet \
+    -r "${BACKEND_DIR}/requirements-sync.txt"
+  echo "  ✓ 依赖安装完成"; echo ""
 fi
 PYTHON="${VENV_DIR}/bin/python3"
 
