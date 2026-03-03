@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
+from app.database import async_session
 from app.fetchers import get_fetcher
 from app.fetchers.base import TenderInfo
-from app.database import async_session
 from app.models.opportunity import Opportunity
 from app.tasks import celery_app
 
@@ -35,12 +35,12 @@ async def _run_fetcher(source: str, max_pages: int = 5) -> dict:
     now = datetime.now(UTC)
 
     # Statuses that represent a closed / no-longer-open opportunity
-    _SKIP_STATUSES = {"closed", "awarded", "cancelled", "expired"}
+    skip_statuses = {"closed", "awarded", "cancelled", "expired"}
 
     async with async_session() as db:
         for tender in tenders:
             # Skip tenders that are explicitly closed/awarded
-            if tender.status.lower() in _SKIP_STATUSES:
+            if tender.status.lower() in skip_statuses:
                 skipped += 1
                 continue
             # Skip tenders whose deadline has already passed

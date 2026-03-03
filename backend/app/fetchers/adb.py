@@ -147,11 +147,10 @@ class ADBFetcher(BaseFetcher):
         external_id = ""
         if link:
             match = re.search(r"/node/(\d+)", link)
-            if match:
-                external_id = match.group(1)
-            else:
-                # Use the link as ID if no node ID found
-                external_id = link.rstrip("/").split("/")[-1]
+            # Use the link as ID if no node ID is found.
+            external_id = (
+                match.group(1) if match else link.rstrip("/").split("/")[-1]
+            )
 
         # Determine procurement type from feed name
         procurement_type = _map_feed_to_procurement_type(feed_name)

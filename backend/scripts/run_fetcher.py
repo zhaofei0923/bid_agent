@@ -77,7 +77,7 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
     from app.database import async_session
     from app.models.opportunity import Opportunity
 
-    _SKIP_STATUSES = {"closed", "awarded", "cancelled", "expired"}
+    skip_statuses = {"closed", "awarded", "cancelled", "expired"}
     created = updated = skipped = 0
     now = datetime.now(UTC)
 
@@ -89,7 +89,7 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
     async with async_session() as db:
         for tender in tenders:
             # Skip non-open statuses
-            if tender.status.lower() in _SKIP_STATUSES:
+            if tender.status.lower() in skip_statuses:
                 skipped += 1
                 continue
             # Skip tenders whose deadline has already passed

@@ -8,14 +8,14 @@ Their website (afdb.org) blocks server-side requests at the WAF/IP level
 (HTTP 403), making reliable automated fetching impossible without a proxy.
 """
 
+from app.fetchers.adb import ADBFetcher
 from app.fetchers.base import BaseFetcher
 from app.fetchers.worldbank import WorldBankFetcher
-from app.fetchers.adb import ADBFetcher
 
 __all__ = [
+    "ADBFetcher",
     "BaseFetcher",
     "WorldBankFetcher",
-    "ADBFetcher",
     "get_fetcher",
 ]
 
