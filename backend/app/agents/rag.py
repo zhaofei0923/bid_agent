@@ -118,6 +118,11 @@ async def build_analysis_context(
             )
             all_chunks.extend(chunks)
         except Exception:
+            # Roll back aborted transaction so subsequent queries can proceed
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning("Embedding/search failed for query '%s'", query, exc_info=True)
 
     unique_chunks = _deduplicate_by_id(all_chunks)
@@ -136,6 +141,11 @@ async def build_analysis_context(
             )
             kb_chunks.extend(results)
         except Exception:
+            # Roll back aborted transaction so subsequent queries can proceed
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning("KB search failed for query '%s'", query, exc_info=True)
 
     top_kb = sorted(kb_chunks, key=lambda c: c.get("score", 0), reverse=True)[:5]
@@ -234,14 +244,26 @@ async def answer_question(
         context.append(f"{source_label} {section_info} (第{page}页)\n{content}")
 
     # 5. Generate answer with LLM
-    response = await llm_client.generate_with_context(
-        question=question,
-        context=context,
-        system_prompt=RAG_SYSTEM_PROMPT,
-    )
+    try:
+        response = await llm_client.generate_with_context(
+            question=question,
+            context=context,
+            system_prompt=RAG_SYSTEM_PROMPT,
+        )
+        answer = response.content
+        tokens = response.usage.get("total_tokens", 0)
+    except Exception as exc:
+        logger.error("LLM call failed: %s", exc)
+        # Return graceful degraded answer when LLM is unavailable
+        ctx_preview = context[0][:200] if context else "（无上下文）"
+        answer = (
+            f"LLM服务暂时不可用（{type(exc).__name__}）。\n\n"
+            f"基于检索到的文件内容，以下片段可供参考：\n{ctx_preview}…"
+        )
+        tokens = 0
 
     return {
-        "answer": response.content,
+        "answer": answer,
         "sources": [
             {
                 "id": r.get("id", ""),
@@ -253,5 +275,5 @@ async def answer_question(
             }
             for r in all_results
         ],
-        "tokens_consumed": response.usage.get("total_tokens", 0),
+        "tokens_consumed": tokens,
     }

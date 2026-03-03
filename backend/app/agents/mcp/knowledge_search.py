@@ -47,13 +47,13 @@ async def knowledge_search(
 
     sql = text(f"""
         SELECT c.content, c.page_number,
-               1 - (c.embedding <=> :embedding::vector) AS similarity,
-               d.file_name AS source_document
+               1 - (c.embedding <=> cast(:embedding as vector)) AS similarity,
+               d.filename AS source_document
         FROM knowledge_chunks c
         JOIN knowledge_documents d ON c.document_id = d.id
         JOIN knowledge_bases kb ON d.knowledge_base_id = kb.id
         {where_sql}
-        ORDER BY c.embedding <=> :embedding::vector
+        ORDER BY c.embedding <=> cast(:embedding as vector)
         LIMIT :top_k
     """)
 

@@ -2,6 +2,8 @@
 
 import json
 import logging
+import uuid
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -41,9 +43,9 @@ async def get_guidance(
 
     result = await answer_question(
         project_id=str(project_id),
-        question=request.question,
+        question=request.message,       # GuidanceRequest.message (not .question)
         db=db,
-        use_knowledge_base=request.use_knowledge_base,
+        use_knowledge_base=False,       # use_knowledge_base not in schema; default False
     )
 
     # Deduct credits after successful invocation
@@ -56,7 +58,11 @@ async def get_guidance(
     )
 
     response = GuidanceResponse(
-        answer=result["answer"],
+        id=uuid.uuid4(),
+        project_id=project_id,
+        role="assistant",
+        content=result.get("answer", ""),   # rag returns "answer" key
+        skill_used="rag_qa",
         sources=[
             {
                 "content": s.get("content", "")[:200],
@@ -66,8 +72,8 @@ async def get_guidance(
             for s in result.get("sources", [])
         ],
         tokens_consumed=result.get("tokens_consumed", 0),
+        created_at=datetime.now(UTC),
     )
-    # Note: headers attached in middleware; for direct returns keep cost_info
     return response
 
 
@@ -95,7 +101,7 @@ async def stream_guidance(
             emb_client = get_embedding_client()
 
             # Generate embedding for the question
-            emb_result = await emb_client.embed_text(request.question)
+            emb_result = await emb_client.embed_text(request.message)
 
             # Retrieve context using vector similarity
             doc_results = await bid_document_search(
@@ -115,18 +121,27 @@ async def stream_guidance(
                 f"[来源 {i + 1}]\n{c}" for i, c in enumerate(context)
             )
             user_msg = (
-                f"参考资料:\n{context_block}\n\n用户问题: {request.question}"
+                f"参考资料:\n{context_block}\n\n用户问题: {request.message}"
             )
 
+            from app.agents.llm_client import Message as LLMMessage
             messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
+                LLMMessage(role="system", content=system_prompt),
+                LLMMessage(role="user", content=user_msg),
             ]
 
-            # Stream response
-            async for chunk in llm.chat_stream(messages):
-                event_data = json.dumps({"type": "content", "content": chunk})
-                yield f"data: {event_data}\n\n"
+            # Stream response — catch LLM errors (e.g., invalid API key)
+            try:
+                async for chunk in llm.chat_stream(messages):
+                    event_data = json.dumps({"type": "content", "content": chunk})
+                    yield f"data: {event_data}\n\n"
+            except Exception as llm_exc:
+                # Yield a graceful fallback content event instead of aborting stream
+                fallback = (
+                    f"LLM服务暂时不可用（{type(llm_exc).__name__}）。\n"
+                    f"已检索到{len(doc_results)}个相关片段，请直接查阅候选内容。"
+                )
+                yield f"data: {json.dumps({'type': 'content', 'content': fallback})}\n\n"
 
             # Send sources after content
             sources_data = json.dumps(

@@ -45,4 +45,11 @@ celery_app.conf.update(
 # Explicitly register task modules
 celery_app.conf.include = [
     "app.tasks.fetcher_tasks",
+    "app.tasks.document_tasks",
 ]
+
+# Route document tasks to 'documents' queue; fetcher tasks to default 'celery' queue
+celery_app.conf.task_routes = {
+    "app.tasks.document_tasks.*": {"queue": "documents"},
+    "app.tasks.fetcher_tasks.*": {"queue": "celery"},
+}

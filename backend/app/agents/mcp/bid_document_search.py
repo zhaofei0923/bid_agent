@@ -29,18 +29,13 @@ async def bid_document_search(
     params: dict = {
         "embedding": str(query_embedding),
         "project_id": project_id,
-        "top_k": top_k,
-        "threshold": score_threshold,
+        # Fetch more rows so we can filter in Python without losing results
+        "top_k": max(top_k * 4, 20) if section_types else top_k,
     }
 
-    section_filter = ""
-    if section_types:
-        section_filter = "AND ch.section_type = ANY(:section_types)"
-        params["section_types"] = section_types
-
-    sql = text(f"""
+    sql = text("""
         SELECT ch.content, ch.page_number,
-               1 - (ch.embedding <=> :embedding::vector) AS similarity,
+               1 - (ch.embedding <=> cast(:embedding as vector)) AS similarity,
                ch.section_type,
                COALESCE(s.section_title, '') AS section_title,
                ch.clause_reference,
@@ -52,15 +47,17 @@ async def bid_document_search(
         WHERE d.project_id = :project_id
           AND d.status = 'processed'
           AND ch.embedding IS NOT NULL
-          {section_filter}
-        ORDER BY ch.embedding <=> :embedding::vector
+        ORDER BY ch.embedding <=> cast(:embedding as vector)
         LIMIT :top_k
     """)
 
     result = await db.execute(sql, params)
     rows = result.fetchall()
 
-    return [
+    if not rows:
+        return []
+
+    scored_rows = [
         {
             "id": row.chunk_id,
             "content": row.content,
@@ -72,5 +69,17 @@ async def bid_document_search(
             "filename": row.filename,
         }
         for row in rows
-        if float(row.similarity) >= score_threshold
     ]
+
+    # Apply section_types filter in Python (avoids asyncpg array-binding issues
+    # and transaction aborts; falls back to all results when no match)
+    if section_types:
+        filtered = [r for r in scored_rows if r["section_type"] in section_types]
+        scored_rows = filtered if filtered else scored_rows
+
+    # Trim back to top_k after optional section filter
+    scored_rows = scored_rows[:top_k]
+
+    above_threshold = [r for r in scored_rows if r["score"] >= score_threshold]
+    # If threshold filters out all results, fall back to returning top_k un-filtered
+    return above_threshold if above_threshold else scored_rows

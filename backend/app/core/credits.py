@@ -92,22 +92,24 @@ async def deduct_credits(
     from app.models.payment import PaymentTransaction
 
     # Optimistic decrement
-    new_balance = (user.credits_balance or 0) - cost
+    old_balance = user.credits_balance or 0
+    new_balance = old_balance - cost
     if new_balance < 0:
-        raise InsufficientCreditsError(required=cost, available=user.credits_balance or 0)
+        raise InsufficientCreditsError(required=cost, available=old_balance)
 
     user.credits_balance = new_balance
 
-    # Record transaction
+    # Record transaction — field names match PaymentTransaction model columns
     tx = PaymentTransaction(
         id=uuid.uuid4(),
         user_id=user.id,
         type="consume",
         amount=-cost,
+        balance_before=old_balance,
         balance_after=new_balance,
         description=f"[{action}] 操作消耗",
-        reference_type=action,
-        reference_id=uuid.UUID(reference_id) if reference_id else None,
+        related_type=action,
+        related_id=uuid.UUID(reference_id) if reference_id else None,
     )
     db.add(tx)
     await db.commit()
