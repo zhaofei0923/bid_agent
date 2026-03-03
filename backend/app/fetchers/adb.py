@@ -13,10 +13,13 @@ Countries, Sectors — enabling proper status-based filtering.
 """
 
 import logging
+import os
 import re
 from datetime import datetime
 from typing import Any
 from xml.etree import ElementTree
+
+import httpx
 
 from app.fetchers.base import BaseFetcher, TenderInfo
 
@@ -68,6 +71,21 @@ class ADBFetcher(BaseFetcher):
             "sec-fetch-user": "?1",
             "upgrade-insecure-requests": "1",
         })
+        # Optional proxy for bypassing Cloudflare WAF on CN servers.
+        # Set ADB_PROXY_URL=http://<singapore-server-ip>:3128 in .env
+        self._proxy_url: str | None = os.getenv("ADB_PROXY_URL")
+
+    async def __aenter__(self):
+        proxy_url = self._proxy_url
+        if proxy_url:
+            logger.info("[adb] Using proxy: %s", proxy_url)
+        self.client = httpx.AsyncClient(
+            timeout=30,
+            headers=self._headers,
+            follow_redirects=True,
+            proxy=proxy_url,
+        )
+        return self
 
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch ADB tender listings from RSS feeds.
