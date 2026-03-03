@@ -25,11 +25,11 @@ def generate_verify_code(length: int = 6) -> str:
 
 
 def verify_code_key(email: str) -> str:
-    return f"email_verify:{email}"
+    return f"{settings.REDIS_KEY_PREFIX}:email_verify:{email}"
 
 
 def verify_rate_key(email: str) -> str:
-    return f"email_verify_rate:{email}"
+    return f"{settings.REDIS_KEY_PREFIX}:email_verify_rate:{email}"
 
 
 # ── Email Sending ────────────────────────────────────────────────────────────

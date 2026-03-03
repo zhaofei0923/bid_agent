@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str = "BidAgent"
     EMAIL_ENABLED: bool = False  # 开关: False 时只打印验证码到日志
 
+    # ── Redis Key Namespace (防止多项目共用 Redis 时 key 冲突) ───
+    REDIS_KEY_PREFIX: str = "bidagent"
+
     # ── Verification Code ───────────────────────────────────────
     VERIFY_CODE_TTL: int = 600  # 验证码有效期 (秒)
     VERIFY_CODE_RATE_LIMIT: int = 60  # 重发冷却时间 (秒)
