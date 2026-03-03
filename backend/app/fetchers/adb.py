@@ -34,6 +34,12 @@ ADB_RSS_FEEDS = {
     "prequalification": "https://www.adb.org/rss/tenders/all/all/1611/all/all/all",
 }
 
+# Fallback feed: always accessible but provides title+link only (no status metadata).
+# Items from this feed are accepted as-is (assumed active) since the feed
+# itself only lists active notices.
+_FALLBACK_FEED_URL = "https://www.adb.org/rss/procurement-notices"
+_FALLBACK_FEED_NAME = "procurement_notices"
+
 # Statuses considered "open" / worth tracking
 _ACTIVE_STATUSES = {"active", "open"}
 
@@ -47,21 +53,57 @@ class ADBFetcher(BaseFetcher):
     # Primary feed for active tenders
     _default_feed = ADB_RSS_FEEDS["invitation_for_bids"]
 
+    def __init__(self) -> None:
+        super().__init__()
+        # Extend headers with Cloudflare-friendly browser signals
+        self._headers.update({
+            "Referer": "https://www.adb.org/",
+            "Accept-Encoding": "gzip, deflate, br",
+            "sec-ch-ua": '"Chromium";v="120", "Google Chrome";v="120"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+        })
+
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch ADB tender listings from RSS feeds.
 
-        Since RSS feeds don't have pagination, this fetches all items
-        from the configured feed(s). The page parameter is ignored.
+        Tries the categorised tenders feeds first (full metadata + status filter).
+        Falls back to the aggregated procurement-notices feed if all tenders
+        feeds return 403 (Cloudflare WAF blocks CN server IPs for /rss/tenders/).
+        Items from the fallback feed have no category metadata and are accepted
+        as active (the feed only lists open notices by design).
         """
         tenders: list[TenderInfo] = []
+        any_success = False
 
         # Fetch from multiple feeds to get comprehensive data
         for feed_name, feed_url in ADB_RSS_FEEDS.items():
             try:
                 items = await self._fetch_rss_feed(feed_url, feed_name)
                 tenders.extend(items)
+                any_success = True
             except Exception:
                 logger.warning("[adb] Failed to fetch feed: %s", feed_name)
+
+        # All tenders feeds failed (e.g. Cloudflare 403 on CN server IPs)
+        # — fall back to the always-accessible procurement-notices aggregated feed.
+        if not any_success:
+            logger.warning(
+                "[adb] All tenders feeds failed, falling back to %s",
+                _FALLBACK_FEED_URL,
+            )
+            try:
+                items = await self._fetch_rss_feed(
+                    _FALLBACK_FEED_URL, _FALLBACK_FEED_NAME
+                )
+                tenders.extend(items)
+            except Exception:
+                logger.error("[adb] Fallback feed also failed: %s", _FALLBACK_FEED_URL)
 
         # Remove duplicates by external_id
         seen: set[str] = set()
