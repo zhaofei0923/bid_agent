@@ -136,12 +136,12 @@ export const UploadStep = memo(function UploadStep({
             <Card key={doc.id}>
               <CardHeader className="py-3 px-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">
-                      {getFileTypeIcon(doc.original_filename)}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-lg flex-shrink-0">
+                      {getFileTypeIcon(doc.original_filename || doc.filename)}
                     </span>
-                    <span className="text-sm font-medium">
-                      {doc.original_filename}
+                    <span className="text-sm font-medium truncate">
+                      {doc.original_filename || doc.filename}
                     </span>
                   </div>
                   <Badge variant="secondary">

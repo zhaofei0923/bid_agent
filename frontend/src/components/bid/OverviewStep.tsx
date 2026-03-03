@@ -60,10 +60,10 @@ export const OverviewStep = memo(function OverviewStep({
                 >
                   <div>
                     <p className="text-sm font-medium">
-                      {doc.original_filename}
+                      {doc.original_filename || doc.filename}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {doc.original_filename.split(".").pop()?.toUpperCase()} ·{" "}
+                      {(doc.original_filename || doc.filename).split(".").pop()?.toUpperCase()} ·{" "}
                       {doc.file_size != null ? Math.round(doc.file_size / 1024) + " KB" : "-"}
                     </p>
                   </div>
