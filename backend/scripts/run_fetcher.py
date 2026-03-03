@@ -68,18 +68,30 @@ async def run_fetch(source: str, max_pages: int, dry_run: bool) -> list[TenderIn
     return tenders
 
 
-async def clear_opportunities() -> int:
-    """Delete all existing opportunities from the database. Returns count deleted."""
+async def clear_opportunities(source: str | None = None) -> int:
+    """Delete existing opportunities from the database.
+
+    Args:
+        source: If given, only records from this source are deleted.
+                If None, ALL opportunities are deleted.
+
+    Returns:
+        Number of rows deleted.
+    """
     from sqlalchemy import delete
 
     from app.database import async_session
     from app.models.opportunity import Opportunity
 
     async with async_session() as db:
-        result = await db.execute(delete(Opportunity))
+        stmt = delete(Opportunity)
+        if source:
+            stmt = stmt.where(Opportunity.source == source)
+        result = await db.execute(stmt)
         await db.commit()
         count = result.rowcount
-    logger.info("Cleared %d existing opportunities from DB", count)
+    target = source or "all sources"
+    logger.info("Cleared %d opportunities from DB (%s)", count, target)
     return count
 
 
@@ -156,9 +168,11 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
 
 
 async def main(args: argparse.Namespace) -> None:
-    if args.clear and not args.dry_run:
-        await clear_opportunities()
     sources = [args.source] if args.source else VALID_SOURCES
+    if args.clear and not args.dry_run:
+        # Clear only the source(s) being fetched — avoid wiping unrelated data.
+        for source in sources:
+            await clear_opportunities(source=source)
     for source in sources:
         await run_fetch(source, args.max_pages, args.dry_run)
 
@@ -174,8 +188,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-pages", "-p",
         type=int,
-        default=5,
-        help="Maximum pages to fetch (default: 5)",
+        default=50,
+        help="Maximum pages to fetch per source (default: 50). "
+             "WB self-terminates when all items on a page are expired, "
+             "so this is a safety cap — not a hard item limit.",
     )
     parser.add_argument(
         "--dry-run", "-n",
@@ -185,7 +201,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--clear", "-c",
         action="store_true",
-        help="Clear all existing opportunities from DB before fetching",
+        help="Clear existing DB records for the fetched source(s) before importing. "
+             "Only records from the selected source are removed (safe for multi-source DBs).",
     )
 
     args = parser.parse_args()

@@ -95,7 +95,14 @@ class ADBFetcher(BaseFetcher):
         feeds return 403 (Cloudflare WAF blocks CN server IPs for /rss/tenders/).
         Items from the fallback feed have no category metadata and are accepted
         as active (the feed only lists open notices by design).
+
+        ADB RSS feeds return ALL active tenders in a single request (no
+        pagination). Only page 1 is meaningful; subsequent pages return [].
         """
+        # RSS feeds have no pagination — all active items arrive in page 1.
+        if page > 1:
+            return []
+
         tenders: list[TenderInfo] = []
         any_success = False
 

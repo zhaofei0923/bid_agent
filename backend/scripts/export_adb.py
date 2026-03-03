@@ -18,7 +18,7 @@ import dataclasses
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -71,7 +71,7 @@ async def main(args: argparse.Namespace) -> None:
 
     data = {
         "source": "adb",
-        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "exported_at": datetime.now(UTC).isoformat(),
         "count": len(tenders),
         "tenders": [_tender_to_dict(t) for t in tenders],
     }
