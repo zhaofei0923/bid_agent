@@ -41,9 +41,7 @@ export default function OpportunitiesPage() {
   return (
     <MainLayout>
       <AppPageShell
-        eyebrow={t("institution")}
         title={t("title")}
-        description={t("noResultsHint")}
       >
         {/* Search Bar */}
         <div className="app-section-frame px-6 py-6 sm:px-8">
@@ -69,12 +67,8 @@ export default function OpportunitiesPage() {
         {/* Results */}
         <section className="app-section-frame px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-              <div>
-                <p className="app-page-kicker">{t("title")}</p>
-                <h2 className="app-section-title mt-3">{t("title")}</h2>
-              </div>
-              {!isLoading && data && (
+            {!isLoading && data && (
+              <div className="flex justify-end px-2">
                 <span className="text-sm text-stone-500">
                   {tc("totalResults", {
                     total: data.total,
@@ -82,8 +76,8 @@ export default function OpportunitiesPage() {
                     pages: data.total_pages,
                   })}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="space-y-4">
