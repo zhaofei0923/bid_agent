@@ -1,9 +1,8 @@
 """User service — registration, authentication, profile management."""
 
 import logging
-from uuid import UUID
-
 import secrets
+from uuid import UUID
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
