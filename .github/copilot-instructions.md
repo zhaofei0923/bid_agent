@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-BidAgent V2 是多边机构投标 AI Agent Web 平台，支持 ADB/WB/UN 投标。核心流程：**招标爬取 → TOR/RFP 分析 → AI 指导标书编制**
+BidAgent V2 是多边机构投标 AI Agent Web 平台，支持 ADB/WB/AfDB 投标。核心流程：**招标获取 (API/RSS) → TOR/RFP 分析 → AI 指导标书编制**
 
 **状态**: V2 重构中 — 开发文档完成，代码从零搭建。
 
@@ -38,7 +38,7 @@ backend/app/
 │   ├── workflows/    # LangGraph 工作流
 │   ├── mcp/          # MCP Tools
 │   └── prompts/      # Prompt 模板
-├── crawlers/         # 爬虫 (继承 BaseCrawler)
+├── fetchers/         # API/RSS 招标获取器 (继承 BaseFetcher)
 ├── tasks/            # Celery 异步任务
 └── core/             # 安全、异常、配置
 
@@ -93,4 +93,4 @@ raise InsufficientCreditsError(required=100, available=50)
 
 ## Git 提交格式
 
-`<type>(<scope>): <description>` — 例如 `feat(crawler): 添加WB爬虫`
+`<type>(<scope>): <description>` — 例如 `feat(fetcher): 添加AfDB RSS获取器`

@@ -10,7 +10,7 @@ class OpportunityQuery(BaseModel):
     """Query parameters for opportunity listing."""
 
     search: str | None = None
-    source: str | None = Field(None, pattern="^(adb|wb|un)$")
+    source: str | None = Field(None, pattern="^(adb|wb|afdb)$")
     status: str | None = Field(None, pattern="^(open|closed|cancelled)$")
     published_from: datetime | None = None
     published_to: datetime | None = None
@@ -64,7 +64,7 @@ class PublicOpportunityQuery(BaseModel):
     """Query parameters for public opportunity search (no auth required)."""
 
     search: str | None = None
-    source: str | None = Field(None, pattern="^(adb|wb|un)$")
+    source: str | None = Field(None, pattern="^(adb|wb|afdb)$")
     country: str | None = None
     sector: str | None = None
     sort_by: str = "published_at"

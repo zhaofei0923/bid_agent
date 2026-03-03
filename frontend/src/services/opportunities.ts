@@ -39,4 +39,16 @@ export const opportunityService = {
     )
     return res.data
   },
+
+  /** Latest opportunities — no JWT, for landing page / dashboard */
+  async publicLatest(
+    limit: number = 10,
+    source?: string
+  ): Promise<Opportunity[]> {
+    const res = await publicClient.get<Opportunity[]>(
+      "/public/opportunities/latest",
+      { params: { limit, ...(source ? { source } : {}) } }
+    )
+    return res.data
+  },
 }

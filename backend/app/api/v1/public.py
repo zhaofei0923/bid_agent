@@ -58,3 +58,19 @@ async def public_search_opportunities(
 
     service = OpportunityService(db)
     return await service.list(query)
+
+
+@router.get("/opportunities/latest")
+async def public_latest_opportunities(
+    limit: int = Query(10, ge=1, le=30),
+    source: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the latest open opportunities for landing page / dashboard.
+
+    - Sorted by published_at desc.
+    - No pagination; returns up to `limit` items.
+    - Optionally filter by source (adb/wb/afdb).
+    """
+    service = OpportunityService(db)
+    return await service.latest(limit=limit, source=source)

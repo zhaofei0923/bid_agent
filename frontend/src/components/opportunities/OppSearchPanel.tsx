@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectOption } from "@/components/ui/select"
 import type { OpportunitySearchParams } from "@/types"
 
-const SOURCES = ["all", "adb", "wb", "ungm"] as const
+const SOURCES = ["all", "adb", "wb"] as const
 const STATUSES = ["all", "open", "closed"] as const
 
 interface OppSearchPanelProps {

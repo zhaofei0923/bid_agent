@@ -18,7 +18,7 @@ async def knowledge_search(
     Args:
         db: Database session.
         query_embedding: Query vector (1024-dim).
-        institution: Filter by institution (adb/wb/un).
+        institution: Filter by institution (adb/wb/afdb).
         kb_type: Filter by KB type (guide/review/template).
         top_k: Number of results.
         score_threshold: Minimum cosine similarity.

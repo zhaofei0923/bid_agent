@@ -147,7 +147,7 @@ def get_tool_registry() -> ToolRegistry:
                 },
                 "institution": {
                     "type": "string",
-                    "enum": ["adb", "wb", "un"],
+                    "enum": ["adb", "wb", "afdb"],
                     "description": "Filter to institution-specific knowledge.",
                 },
                 "kb_type": {
@@ -166,7 +166,7 @@ def get_tool_registry() -> ToolRegistry:
         "opportunity_query",
         opportunity_query,
         description=(
-            "Search and filter bidding opportunities from ADB, WB, and UN. "
+            "Search and filter bidding opportunities from ADB, WB, and AfDB. "
             "Supports keyword search, source/sector/country/status filters."
         ),
         parameters={
@@ -175,7 +175,7 @@ def get_tool_registry() -> ToolRegistry:
                 "keyword": {"type": "string", "description": "Search keyword."},
                 "source": {
                     "type": "string",
-                    "enum": ["adb", "wb", "un"],
+                    "enum": ["adb", "wb", "afdb"],
                 },
                 "sector": {"type": "string"},
                 "country": {"type": "string"},

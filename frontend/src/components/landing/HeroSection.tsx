@@ -21,7 +21,7 @@ export function HeroSection({ locale }: { locale: string }) {
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          {t("heroSubtitle", { institutions: "ADB · WB · UN" })}
+          {t("heroSubtitle", { institutions: "ADB · WB" })}
         </p>
 
         <div className="mt-8 flex items-center justify-center gap-4">

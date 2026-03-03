@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server"
 import { CapabilitiesSection } from "@/components/landing-v2/CapabilitiesSection"
 import { CoverageTrustSection } from "@/components/landing-v2/CoverageTrustSection"
 import { HeroExecutiveSection } from "@/components/landing-v2/HeroExecutiveSection"
+import { LatestOpportunitiesSection } from "@/components/landing-v2/LatestOpportunitiesSection"
 import { LandingV2Footer } from "@/components/landing-v2/LandingV2Footer"
 import { LandingV2Nav } from "@/components/landing-v2/LandingV2Nav"
 import { ManagerOutcomesSection } from "@/components/landing-v2/ManagerOutcomesSection"
@@ -65,6 +66,7 @@ export default async function LandingPage({
         <main>
           <HeroExecutiveSection locale={locale} />
           <CoverageTrustSection />
+          <LatestOpportunitiesSection locale={locale} />
           <ManagerOutcomesSection />
           <WorkflowCommandSection />
           <CapabilitiesSection />

@@ -20,7 +20,7 @@ const sourceSans = Source_Sans_3({
 export const metadata: Metadata = {
   title: "BidAgent - AI-Powered Bidding Platform",
   description:
-    "AI-guided proposal writing platform for ADB, World Bank & UN bids",
+    "AI-guided proposal writing platform for ADB, World Bank & multilateral bank bids",
 }
 
 export default function RootLayout({

@@ -8,6 +8,7 @@ import { AppPageShell } from "@/components/layout/AppPageShell"
 import { AppEmptyState } from "@/components/layout/AppEmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LatestOpportunities } from "@/components/opportunities/LatestOpportunities"
 import { Briefcase, Globe, Coins, Search, PlusCircle, FolderOpen } from "lucide-react"
 
 export default function DashboardPage() {
@@ -126,6 +127,20 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </Link>
+          </div>
+        </section>
+
+        {/* Latest Opportunities */}
+        <section>
+          <p className="app-page-kicker">{t("latestOpportunities")}</p>
+          <h2 className="app-section-title mt-3">{t("latestOpportunities")}</h2>
+          <div className="mt-6">
+            <LatestOpportunities
+              locale={locale}
+              limit={6}
+              linkMode="external"
+              showViewAll
+            />
           </div>
         </section>
 

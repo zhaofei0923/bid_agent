@@ -4,9 +4,9 @@
 
 ## 项目概述
 
-BidAgent 是 AI 驱动的多边发展银行投标辅助平台，帮助咨询公司自动化处理 ADB/WB/UN 招标全流程。
+BidAgent 是 AI 驱动的多边发展银行投标辅助平台，帮助咨询公司自动化处理 ADB/WB/AfDB 招标全流程。
 
-**核心工作流**: 招标爬取 → TOR/RFP 分析 → AI 指导标书编制 → 质量审查
+**核心工作流**: 招标获取 (API/RSS) → TOR/RFP 分析 → AI 指导标书编制 → 质量审查
 
 **技术栈**: Next.js 15 + FastAPI + PostgreSQL 16 (pgvector) + Redis + LangGraph + DeepSeek
 

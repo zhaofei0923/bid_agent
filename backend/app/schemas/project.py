@@ -10,7 +10,7 @@ class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
     opportunity_id: UUID | None = None
-    institution: str = Field("adb", pattern="^(adb|wb|un)$")
+    institution: str = Field("adb", pattern="^(adb|wb|afdb)$")
 
 
 class ProjectUpdate(BaseModel):

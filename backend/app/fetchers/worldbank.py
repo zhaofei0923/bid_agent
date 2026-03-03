@@ -1,14 +1,14 @@
-"""WB (World Bank) opportunity crawler.
+"""World Bank procurement API fetcher.
 
-Scrapes consulting/procurement opportunities from worldbank.org.
 Uses the official World Bank Procurement API v2.
+API documentation: https://search.worldbank.org/api/v2/procnotices
 """
 
 import logging
 import re
 from datetime import UTC, datetime
 
-from app.crawlers.base import BaseCrawler, TenderInfo
+from app.fetchers.base import BaseFetcher, TenderInfo
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ def _strip_html(html: str | None) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-class WBCrawler(BaseCrawler):
-    """Crawler for World Bank procurement/consulting opportunities."""
+class WorldBankFetcher(BaseFetcher):
+    """Fetcher for World Bank procurement/consulting opportunities."""
 
     source_name = "wb"
     base_url = "https://www.worldbank.org"
@@ -52,8 +52,8 @@ class WBCrawler(BaseCrawler):
         """Fetch World Bank procurement notices.
 
         Only returns tenders whose submission deadline is in the future.
-        When an entire page contains only expired items the crawler
-        returns an empty list, which signals `crawl_all()` to stop.
+        When an entire page contains only expired items the fetcher
+        returns an empty list, which signals `fetch_all()` to stop.
         """
         params = {
             "format": "json",

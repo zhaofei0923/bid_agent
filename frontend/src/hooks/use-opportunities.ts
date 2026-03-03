@@ -26,3 +26,12 @@ export function usePublicOpportunities(
     queryFn: () => opportunityService.publicSearch(params),
   })
 }
+
+/** Latest opportunities hook — for landing page & dashboard */
+export function useLatestOpportunities(limit: number = 10, source?: string) {
+  return useQuery({
+    queryKey: ["latest-opportunities", limit, source],
+    queryFn: () => opportunityService.publicLatest(limit, source),
+    staleTime: 5 * 60 * 1000, // 5 min
+  })
+}

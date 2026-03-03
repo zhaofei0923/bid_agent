@@ -77,14 +77,10 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_URL: str = "redis://localhost:6379/2"
 
-    # ── Crawler ──────────────────────────────────────────────────
-    CRAWLER_REQUEST_DELAY: float = 2.0
-    CRAWLER_IMPERSONATE: str = "safari17_0"
-    PLAYWRIGHT_HEADLESS: bool = True
-    PLAYWRIGHT_TIMEOUT: int = 90000  # ms
-    # Proxy for Playwright-based crawlers (Cloudflare bypass on DC IPs)
-    # Format: http://user:pass@host:port  or  socks5://host:port
-    CRAWLER_PROXY: str = ""
+    # ── Fetcher ───────────────────────────────────────────────────
+    FETCHER_REQUEST_DELAY: float = 2.0
+    # Proxy for fetchers (optional, format: http://host:port)
+    FETCHER_PROXY: str = ""
 
     # ── Upload ───────────────────────────────────────────────────
     UPLOAD_DIR: str = "data/uploads"

@@ -66,7 +66,8 @@
     "createProject": "Create Project",
     "browseOpportunities": "Browse Opportunities",
     "browseOpportunitiesDesc": "Discover the latest bidding opportunities",
-    "startBidProject": "Start New Bid Project"
+    "startBidProject": "Start New Bid Project",
+    "latestOpportunities": "Latest Opportunities"
   },
   "opportunities": {
     "title": "Opportunities",
@@ -89,7 +90,8 @@
     "organization": "Organization",
     "description": "Description",
     "viewOriginal": "View Original Link",
-    "notFound": "Opportunity not found"
+    "notFound": "Opportunity not found",
+    "viewAll": "View All Opportunities"
   },
   "projects": {
     "title": "My Projects",
@@ -228,7 +230,7 @@
     "faqItems": [
       {
         "q": "What is BidAgent?",
-        "a": "BidAgent is an AI-powered platform for bidding on multilateral development bank projects (ADB, World Bank, UN, etc.). It helps you analyze tender documents, develop bidding strategies, guide proposal writing, and conduct quality reviews."
+        "a": "BidAgent is an AI-powered platform for bidding on multilateral development bank projects (ADB, World Bank, etc.). It helps you analyze tender documents, develop bidding strategies, guide proposal writing, and conduct quality reviews."
       },
       {
         "q": "Can BidAgent generate proposals directly?",
@@ -236,7 +238,7 @@
       },
       {
         "q": "Which institutions are supported?",
-        "a": "Currently supports Asian Development Bank (ADB), World Bank (WB), and United Nations (UN) consulting service project bids. We are continuously adding support for more institutions."
+        "a": "Currently supports Asian Development Bank (ADB) and World Bank (WB) consulting service project bids. We are continuously adding support for more institutions."
       },
       {
         "q": "How are credits calculated?",
@@ -319,7 +321,7 @@
     "featureItems": [
       {
         "title": "Smart Opportunity Discovery",
-        "desc": "Automatically crawls ADB/WB/UN tenders, smart matching recommendations — never miss an opportunity"
+        "desc": "Automatically fetches ADB/WB tenders, smart matching recommendations — never miss an opportunity"
       },
       {
         "title": "AI Deep Analysis",
@@ -338,10 +340,10 @@
     "workflowSteps": [
       {
         "label": "Discover",
-        "desc": "Auto-crawl ADB/WB/UN tender notices with full-text search and multi-criteria filtering",
+        "desc": "Auto-fetch ADB/WB tender notices with full-text search and multi-criteria filtering",
         "tags": [
-          "Auto Crawling",
-          "3-Source Aggregation"
+          "Auto Fetching",
+          "2-Source Aggregation"
         ]
       },
       {
@@ -401,7 +403,7 @@
       },
       {
         "title": "Complex Format Rules",
-        "desc": "ADB/WB/UN each have different format specifications — one mistake can lead to disqualification"
+        "desc": "ADB/WB each have different format specifications — one mistake can lead to disqualification"
       },
       {
         "title": "High Rejection Risk",
@@ -442,7 +444,7 @@
       },
       {
         "traditional": "Search multiple platforms",
-        "bidagent": "ADB/WB/UN aggregated"
+        "bidagent": "ADB/WB aggregated"
       },
       {
         "traditional": "Easy to miss scoring points",
@@ -539,10 +541,6 @@
       {
         "name": "World Bank",
         "abbr": "WB"
-      },
-      {
-        "name": "United Nations",
-        "abbr": "UN"
       }
     ],
     "stats": [
@@ -559,10 +557,10 @@
         "desc": "Upload to 8D analysis complete"
       },
       {
-        "value": 3,
+        "value": 2,
         "suffix": "sources",
         "label": "Aggregated Sources",
-        "desc": "ADB/WB/UN one-stop search"
+        "desc": "ADB/WB one-stop search"
       },
       {
         "value": 4,
@@ -578,7 +576,7 @@
     "landingFaqs": [
       {
         "q": "Which multilateral institutions does BidAgent support?",
-        "a": "Currently supports ADB (Asian Development Bank), World Bank, and UN (UNGM with 14 sub-agencies), with more institutions being added continuously."
+        "a": "Currently supports ADB (Asian Development Bank) and World Bank (WB), with more institutions being added continuously."
       },
       {
         "q": "Does AI write proposals directly?",
@@ -631,11 +629,11 @@
     "hero": {
       "eyebrow": "Designed for international bidding teams",
       "title": "Make international bidding feel clearer, calmer, and easier to try",
-      "subtitle": "BidAgent helps teams move from opportunity review to final submission with clearer requirements, steadier execution, and a more confident final check across ADB, World Bank, and UN projects.",
+      "subtitle": "BidAgent helps teams move from opportunity review to final submission with clearer requirements, steadier execution, and a more confident final check across ADB and World Bank projects.",
       "primaryCta": "Free Trial",
       "secondaryCta": "Browse Bids",
       "trustNotes": [
-        "Built for ADB, World Bank, and UN bidding scenarios",
+        "Built for ADB and World Bank bidding scenarios",
         "From opportunity fit to final review, key decisions stay visible",
         "Start quickly without changing the way your team already works"
       ]
@@ -652,13 +650,12 @@
         {
           "name": "World Bank",
           "detail": "Helps teams understand evaluation structure and response priorities more clearly."
-        },
-        {
-          "name": "United Nations",
-          "detail": "Brings public opportunities into one view so fewer relevant projects are missed."
         }
       ]
     },
+    "opportunitiesKicker": "Latest Opportunities",
+    "opportunitiesTitle": "Fresh Bidding Opportunities from ADB & WB",
+    "opportunitiesSubtitle": "Real-time opportunities fetched daily via official APIs and RSS feeds. Click any item to view the original tender notice.",
     "outcomes": {
       "label": "Product Value",
       "title": "Three reasons to try it first",
@@ -847,7 +844,7 @@
   },
   "publicSearch": {
     "title": "Global MDB Bid Search",
-    "subtitle": "Search ADB, World Bank & UN opportunities for free",
+    "subtitle": "Search ADB & World Bank opportunities for free",
     "noResults": "No matching opportunities found. Try adjusting your search criteria.",
     "registerCta": "Sign up free to view all opportunities",
     "registerCtaDesc": "Currently showing the first 100 results. Register to access all opportunities, save searches, and use the AI bid assistant.",

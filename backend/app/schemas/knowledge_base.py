@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class KnowledgeBaseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    institution: str = Field(pattern="^(adb|wb|un)$")
+    institution: str = Field(pattern="^(adb|wb|afdb)$")
     kb_type: str = Field(pattern="^(guide|review|template)$")
     description: str | None = None
 
@@ -44,7 +44,7 @@ class KnowledgeDocumentResponse(BaseModel):
 
 class KnowledgeSearchRequest(BaseModel):
     query: str = Field(min_length=1)
-    institution: str | None = Field(None, pattern="^(adb|wb|un)$")
+    institution: str | None = Field(None, pattern="^(adb|wb|afdb)$")
     kb_type: str | None = Field(None, pattern="^(guide|review|template)$")
     top_k: int = Field(5, ge=1, le=20)
     score_threshold: float = Field(0.5, ge=0, le=1)

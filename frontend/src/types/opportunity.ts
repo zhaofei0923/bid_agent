@@ -1,6 +1,6 @@
 export interface Opportunity {
   id: string
-  source: "adb" | "wb" | "un"
+  source: "adb" | "wb"
   external_id: string
   url: string | null
   title: string

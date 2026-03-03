@@ -4,8 +4,8 @@ Guidelines for AI coding agents working in this repository.
 
 ## Project Overview
 
-BidAgent V2: AI-powered bidding platform for multilateral development banks (ADB, WB, UN).
-Core workflow: **Opportunity Crawling → TOR/RFP Analysis → AI-Guided Proposal Writing**
+BidAgent V2: AI-powered bidding platform for multilateral development banks (ADB, WB, AfDB).
+Core workflow: **Opportunity Fetching (API/RSS) → TOR/RFP Analysis → AI-Guided Proposal Writing**
 
 **Status**: V2 rebuild — development docs complete, code TBD.
 
@@ -82,7 +82,7 @@ Format: `<type>(<scope>): <description>`
 Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
 
 ```bash
-feat(crawler): add WB opportunity scraper
+feat(fetcher): add AfDB RSS fetcher
 fix(credits): prevent negative balance on concurrent deduction
 ```
 
@@ -122,12 +122,12 @@ MCP Tools (data retrieval) → Skills (analysis units) → LangGraph Workflows (
 - Track credits via `X-Credits-Consumed` / `X-Credits-Remaining` headers
 - Embedding: `ResilientEmbeddingClient` (Tencent Hunyuan primary, Zhipu fallback)
 
-### Crawler Pattern
+### Fetcher Pattern
 
 ```python
-class ADBCrawler(BaseCrawler):
-    source_name = "adb"
-    base_url = "https://www.adb.org"
+class AfDBFetcher(BaseFetcher):
+    source_name = "afdb"
+    base_url = "https://www.afdb.org"
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]: ...
     async def fetch_detail(self, tender_id: str) -> TenderInfo: ...
 ```

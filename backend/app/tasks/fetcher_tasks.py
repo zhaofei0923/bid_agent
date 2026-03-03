@@ -1,4 +1,4 @@
-"""Crawler tasks — periodic opportunity fetching via Celery."""
+"""Fetcher tasks — periodic opportunity fetching via API/RSS using Celery."""
 
 import asyncio
 import logging
@@ -6,28 +6,18 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from app.crawlers.adb import ADBCrawler
-from app.crawlers.base import BaseCrawler, TenderInfo
-from app.crawlers.ungm import UNGMCrawler
-from app.crawlers.wb import WBCrawler
+from app.fetchers import get_fetcher
+from app.fetchers.base import TenderInfo
 from app.database import async_session
 from app.models.opportunity import Opportunity
 from app.tasks import celery_app
 
 logger = logging.getLogger(__name__)
 
-CRAWLER_MAP: dict[str, type[BaseCrawler]] = {
-    "adb": ADBCrawler,
-    "wb": WBCrawler,
-    "un": UNGMCrawler,
-}
 
-
-async def _run_crawler(source: str, max_pages: int = 5) -> dict:
-    """Async implementation: crawl and upsert opportunities."""
-    crawler_cls = CRAWLER_MAP.get(source)
-    if not crawler_cls:
-        raise ValueError(f"Unknown crawler source: {source}")
+async def _run_fetcher(source: str, max_pages: int = 5) -> dict:
+    """Async implementation: fetch and upsert opportunities."""
+    fetcher = get_fetcher(source)
 
     def _trunc(value: str | None, max_len: int = 100) -> str | None:
         """Truncate a string to fit database column limits."""
@@ -36,14 +26,28 @@ async def _run_crawler(source: str, max_pages: int = 5) -> dict:
         return value
 
     tenders: list[TenderInfo] = []
-    async with crawler_cls() as crawler:
-        tenders = await crawler.crawl_all(max_pages=max_pages, fetch_details=False)
+    async with fetcher:
+        tenders = await fetcher.fetch_all(max_pages=max_pages, fetch_details=False)
 
     created = 0
     updated = 0
+    skipped = 0
+    now = datetime.now(UTC)
+
+    # Statuses that represent a closed / no-longer-open opportunity
+    _SKIP_STATUSES = {"closed", "awarded", "cancelled", "expired"}
 
     async with async_session() as db:
         for tender in tenders:
+            # Skip tenders that are explicitly closed/awarded
+            if tender.status.lower() in _SKIP_STATUSES:
+                skipped += 1
+                continue
+            # Skip tenders whose deadline has already passed
+            if tender.deadline and tender.deadline < now:
+                skipped += 1
+                continue
+
             result = await db.execute(
                 select(Opportunity).where(
                     Opportunity.source == tender.source,
@@ -97,32 +101,63 @@ async def _run_crawler(source: str, max_pages: int = 5) -> dict:
         "total_fetched": len(tenders),
         "created": created,
         "updated": updated,
+        "skipped": skipped,
     }
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
-def crawl_opportunities(self, source: str, max_pages: int = 5) -> dict:
-    """Crawl opportunities from a given source (adb/wb/un).
+def fetch_opportunities(self, source: str, max_pages: int = 5) -> dict:
+    """Fetch opportunities from a given source using API/RSS (adb/wb/afdb).
 
-    Runs the async crawler inside an event loop then upserts results.
+    Runs the async fetcher inside an event loop then upserts results.
     """
-    logger.info("Crawling opportunities from %s (max_pages=%d)", source, max_pages)
+    logger.info("Fetching opportunities from %s (max_pages=%d)", source, max_pages)
     try:
         result = asyncio.run(
-            _run_crawler(source, max_pages)
+            _run_fetcher(source, max_pages)
         )
-        logger.info("[%s] crawl complete: %s", source, result)
+        logger.info("[%s] fetch complete: %s", source, result)
         return result
     except Exception as exc:
-        logger.exception("[%s] Crawl failed", source)
+        logger.exception("[%s] Fetch failed", source)
         raise self.retry(exc=exc) from exc
 
 
 @celery_app.task
-def crawl_all_sources(max_pages: int = 5) -> list[dict]:
-    """Trigger crawl for all configured sources."""
+def fetch_all_sources(max_pages: int = 5) -> list[dict]:
+    """Trigger fetch for all configured sources."""
+    from app.fetchers import FETCHERS
+
     results = []
-    for source in CRAWLER_MAP:
-        result = crawl_opportunities.delay(source, max_pages)
+    for source in FETCHERS:
+        result = fetch_opportunities.delay(source, max_pages)
         results.append({"source": source, "task_id": result.id})
     return results
+
+
+async def _cleanup_expired() -> dict:
+    """Delete opportunities whose deadline has passed by more than 90 days."""
+    from datetime import timedelta
+    cutoff = datetime.now(UTC) - timedelta(days=90)
+    async with async_session() as db:
+        result = await db.execute(
+            select(Opportunity).where(
+                Opportunity.deadline is not None,
+                Opportunity.deadline < cutoff,
+            )
+        )
+        expired = result.scalars().all()
+        count = len(expired)
+        for opp in expired:
+            await db.delete(opp)
+        await db.commit()
+    return {"deleted": count}
+
+
+@celery_app.task
+def cleanup_expired_opportunities() -> dict:
+    """Remove opportunities expired > 90 days. Runs daily at 01:00."""
+    logger.info("Cleaning up expired opportunities")
+    result = asyncio.run(_cleanup_expired())
+    logger.info("Cleanup complete: %s", result)
+    return result

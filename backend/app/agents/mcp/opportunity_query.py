@@ -29,7 +29,7 @@ async def opportunity_query(
     Args:
         db: Async database session.
         keyword: Full-text search keyword.
-        source: Filter by source (adb / wb / un).
+        source: Filter by source (adb / wb / afdb).
         sector: Filter by sector.
         country: Filter by country.
         status: Filter by status (open / closed / cancelled).

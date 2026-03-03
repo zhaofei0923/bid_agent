@@ -22,21 +22,27 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    # ── Beat schedule: daily crawlers at midnight Beijing time ──
+    # ── Beat schedule: daily fetchers at midnight Beijing time ──
     beat_schedule={
-        "crawl-adb-daily": {
-            "task": "app.tasks.crawler_tasks.crawl_opportunities",
+        "fetch-wb-daily": {
+            "task": "app.tasks.fetcher_tasks.fetch_opportunities",
             "schedule": crontab(hour=0, minute=0),  # 每天北京时间 00:00
+            "args": ("wb", 10),
+        },
+        "fetch-adb-daily": {
+            "task": "app.tasks.fetcher_tasks.fetch_opportunities",
+            "schedule": crontab(hour=0, minute=10),  # 00:10, 错开避免并发
             "args": ("adb", 10),
         },
-        "crawl-wb-daily": {
-            "task": "app.tasks.crawler_tasks.crawl_opportunities",
-            "schedule": crontab(hour=0, minute=5),  # 00:05, 错开避免并发
-            "args": ("wb", 10),
+        # AfDB is currently disabled: their site blocks server-side requests (HTTP 403 WAF).
+        "cleanup-expired-daily": {
+            "task": "app.tasks.fetcher_tasks.cleanup_expired_opportunities",
+            "schedule": crontab(hour=1, minute=0),  # 01:00, 清理过期机会
         },
     },
 )
 
-# Explicitly register task modules (autodiscover looks for "tasks.py" by
-# default, but our file is "crawler_tasks.py").
-celery_app.conf.include = ["app.tasks.crawler_tasks"]
+# Explicitly register task modules
+celery_app.conf.include = [
+    "app.tasks.fetcher_tasks",
+]

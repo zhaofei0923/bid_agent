@@ -75,3 +75,20 @@ class OpportunityService:
         if not opp:
             raise NotFoundError("Opportunity", str(opportunity_id))
         return opp
+
+    async def latest(
+        self,
+        limit: int = 10,
+        source: str | None = None,
+    ) -> list[Opportunity]:
+        """Return the most recently published open opportunities."""
+        stmt = (
+            select(Opportunity)
+            .where(Opportunity.status == "open")
+            .order_by(Opportunity.published_at.desc())
+            .limit(limit)
+        )
+        if source:
+            stmt = stmt.where(Opportunity.source == source)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

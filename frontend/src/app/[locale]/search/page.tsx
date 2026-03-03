@@ -17,7 +17,6 @@ export async function generateMetadata({
     keywords: [
       "ADB bidding",
       "World Bank bidding",
-      "UN procurement",
       "tender search",
       "multilateral development bank",
     ],

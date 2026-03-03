@@ -3,7 +3,7 @@
 from app.agents.skills.base import Skill, SkillContext, SkillResult
 
 SYSTEM_PROMPT = (
-    "你是专业的多边发展银行投标分析师，精通 ADB、世界银行和联合国采购规程。"
+    "你是专业的多边发展银行投标分析师，精通 ADB、世界银行和 AfDB 采购规程。"
     "请从招标文件中提取资质要求，并以 JSON 格式返回结构化结果。"
 )
 
