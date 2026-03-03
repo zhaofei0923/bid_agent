@@ -166,7 +166,9 @@ jobs:
             echo "    OK"
 
             echo "=== Step 5/6: Docker up ==="
-            docker compose -f docker-compose.prod.yml up -d 2>&1
+            # 先停掉并移除孤立容器，避免容器名称冲突
+            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans 2>&1
             if [ $? -ne 0 ]; then echo "FAILED at: docker compose up"; exit 1; fi
             echo "    Container status:"
             docker compose -f docker-compose.prod.yml ps -a
