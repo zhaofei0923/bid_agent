@@ -39,6 +39,18 @@ def _strip_html(html: str | None) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+# Notice types that represent open procurement opportunities.
+# 'Contract Award' is excluded — those are already-signed contracts, not open bids.
+_OPEN_NOTICE_TYPES = {
+    "Invitation for Bids",
+    "Request for Proposals",
+    "Request for Expression of Interest",
+    "Request for Quotation",
+    "General Procurement Notice",
+    "Specific Procurement Notice",
+}
+
+
 class WorldBankFetcher(BaseFetcher):
     """Fetcher for World Bank procurement/consulting opportunities."""
 
@@ -51,15 +63,23 @@ class WorldBankFetcher(BaseFetcher):
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch World Bank procurement notices.
 
-        Only returns tenders whose submission deadline is in the future.
-        When an entire page contains only expired items the fetcher
-        returns an empty list, which signals `fetch_all()` to stop.
+        Sorted by submission_date (deadline) descending so tenders with the
+        furthest future deadlines appear first. This ensures that with a
+        reasonable page limit we capture all currently-valid opportunities
+        before hitting expired ones.
+
+        Contract Award notices are excluded — those are completed contracts,
+        not open procurement opportunities.
+
+        When an entire page (after filtering Contract Awards) contains only
+        expired items the fetcher returns an empty list, signalling fetch_all()
+        to stop pagination.
         """
         params = {
             "format": "json",
             "rows": 20,
             "os": (page - 1) * 20,  # offset
-            "srt": "noticedate",
+            "srt": "submission_date",  # sort by deadline, not publish date
             "order": "desc",
         }
 
@@ -79,9 +99,17 @@ class WorldBankFetcher(BaseFetcher):
         now = datetime.now(UTC)
         tenders: list[TenderInfo] = []
         expired_count = 0
+        award_count = 0
 
         for item in items:
             try:
+                notice_type = item.get("notice_type", "")
+
+                # Skip Contract Award and other non-open types
+                if _OPEN_NOTICE_TYPES and notice_type not in _OPEN_NOTICE_TYPES:
+                    award_count += 1
+                    continue
+
                 tender = _parse_item(item)
                 if not tender:
                     continue
@@ -94,17 +122,20 @@ class WorldBankFetcher(BaseFetcher):
                 logger.warning("[wb] Failed to parse item: %s", item.get("id"))
                 continue
 
+        if award_count:
+            logger.debug("[wb] Page %d: skipped %d contract-award/non-open items", page, award_count)
         if expired_count:
             logger.info(
                 "[wb] Page %d: skipped %d expired items",
                 page, expired_count,
             )
 
-        # If every item on the page was expired, signal end-of-data
-        if items and not tenders:
+        # If every non-award item on the page was expired, signal end-of-data
+        non_award_count = len(items) - award_count
+        if non_award_count > 0 and expired_count == non_award_count and not tenders:
             logger.info(
-                "[wb] Page %d: all %d items expired, stopping",
-                page, len(items),
+                "[wb] Page %d: all %d open-type items expired, stopping",
+                page, non_award_count,
             )
             return []
 
