@@ -1,0 +1,7 @@
+# Minimal dependencies for running export_adb.py locally.
+# Intentionally excludes heavy server-only packages (playwright, langchain,
+# celery, psycopg2, redis, faiss, etc.) that are not needed for local ADB fetch.
+httpx>=0.27
+pydantic>=2.0
+pydantic-settings>=2.0
+python-dotenv>=1.0

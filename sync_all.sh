@@ -41,6 +41,18 @@ REMOTE_TMP="/tmp/adb_export.json"
 _LOG_TMP="$(mktemp /tmp/sync_step.XXXXXX)"
 trap 'rm -f "$_LOG_TMP"' EXIT
 
+# ── Python virtualenv (auto-create on first run) ───────────────────
+VENV_DIR="${BACKEND_DIR}/.venv"
+if [[ ! -f "${VENV_DIR}/bin/activate" ]]; then
+  echo "▶ 首次运行：创建本地 Python 虚拟环境并安装依赖…"
+  python3 -m venv "${VENV_DIR}"
+  "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
+  "${VENV_DIR}/bin/pip" install --quiet -r "${BACKEND_DIR}/requirements-sync.txt"
+  echo "  ✓ 依赖安装完成"
+  echo ""
+fi
+PYTHON="${VENV_DIR}/bin/python3"
+
 # ── Arg parsing ───────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -89,7 +101,7 @@ if $RUN_ADB; then
   > "$_LOG_TMP"
   (
     cd "$BACKEND_DIR"
-    python3 -m scripts.export_adb \
+    $PYTHON -m scripts.export_adb \
       --output "$LOCAL_TMP" \
       --max-pages "$ADB_PAGES"
   ) 2>&1 | tee "$_LOG_TMP"
