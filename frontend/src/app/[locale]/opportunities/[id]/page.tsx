@@ -50,7 +50,7 @@ export default function OpportunityDetailPage({
           </>
         }
       >
-        <div className="app-surface px-6 py-8 sm:px-8">
+        <div className="app-section-frame px-6 py-8 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary">
               {opp.source}
@@ -72,26 +72,26 @@ export default function OpportunityDetailPage({
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {opp.organization && (
               <div className="app-surface-muted px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("organization")}</p>
-                <p className="mt-2 font-medium text-slate-900">{opp.organization}</p>
+                <p className="app-detail-label">{t("organization")}</p>
+                <p className="app-detail-value mt-2">{opp.organization}</p>
               </div>
             )}
             {opp.country && (
               <div className="app-surface-muted px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("country")}</p>
-                <p className="mt-2 font-medium text-slate-900">{opp.country}</p>
+                <p className="app-detail-label">{t("country")}</p>
+                <p className="app-detail-value mt-2">{opp.country}</p>
               </div>
             )}
             {opp.deadline && (
               <div className="app-surface-muted px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("deadline")}</p>
-                <p className="mt-2 font-medium text-slate-900">{formatDate(opp.deadline)}</p>
+                <p className="app-detail-label">{t("deadline")}</p>
+                <p className="app-detail-value mt-2">{formatDate(opp.deadline)}</p>
               </div>
             )}
             {opp.budget_max && (
               <div className="app-surface-muted px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("budget")}</p>
-                <p className="mt-2 font-medium text-slate-900">
+                <p className="app-detail-label">{t("budget")}</p>
+                <p className="app-detail-value mt-2">
                   {formatCurrency(opp.budget_max, opp.currency || "USD")}
                 </p>
               </div>

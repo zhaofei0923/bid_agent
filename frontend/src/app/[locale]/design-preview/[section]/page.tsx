@@ -32,11 +32,104 @@ function RouteHero({
   description: string
 }) {
   return (
-    <section className="app-panel px-6 py-8 sm:px-8 sm:py-10">
+    <section className="app-section-frame px-6 py-8 sm:px-8 sm:py-10">
       <p className="app-page-kicker">{eyebrow}</p>
       <h1 className="app-page-title mt-4">{title}</h1>
       <p className="app-page-subtitle mt-4 max-w-3xl">{description}</p>
     </section>
+  )
+}
+
+function StatPreviewCard({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="app-surface app-stat-card px-6 py-6">
+      <p className="text-sm font-medium text-stone-500">{label}</p>
+      <p className="app-metric-value mt-4">{value}</p>
+    </div>
+  )
+}
+
+function PreviewOpportunityCard({
+  source,
+  status,
+  title,
+  description,
+  meta,
+}: {
+  source: string
+  status: string
+  title: string
+  description: string
+  meta: string
+}) {
+  return (
+    <div className="app-surface px-5 py-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{source}</Badge>
+        <Badge variant="outline">{status}</Badge>
+      </div>
+      <p className="mt-4 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+        {title}
+      </p>
+      <p className="mt-2 text-sm leading-7 text-stone-600">{description}</p>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">
+        {meta}
+      </p>
+    </div>
+  )
+}
+
+function PreviewProjectCard({
+  title,
+  status,
+  progress,
+  step,
+  subtitle,
+}: {
+  title: string
+  status: string
+  progress: number
+  step: string
+  subtitle: string
+}) {
+  return (
+    <div className="app-surface px-5 py-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-lg font-semibold tracking-[-0.02em] text-slate-900">
+          {title}
+        </p>
+        <Badge variant="secondary">{status}</Badge>
+      </div>
+      <p className="mt-2 text-sm leading-7 text-stone-600">{subtitle}</p>
+      <div className="mt-5 flex items-center justify-between text-sm text-stone-500">
+        <span>{step}</span>
+        <span>{progress}%</span>
+      </div>
+      <div className="app-progress-track mt-3">
+        <div className="app-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function DetailTile({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="app-surface-muted px-4 py-4">
+      <p className="app-detail-label">{label}</p>
+      <p className="app-detail-value mt-2">{value}</p>
+    </div>
   )
 }
 
@@ -55,7 +148,10 @@ export default async function DesignPreviewSectionPage({
   const tAuth = await getTranslations({ locale, namespace: "auth" })
   const tDashboard = await getTranslations({ locale, namespace: "dashboard" })
   const tSearch = await getTranslations({ locale, namespace: "publicSearch" })
-  const tOpportunities = await getTranslations({ locale, namespace: "opportunities" })
+  const tOpportunities = await getTranslations({
+    locale,
+    namespace: "opportunities",
+  })
   const tProjects = await getTranslations({ locale, namespace: "projects" })
   const tWorkspace = await getTranslations({ locale, namespace: "workspace" })
   const tCredits = await getTranslations({ locale, namespace: "credits" })
@@ -73,20 +169,99 @@ export default async function DesignPreviewSectionPage({
   const guideItems = tHelp.raw("guideItems") as Array<{ title: string; desc: string }>
   const faqItems = tHelp.raw("faqItems") as Array<{ q: string; a: string }>
 
+  const dashboardStats = [
+    { label: tDashboard("activeProjects"), value: "12" },
+    { label: tDashboard("totalOpportunities"), value: "48" },
+    { label: tDashboard("creditsBalance"), value: "680" },
+  ]
+
+  const dashboardActions = [
+    {
+      title: tDashboard("browseOpportunities"),
+      description: tDashboard("browseOpportunitiesDesc"),
+    },
+    {
+      title: tDashboard("startBidProject"),
+      description: tDashboard("createProject"),
+    },
+  ]
+
+  const previewOpportunities = [
+    {
+      source: "ADB",
+      status: tOpportunities("statusOpen"),
+      title: "Nepal Urban Water Systems Advisory",
+      description: tOpportunities("noResultsHint"),
+      meta: "Nepal  |  Water  |  2026-06-30",
+    },
+    {
+      source: "WB",
+      status: tOpportunities("statusOpen"),
+      title: "Regional Climate Resilience TA",
+      description: tSearch("subtitle"),
+      meta: "Vietnam  |  Advisory  |  USD 120,000",
+    },
+    {
+      source: "UN",
+      status: tOpportunities("statusOpen"),
+      title: "Digital Procurement Modernization",
+      description: tDashboard("browseOpportunitiesDesc"),
+      meta: "Hybrid  |  Governance  |  8 days left",
+    },
+  ]
+
+  const previewProjects = [
+    {
+      title: "WB Corridor Mobility Bid",
+      status: tCommon("active"),
+      progress: 72,
+      step: tWorkspace("steps.analysis"),
+      subtitle: tProjects("createdOn", { date: "2026-02-24" }),
+    },
+    {
+      title: "ADB Smart Grid Proposal",
+      status: tCommon("active"),
+      progress: 58,
+      step: tWorkspace("steps.plan"),
+      subtitle: tProjects("createdOn", { date: "2026-02-18" }),
+    },
+    {
+      title: "UN Health Logistics Pilot",
+      status: tCommon("active"),
+      progress: 34,
+      step: tWorkspace("steps.upload"),
+      subtitle: tProjects("createdOn", { date: "2026-02-10" }),
+    },
+  ]
+
+  const projectDetailTiles = [
+    { label: tProjects("status"), value: tCommon("active") },
+    { label: tProjects("progress"), value: "72%" },
+    { label: tProjects("currentStep"), value: tWorkspace("steps.analysis") },
+  ]
+
   const authSection = (
     <PreviewSection eyebrow={tAuth("loginButton")} title={tAuth("loginTitle")}>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="app-surface px-6 py-6">
-          <label className="mb-2 block text-sm font-medium text-stone-700">{tAuth("email")}</label>
+          <label className="mb-2 block text-sm font-medium text-stone-700">
+            {tAuth("email")}
+          </label>
           <Input value="team@bidagent.ai" readOnly />
-          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">{tAuth("password")}</label>
+          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">
+            {tAuth("password")}
+          </label>
           <Input type="password" value="password" readOnly />
           <Button className="mt-5 w-full">{tAuth("loginButton")}</Button>
         </div>
         <div className="app-surface px-6 py-6">
-          <label className="mb-2 block text-sm font-medium text-stone-700">{tAuth("name")}</label>
+          <label className="mb-2 block text-sm font-medium text-stone-700">
+            {tAuth("name")}
+          </label>
           <Input value="BidAgent Team" readOnly />
-          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">{tAuth("company")}</label>
+          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">
+            {tAuth("company")}
+          </label>
           <Input value="Easu Data" readOnly />
           <Button className="mt-5 w-full">{tAuth("registerButton")}</Button>
         </div>
@@ -96,15 +271,73 @@ export default async function DesignPreviewSectionPage({
 
   const dashboardSection = (
     <PreviewSection eyebrow={tDashboard("title")} title={tDashboard("title")}>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {[tDashboard("activeProjects"), tDashboard("totalOpportunities"), tDashboard("creditsBalance")].map((item, index) => (
-          <div key={item} className="app-surface px-6 py-6">
-            <p className="text-sm text-stone-500">{item}</p>
-            <p className="landing-v2-display mt-4 text-4xl font-semibold text-slate-900">
-              {index === 0 ? "12" : index === 1 ? "48" : "680"}
-            </p>
+      <div className="space-y-6">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {dashboardStats.map((item) => (
+            <StatPreviewCard
+              key={item.label}
+              label={item.label}
+              value={item.value}
+            />
+          ))}
+        </div>
+
+        <div className="app-section-frame px-6 py-6">
+          <p className="app-page-kicker">{tDashboard("quickStart")}</p>
+          <h3 className="app-section-title mt-3">{tDashboard("quickStart")}</h3>
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {dashboardActions.map((item) => (
+              <div key={item.title} className="app-surface px-5 py-5">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-slate-900">
+                  {item.title}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-stone-600">
+                  {item.description}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+          <div className="app-section-frame px-6 py-6">
+            <p className="app-page-kicker">{tDashboard("latestOpportunities")}</p>
+            <h3 className="app-section-title mt-3">
+              {tDashboard("latestOpportunities")}
+            </h3>
+            <div className="mt-5 space-y-4">
+              {previewOpportunities.map((item) => (
+                <PreviewOpportunityCard
+                  key={item.title}
+                  source={item.source}
+                  status={item.status}
+                  title={item.title}
+                  description={item.description}
+                  meta={item.meta}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="app-section-frame px-6 py-6">
+            <p className="app-page-kicker">{tDashboard("recentProjects")}</p>
+            <h3 className="app-section-title mt-3">
+              {tDashboard("recentProjects")}
+            </h3>
+            <div className="mt-5 space-y-4">
+              {previewProjects.slice(0, 2).map((item) => (
+                <PreviewProjectCard
+                  key={item.title}
+                  title={item.title}
+                  status={item.status}
+                  progress={item.progress}
+                  step={item.step}
+                  subtitle={item.subtitle}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </PreviewSection>
   )
@@ -116,15 +349,15 @@ export default async function DesignPreviewSectionPage({
           <Input value={tOpportunities("search")} readOnly />
         </div>
         <div className="grid gap-4">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div key={index} className="app-surface px-6 py-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">ADB</Badge>
-                <Badge variant="outline">{tOpportunities("statusOpen")}</Badge>
-              </div>
-              <p className="mt-3 text-xl font-semibold text-slate-900">{tOpportunities("title")}</p>
-              <p className="mt-2 text-sm leading-7 text-stone-600">{tSearch("subtitle")}</p>
-            </div>
+          {previewOpportunities.slice(0, 2).map((item) => (
+            <PreviewOpportunityCard
+              key={item.title}
+              source={item.source}
+              status={item.status}
+              title={item.title}
+              description={item.description}
+              meta={item.meta}
+            />
           ))}
         </div>
       </div>
@@ -132,21 +365,43 @@ export default async function DesignPreviewSectionPage({
   )
 
   const opportunitiesSection = (
-    <PreviewSection eyebrow={tOpportunities("title")} title={tOpportunities("viewDetail")}>
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="app-surface px-6 py-6">
+    <PreviewSection
+      eyebrow={tOpportunities("title")}
+      title={tOpportunities("viewDetail")}
+    >
+      <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="app-section-frame px-6 py-6">
+          <Input value={tOpportunities("search")} readOnly />
+          <div className="mt-5 space-y-4">
+            {previewOpportunities.slice(0, 2).map((item) => (
+              <PreviewOpportunityCard
+                key={item.title}
+                source={item.source}
+                status={item.status}
+                title={item.title}
+                description={item.description}
+                meta={item.meta}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="app-section-frame px-6 py-6">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">WB</Badge>
             <Badge variant="outline">{tOpportunities("statusOpen")}</Badge>
           </div>
-          <p className="mt-4 text-xl font-semibold text-slate-900">{tOpportunities("title")}</p>
-          <p className="mt-2 text-sm leading-7 text-stone-600">{tOpportunities("noResultsHint")}</p>
-        </div>
-        <div className="app-surface px-6 py-6">
-          <p className="app-inline-label">{tOpportunities("deadline")}</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">2026-06-30</p>
-          <p className="app-inline-label mt-6">{tOpportunities("budget")}</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">$120,000</p>
+          <p className="mt-4 text-xl font-semibold tracking-[-0.02em] text-slate-900">
+            Regional Climate Resilience TA
+          </p>
+          <p className="mt-2 text-sm leading-7 text-stone-600">
+            {tOpportunities("noResultsHint")}
+          </p>
+          <div className="mt-6 grid gap-3">
+            <DetailTile label={tOpportunities("deadline")} value="2026-06-30" />
+            <DetailTile label={tOpportunities("budget")} value="$120,000" />
+            <DetailTile label={tOpportunities("country")} value="Vietnam" />
+            <DetailTile label={tOpportunities("organization")} value="World Bank" />
+          </div>
         </div>
       </div>
     </PreviewSection>
@@ -154,19 +409,66 @@ export default async function DesignPreviewSectionPage({
 
   const projectsSection = (
     <PreviewSection eyebrow={tProjects("title")} title={tProjects("openWorkspace")}>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="app-surface px-6 py-6">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-lg font-semibold text-slate-900">{tProjects("title")}</p>
-              <Badge variant="secondary">{tCommon("active")}</Badge>
+      <div className="grid gap-4 xl:grid-cols-[1.14fr_0.86fr]">
+        <div className="app-section-frame px-6 py-6">
+          <p className="app-page-kicker">{tProjects("title")}</p>
+          <h3 className="app-section-title mt-3">{tProjects("title")}</h3>
+          <div className="mt-5 space-y-4">
+            {previewProjects.map((item) => (
+              <PreviewProjectCard
+                key={item.title}
+                title={item.title}
+                status={item.status}
+                progress={item.progress}
+                step={item.step}
+                subtitle={item.subtitle}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="app-section-frame px-6 py-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{tCommon("active")}</Badge>
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">
+              WB-2026-004
+            </span>
+          </div>
+
+          <p className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+            {previewProjects[0]?.title}
+          </p>
+          <p className="mt-2 text-sm leading-7 text-stone-600">
+            {previewProjects[0]?.subtitle}
+          </p>
+
+          <div className="mt-6 grid gap-3">
+            {projectDetailTiles.map((item) => (
+              <DetailTile
+                key={item.label}
+                label={item.label}
+                value={item.value}
+              />
+            ))}
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-sm text-stone-500">
+              <span>{tProjects("progress")}</span>
+              <span>72%</span>
             </div>
-            <p className="mt-2 text-sm leading-7 text-stone-600">{tProjects("description")}</p>
-            <div className="mt-5 h-2.5 rounded-full bg-stone-100">
-              <div className="h-2.5 rounded-full bg-slate-900" style={{ width: `${65 + index * 10}%` }} />
+            <div className="app-progress-track mt-3">
+              <div className="app-progress-fill" style={{ width: "72%" }} />
             </div>
           </div>
-        ))}
+
+          <div className="app-surface-muted mt-6 px-4 py-4">
+            <p className="app-detail-label">{tProjects("currentStep")}</p>
+            <p className="mt-2 text-sm leading-7 text-stone-600">
+              {tWorkspace("steps.analysis")} · {tProjects("openWorkspace")}
+            </p>
+          </div>
+        </div>
       </div>
     </PreviewSection>
   )
@@ -194,15 +496,15 @@ export default async function DesignPreviewSectionPage({
           </div>
         </div>
         <div className="app-surface px-6 py-6">
-          <p className="text-lg font-semibold text-slate-900">{tWorkspace("steps.analysis")}</p>
-          <Textarea
-            className="mt-4"
-            value={tWorkspace("chat.greetingHint")}
-            readOnly
-          />
+          <p className="text-lg font-semibold text-slate-900">
+            {tWorkspace("steps.analysis")}
+          </p>
+          <Textarea className="mt-4" value={tWorkspace("chat.greetingHint")} readOnly />
         </div>
         <div className="app-surface px-5 py-5">
-          <p className="text-sm font-semibold text-slate-900">{tWorkspace("chat.title")}</p>
+          <p className="text-sm font-semibold text-slate-900">
+            {tWorkspace("chat.title")}
+          </p>
           <div className="mt-4 rounded-2xl bg-stone-100 px-4 py-3 text-sm leading-7 text-stone-700">
             {tWorkspace("chat.greeting")}
           </div>
@@ -215,9 +517,9 @@ export default async function DesignPreviewSectionPage({
   const creditsSection = (
     <PreviewSection eyebrow={tCredits("title")} title={tCredits("packages")}>
       <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="app-panel px-6 py-6">
+        <div className="app-section-frame px-6 py-6">
           <p className="app-page-kicker">{tCredits("balance")}</p>
-          <p className="landing-v2-display mt-4 text-5xl font-semibold text-slate-900">680</p>
+          <p className="app-metric-value mt-4">680</p>
           <p className="mt-2 text-sm text-stone-600">{tCredits("creditsUnit")}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -266,21 +568,27 @@ export default async function DesignPreviewSectionPage({
     <PreviewSection eyebrow={tSettings("title")} title={tSettings("profilePage.title")}>
       <div className="grid gap-4 xl:grid-cols-[0.3fr_0.7fr]">
         <div className="app-surface px-4 py-4">
-          {[tSettings("profile"), tSettings("credits"), tSettings("notifications"), tSettings("security")].map((item, index) => (
-            <div
-              key={item}
-              className={`rounded-2xl px-4 py-3 text-sm font-medium ${
-                index === 0 ? "bg-slate-900 text-white" : "text-stone-600"
-              }`}
-            >
-              {item}
-            </div>
-          ))}
+          {[tSettings("profile"), tSettings("credits"), tSettings("notifications"), tSettings("security")].map(
+            (item, index) => (
+              <div
+                key={item}
+                className={`rounded-2xl px-4 py-3 text-sm font-medium ${
+                  index === 0 ? "bg-slate-900 text-white" : "text-stone-600"
+                }`}
+              >
+                {item}
+              </div>
+            )
+          )}
         </div>
         <div className="app-surface px-6 py-6">
-          <label className="mb-2 block text-sm font-medium text-stone-700">{tSettings("profilePage.email")}</label>
+          <label className="mb-2 block text-sm font-medium text-stone-700">
+            {tSettings("profilePage.email")}
+          </label>
           <Input value="team@bidagent.ai" readOnly />
-          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">{tSettings("profilePage.name")}</label>
+          <label className="mb-2 mt-4 block text-sm font-medium text-stone-700">
+            {tSettings("profilePage.name")}
+          </label>
           <Input value="BidAgent Team" readOnly />
           <Button className="mt-5">{tCommon("save")}</Button>
         </div>
@@ -304,10 +612,12 @@ export default async function DesignPreviewSectionPage({
   if (section === "overview") {
     return (
       <>
-        <section className="app-panel px-6 py-8 sm:px-8 sm:py-10">
+        <section className="app-section-frame px-6 py-8 sm:px-8 sm:py-10">
           <p className="app-page-kicker">{tCommon("appName")}</p>
           <h1 className="app-page-title mt-4">{tLanding("metaTitle")}</h1>
-          <p className="app-page-subtitle mt-4 max-w-3xl">{tLanding("metaDescription")}</p>
+          <p className="app-page-subtitle mt-4 max-w-3xl">
+            {tLanding("metaDescription")}
+          </p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {trustNotes.map((note) => (
               <div key={note} className="app-surface-muted px-4 py-4">
@@ -349,7 +659,7 @@ export default async function DesignPreviewSectionPage({
         <RouteHero
           eyebrow={tDashboard("title")}
           title="Dashboard Preview"
-          description="独立捕获仪表板卡片与欢迎区。"
+          description="独立捕获仪表板卡片、快速入口和最近项目板块。"
         />
         {dashboardSection}
       </>
@@ -388,7 +698,7 @@ export default async function DesignPreviewSectionPage({
         <RouteHero
           eyebrow={tProjects("title")}
           title="Projects Preview"
-          description="独立捕获项目列表、状态与进度卡片。"
+          description="独立捕获项目列表、状态信息和进度详情板块。"
         />
         {projectsSection}
       </>

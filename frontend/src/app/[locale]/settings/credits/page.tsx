@@ -26,16 +26,16 @@ export default function SettingsCreditsPage() {
       <p className="mt-2 text-sm leading-7 text-stone-600">{t("creditsPage.subtitle")}</p>
 
       {/* Balance */}
-      <div className="app-surface-muted mt-6 px-6 py-6">
-        <p className="text-sm text-stone-600">{t("creditsPage.currentBalance")}</p>
-        <p className="landing-v2-display mt-2 text-4xl font-semibold text-slate-900">
+      <div className="app-section-frame mt-6 px-6 py-6">
+        <p className="app-detail-label">{t("creditsPage.currentBalance")}</p>
+        <p className="app-metric-value mt-3">
           {balance ?? user?.credits_balance ?? 0}
         </p>
         <p className="mt-2 text-sm text-stone-500">{tc("credits")}</p>
       </div>
 
       {/* Usage Tips */}
-      <div className="mt-6">
+      <div className="app-section-frame mt-6 px-6 py-6">
         <h3 className="text-base font-semibold text-slate-900">{t("creditsPage.usageTips")}</h3>
         <div className="mt-3 space-y-2 text-sm leading-7 text-stone-600">
           <p>• {t("creditsPage.tip1")}</p>
@@ -47,7 +47,7 @@ export default function SettingsCreditsPage() {
       </div>
 
       {/* Recent Transactions */}
-      <div className="mt-6">
+      <div className="app-section-frame mt-6 px-6 py-6">
         <h3 className="text-base font-semibold text-slate-900">{t("creditsPage.recentTransactions")}</h3>
         {(!transactions || transactions.length === 0) ? (
           <p className="mt-3 text-sm text-stone-500">{t("creditsPage.noTransactions")}</p>

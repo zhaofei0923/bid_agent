@@ -4,7 +4,7 @@ import { memo, useState } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useGuidanceStream } from "@/hooks/use-generation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "next-intl"
 

@@ -51,7 +51,7 @@ export default function SecurityPage() {
       <p className="mt-2 text-sm leading-7 text-stone-600">{t("securityPage.subtitle")}</p>
 
       {/* Change Password */}
-      <div className="mt-6">
+      <div className="app-section-frame mt-6 px-6 py-6">
         <h3 className="text-base font-semibold text-slate-900">{t("securityPage.changePassword")}</h3>
         <div className="mt-4 max-w-md space-y-4">
           {error && (
@@ -61,7 +61,7 @@ export default function SecurityPage() {
           )}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="app-detail-label mb-2 block">
               {t("securityPage.currentPassword")}
             </label>
             <Input
@@ -72,7 +72,7 @@ export default function SecurityPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="app-detail-label mb-2 block">
               {t("securityPage.newPassword")}
             </label>
             <Input
@@ -80,11 +80,11 @@ export default function SecurityPage() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
-            <p className="mt-2 text-xs uppercase tracking-[0.12em] text-stone-400">{t("securityPage.minChars")}</p>
+            <p className="app-detail-label mt-2 text-stone-400">{t("securityPage.minChars")}</p>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="app-detail-label mb-2 block">
               {t("securityPage.confirmNewPassword")}
             </label>
             <Input
@@ -109,7 +109,7 @@ export default function SecurityPage() {
       </div>
 
       {/* 2FA Section (placeholder) */}
-      <div className="mt-8 border-t border-stone-200 pt-6">
+      <div className="app-section-frame mt-6 px-6 py-6">
         <h3 className="text-base font-semibold text-slate-900">{t("securityPage.twoFA")}</h3>
         <p className="mt-2 text-sm leading-7 text-stone-600">
           {t("securityPage.twoFADesc")}
@@ -120,7 +120,7 @@ export default function SecurityPage() {
       </div>
 
       {/* Sessions */}
-      <div className="mt-8 border-t border-stone-200 pt-6">
+      <div className="app-section-frame mt-6 px-6 py-6">
         <h3 className="text-base font-semibold text-slate-900">{t("securityPage.sessions")}</h3>
         <p className="mt-2 text-sm leading-7 text-stone-600">{t("securityPage.sessionsDesc")}</p>
         <div className="app-surface-muted mt-4 px-5 py-4">

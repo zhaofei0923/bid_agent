@@ -31,46 +31,48 @@ export default function ProfilePage() {
       <h2 className="app-section-title">{t("profilePage.title")}</h2>
       <p className="mt-2 text-sm leading-7 text-stone-600">{t("profilePage.subtitle")}</p>
 
-      <div className="mt-6 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-stone-700">{t("profilePage.email")}</label>
-          <Input
-            type="email"
-            value={user?.email ?? ""}
-            disabled
-            className="bg-stone-50 text-stone-500"
-          />
-        </div>
+      <div className="app-section-frame mt-6 px-6 py-6">
+        <div className="space-y-4">
+          <div>
+            <label className="app-detail-label mb-2 block">{t("profilePage.email")}</label>
+            <Input
+              type="email"
+              value={user?.email ?? ""}
+              disabled
+              className="bg-stone-50 text-stone-500"
+            />
+          </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-stone-700">{t("profilePage.name")}</label>
-          <Input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
+          <div>
+            <label className="app-detail-label mb-2 block">{t("profilePage.name")}</label>
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-stone-700">{t("profilePage.company")}</label>
-          <Input
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-          />
+          <div>
+            <label className="app-detail-label mb-2 block">{t("profilePage.company")}</label>
+            <Input
+              type="text"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+            />
+          </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => updateMutation.mutate()}
-            disabled={updateMutation.isPending}
-          >
-            {updateMutation.isPending ? tc("saving") : tc("save")}
-          </Button>
-          {saved && (
-            <span className="text-sm text-emerald-600">✓ {tc("saveSuccess")}</span>
-          )}
-        </div>
+      <div className="app-surface-muted mt-4 flex flex-wrap items-center gap-3 px-5 py-4">
+        <Button
+          onClick={() => updateMutation.mutate()}
+          disabled={updateMutation.isPending}
+        >
+          {updateMutation.isPending ? tc("saving") : tc("save")}
+        </Button>
+        {saved && (
+          <span className="text-sm text-emerald-600">✓ {tc("saveSuccess")}</span>
+        )}
       </div>
     </div>
   )

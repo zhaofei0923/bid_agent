@@ -4,18 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold tracking-[-0.01em] ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default:
-          "bg-slate-900 text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.65)] hover:bg-slate-800",
+          "bg-slate-900 text-white shadow-[0_18px_34px_-24px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:bg-slate-800",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-[0_16px_28px_-24px_rgba(220,38,38,0.7)] hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-[0_16px_28px_-24px_rgba(220,38,38,0.7)] hover:-translate-y-0.5 hover:bg-destructive/90",
         outline:
-          "border border-stone-300/90 bg-[rgba(255,255,255,0.9)] text-slate-700 hover:border-stone-400 hover:bg-white",
+          "border border-stone-300/90 bg-[rgba(255,255,255,0.92)] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] hover:-translate-y-0.5 hover:border-stone-400 hover:bg-white hover:text-slate-900",
         secondary:
-          "bg-stone-100 text-stone-700 hover:bg-stone-200",
+          "bg-stone-100 text-stone-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:-translate-y-0.5 hover:bg-stone-200 hover:text-slate-900",
         ghost: "text-stone-600 hover:bg-stone-100 hover:text-slate-900",
         link: "text-primary underline-offset-4 hover:underline",
       },

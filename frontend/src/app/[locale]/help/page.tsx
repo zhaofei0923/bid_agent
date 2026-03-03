@@ -23,7 +23,7 @@ export default function HelpPage() {
       >
 
         {/* Search */}
-        <div className="app-surface px-6 py-6">
+        <div className="app-section-frame px-6 py-6 sm:px-8">
           <Input
             type="text"
             placeholder={t("searchPlaceholder")}
@@ -38,7 +38,7 @@ export default function HelpPage() {
             {guideItems.map((guide) => (
               <div
                 key={guide.title}
-                className="app-surface cursor-pointer px-6 py-6 transition-all duration-200 hover:-translate-y-0.5"
+                className="app-surface app-card-interactive cursor-pointer px-6 py-6"
               >
                 <span className="text-2xl">{guide.icon}</span>
                 <h3 className="mt-4 text-lg font-semibold text-slate-900">{guide.title}</h3>
@@ -78,7 +78,7 @@ export default function HelpPage() {
         </div>
 
         {/* Contact */}
-        <div className="app-panel px-6 py-8 text-center sm:px-8">
+        <div className="app-section-frame px-6 py-8 text-center sm:px-8">
           <h2 className="app-section-title">{t("moreQuestions")}</h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-stone-600">
             {t("moreQuestionsDesc")}

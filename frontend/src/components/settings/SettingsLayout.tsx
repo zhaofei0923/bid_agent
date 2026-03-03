@@ -23,7 +23,7 @@ export default function SettingsLayout({
 
   return (
     <div className="app-page-wrap">
-      <div className="app-panel px-6 py-8 sm:px-8">
+      <div className="app-section-frame px-6 py-8 sm:px-8">
         <p className="app-page-kicker">{t("title")}</p>
         <h1 className="app-page-title mt-4">{t("title")}</h1>
       </div>
@@ -41,10 +41,10 @@ export default function SettingsLayout({
                 <Link
                   key={item.key}
                   href={href}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${
+                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 ${
                     isActive
                       ? "bg-slate-900 text-white font-medium"
-                      : "text-stone-600 hover:bg-stone-100"
+                      : "text-stone-600 hover:bg-stone-100 hover:text-slate-900"
                   }`}
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/80">

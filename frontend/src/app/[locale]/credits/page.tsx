@@ -41,9 +41,9 @@ export default function CreditsPage() {
       >
 
         {/* Balance Card */}
-        <div className="app-panel px-6 py-8 text-slate-900 sm:px-8">
+        <div className="app-section-frame px-6 py-8 text-slate-900 sm:px-8">
           <p className="app-page-kicker">{t("balance")}</p>
-          <p className="landing-v2-display mt-4 text-5xl font-semibold">
+          <p className="app-metric-value mt-4">
             {balance ?? user?.credits_balance ?? 0}
           </p>
           <p className="mt-2 text-sm font-medium text-stone-600">{t("creditsUnit")}</p>
@@ -56,7 +56,7 @@ export default function CreditsPage() {
             {(packages ?? []).map((pkg: { id: string; name: string; credits: number; price: number }) => (
               <div
                 key={pkg.id}
-                className="app-surface cursor-pointer px-6 py-6 transition-all duration-200 hover:-translate-y-0.5"
+                className="app-surface app-card-interactive cursor-pointer px-6 py-6"
                 onClick={() => setShowPayment(true)}
               >
                 <h3 className="text-lg font-semibold text-slate-900">{pkg.name}</h3>

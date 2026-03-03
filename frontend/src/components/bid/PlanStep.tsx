@@ -21,7 +21,7 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
   const queryClient = useQueryClient()
   const [newTaskTitle, setNewTaskTitle] = useState("")
 
-  const { data: plan, isLoading: planLoading } = useQuery({
+  const { isLoading: planLoading } = useQuery({
     queryKey: ["bid-plan", projectId],
     queryFn: () => bidPlanService.getByProject(projectId),
     enabled: !!projectId,

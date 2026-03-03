@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
 
 interface NotificationSettings {
   email_opportunity: boolean
@@ -59,11 +60,11 @@ export default function NotificationsPage() {
       <h2 className="app-section-title">{t("notificationsPage.title")}</h2>
       <p className="mt-2 text-sm leading-7 text-stone-600">{t("notificationsPage.subtitle")}</p>
 
-      <div className="mt-6 space-y-4">
+      <div className="app-section-frame mt-6 space-y-4 px-6 py-6">
         {ITEMS.map((item) => (
           <div
             key={item.key}
-            className="app-surface-muted flex items-center justify-between px-5 py-4"
+            className="app-surface-muted flex items-center justify-between gap-4 px-5 py-4"
           >
             <div>
               <p className="font-medium text-slate-900">{item.label}</p>
@@ -85,13 +86,12 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      <div className="mt-6 flex items-center gap-3">
-        <button
+      <div className="app-surface-muted mt-4 flex flex-wrap items-center gap-3 px-5 py-4">
+        <Button
           onClick={handleSave}
-          className="inline-flex h-11 items-center rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition-colors duration-200 hover:bg-slate-800"
         >
           {t("notificationsPage.saveSettings")}
-        </button>
+        </Button>
         {saved && (
           <span className="text-sm text-emerald-600">✓ {tc("saveSuccess")}</span>
         )}

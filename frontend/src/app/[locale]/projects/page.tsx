@@ -58,7 +58,7 @@ export default function ProjectsPage() {
 
         {/* Create Dialog */}
         {showCreate && (
-          <div className="app-surface px-6 py-6">
+          <div className="app-section-frame px-6 py-6 sm:px-8">
             <h3 className="app-section-title">{t("create")}</h3>
             <div className="mt-5 space-y-4">
               <Input
@@ -99,7 +99,7 @@ export default function ProjectsPage() {
                 href={`/${locale}/projects/${project.id}`}
                 className="block"
               >
-                <Card className="h-full transition-all duration-200 hover:-translate-y-1">
+                <Card className="app-card-interactive h-full">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-xl">{project.name}</CardTitle>
@@ -116,9 +116,9 @@ export default function ProjectsPage() {
                       <span>{t("progress")}</span>
                       <span>{formatRelative(project.created_at)}</span>
                     </div>
-                    <div className="mt-3 h-2.5 rounded-full bg-stone-100">
+                    <div className="app-progress-track mt-3">
                       <div
-                        className="h-2.5 rounded-full bg-slate-900"
+                        className="app-progress-fill"
                         style={{ width: `${project.progress}%` }}
                       />
                     </div>

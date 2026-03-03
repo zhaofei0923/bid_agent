@@ -38,7 +38,7 @@ export default function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* Active Projects */}
-          <Card className="transition-all duration-200 hover:-translate-y-0.5">
+          <Card className="app-card-interactive app-stat-card h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-stone-500">
                 {t("activeProjects")}
@@ -48,12 +48,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="landing-v2-display text-4xl font-semibold text-slate-900">0</div>
+              <div className="app-metric-value">0</div>
             </CardContent>
           </Card>
 
           {/* Available Opportunities */}
-          <Card className="transition-all duration-200 hover:-translate-y-0.5">
+          <Card className="app-card-interactive app-stat-card h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-stone-500">
                 {t("totalOpportunities")}
@@ -63,12 +63,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="landing-v2-display text-4xl font-semibold text-slate-900">0</div>
+              <div className="app-metric-value">0</div>
             </CardContent>
           </Card>
 
           {/* Credits Balance */}
-          <Card className="transition-all duration-200 hover:-translate-y-0.5">
+          <Card className="app-card-interactive app-stat-card h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-stone-500">
                 {t("creditsBalance")}
@@ -78,13 +78,13 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="landing-v2-display text-4xl font-semibold text-slate-900">0</div>
+              <div className="app-metric-value">0</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Start */}
-        <section>
+        <section className="app-section-frame px-6 py-6 sm:px-8 sm:py-8">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="app-page-kicker">{t("quickStart")}</p>
@@ -93,7 +93,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
             <Link href={`/${locale}/opportunities`}>
-              <Card className="group h-full cursor-pointer transition-all duration-200 hover:-translate-y-1">
+              <Card className="app-card-interactive group h-full cursor-pointer">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-700 transition-colors duration-200 group-hover:bg-slate-900 group-hover:text-white">
@@ -111,7 +111,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link href={`/${locale}/projects`}>
-              <Card className="group h-full cursor-pointer transition-all duration-200 hover:-translate-y-1">
+              <Card className="app-card-interactive group h-full cursor-pointer">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-700 transition-colors duration-200 group-hover:bg-slate-900 group-hover:text-white">
@@ -131,7 +131,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Latest Opportunities */}
-        <section>
+        <section className="app-section-frame px-6 py-6 sm:px-8 sm:py-8">
           <p className="app-page-kicker">{t("latestOpportunities")}</p>
           <h2 className="app-section-title mt-3">{t("latestOpportunities")}</h2>
           <div className="mt-6">
@@ -145,7 +145,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Recent Projects */}
-        <section>
+        <section className="app-section-frame px-6 py-6 sm:px-8 sm:py-8">
           <p className="app-page-kicker">{t("recentProjects")}</p>
           <h2 className="app-section-title mt-3">{t("recentProjects")}</h2>
           <div className="mt-6">

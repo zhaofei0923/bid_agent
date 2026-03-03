@@ -4,7 +4,7 @@ import { memo, useState, useCallback } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useDocuments, useUploadDocument } from "@/hooks/use-documents"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "next-intl"
 
@@ -17,7 +17,7 @@ export const UploadStep = memo(function UploadStep({
 }: UploadStepProps) {
   const { completeStep, goToStep } = useBidWorkspaceStore()
   const t = useTranslations("bid")
-  const { data: documents, isLoading } = useDocuments(projectId)
+  const { data: documents } = useDocuments(projectId)
   const uploadMutation = useUploadDocument(projectId)
   const [isDragging, setIsDragging] = useState(false)
 

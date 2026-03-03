@@ -25,7 +25,7 @@ export function AppPageShell({
   return (
     <section className={cn("app-page-wrap", wide && "app-page-wrap--wide", className)}>
       <div className="app-panel px-6 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl">
             {eyebrow && <p className="app-page-kicker">{eyebrow}</p>}
             <h1 className={cn("app-page-title", eyebrow && "mt-4")}>{title}</h1>

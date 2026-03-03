@@ -3,7 +3,7 @@
 import { memo } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useDocuments } from "@/hooks/use-documents"
-import { useBidAnalysis, useTriggerAnalysis } from "@/hooks/use-bid-analysis"
+import { useBidAnalysis } from "@/hooks/use-bid-analysis"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"

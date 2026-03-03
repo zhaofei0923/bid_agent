@@ -53,7 +53,7 @@ export default function ProjectDetailPage({
           </>
         }
       >
-        <div className="app-surface px-6 py-8 sm:px-8">
+        <div className="app-section-frame px-6 py-8 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary">{project.status}</Badge>
             <span className="text-sm font-medium text-stone-500">
@@ -63,23 +63,23 @@ export default function ProjectDetailPage({
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <div className="app-surface-muted px-5 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("status")}</p>
-              <p className="mt-2 font-semibold text-slate-900">{project.status}</p>
+              <p className="app-detail-label">{t("status")}</p>
+              <p className="app-detail-value mt-2">{project.status}</p>
             </div>
             <div className="app-surface-muted px-5 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("progress")}</p>
-              <p className="mt-2 font-semibold text-slate-900">{project.progress}%</p>
+              <p className="app-detail-label">{t("progress")}</p>
+              <p className="app-detail-value mt-2">{project.progress}%</p>
             </div>
             <div className="app-surface-muted px-5 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{t("currentStep")}</p>
-              <p className="mt-2 font-semibold text-slate-900">{project.current_step || t("notStarted")}</p>
+              <p className="app-detail-label">{t("currentStep")}</p>
+              <p className="app-detail-value mt-2">{project.current_step || t("notStarted")}</p>
             </div>
           </div>
 
           <div className="mt-6">
-            <div className="h-3 rounded-full bg-stone-100">
+            <div className="app-progress-track">
               <div
-                className="h-3 rounded-full bg-slate-900 transition-all"
+                className="app-progress-fill transition-all"
                 style={{ width: `${project.progress}%` }}
               />
             </div>

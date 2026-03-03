@@ -29,7 +29,7 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="app-surface block px-6 py-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)]"
+        className="app-surface app-card-interactive block px-6 py-6"
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -81,7 +81,7 @@ export default function OppCard({ opportunity: opp, linkMode = "internal" }: Opp
   return (
     <Link
       href={href}
-      className="app-surface block px-6 py-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)]"
+      className="app-surface app-card-interactive block px-6 py-6"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
