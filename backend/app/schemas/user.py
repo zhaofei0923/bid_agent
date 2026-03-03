@@ -24,6 +24,15 @@ class TokenRefresh(BaseModel):
     refresh_token: str
 
 
+class EmailVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class ResendVerifyRequest(BaseModel):
+    email: EmailStr
+
+
 class UserUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     company: str | None = None
@@ -48,6 +57,7 @@ class UserResponse(BaseModel):
     role: str
     language: str
     credits_balance: int
+    is_verified: bool
     created_at: datetime
     updated_at: datetime
 
@@ -59,6 +69,14 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class RegisterPendingResponse(BaseModel):
+    """Returned when registration succeeds but email verification is required."""
+
+    need_verify: bool = True
+    email: str
+    message: str = "注册成功，请查收验证邮件并输入验证码"
 
 
 class MessageResponse(BaseModel):

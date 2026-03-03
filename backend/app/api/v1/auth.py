@@ -1,4 +1,4 @@
-"""Auth API routes — register, login, refresh, profile, password."""
+"""Auth API routes — register, login, verify-email, refresh, profile, password."""
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,8 +7,11 @@ from app.core.security import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import (
+    EmailVerifyRequest,
     MessageResponse,
     PasswordChange,
+    RegisterPendingResponse,
+    ResendVerifyRequest,
     TokenRefresh,
     TokenResponse,
     UserLogin,
@@ -21,10 +24,32 @@ from app.services.user_service import UserService
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=RegisterPendingResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
+    """Register a new account. Sends a 6-digit verification code to email."""
     service = UserService(db)
     return await service.register(data)
+
+
+@router.post("/verify-email", response_model=TokenResponse)
+async def verify_email(data: EmailVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Verify the email address with the 6-digit code. Returns JWT on success."""
+    service = UserService(db)
+    return await service.verify_email(data.email, data.code)
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+async def resend_verification(
+    data: ResendVerifyRequest, db: AsyncSession = Depends(get_db)
+):
+    """Resend verification code (rate-limited to once per 60 s)."""
+    service = UserService(db)
+    await service.resend_verification(data.email)
+    return MessageResponse(message="验证码已发送，请查收邮件")
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -62,4 +87,4 @@ async def change_password(
 ):
     service = UserService(db)
     await service.change_password(current_user, data)
-    return MessageResponse(message="Password updated")
+    return MessageResponse(message="密码已更新")

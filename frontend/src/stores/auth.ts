@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { User } from "@/types"
+import type { User, TokenResponse } from "@/types"
 import { authService } from "@/services/auth"
 
 interface AuthState {
@@ -12,7 +12,8 @@ interface AuthState {
     password: string,
     name: string,
     company?: string
-  ) => Promise<void>
+  ) => Promise<string>  // returns email to redirect to verify page
+  setTokens: (tokens: TokenResponse) => Promise<void>
   logout: () => void
   loadUser: () => Promise<void>
 }
@@ -31,12 +32,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   register: async (email, password, name, company) => {
-    const tokens = await authService.register({
-      email,
-      password,
-      name,
-      company,
-    })
+    const pending = await authService.register({ email, password, name, company })
+    // Returns email for the caller to redirect to verify-email page
+    return pending.email
+  },
+
+  setTokens: async (tokens) => {
     localStorage.setItem("access_token", tokens.access_token)
     localStorage.setItem("refresh_token", tokens.refresh_token)
     const user = await authService.getMe()

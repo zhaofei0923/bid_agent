@@ -30,10 +30,11 @@ export default function RegisterPage() {
     setError("")
     setLoading(true)
     try {
-      await register(form.email, form.password, form.name, form.company || undefined)
-      router.push(`/${locale}/dashboard`)
-    } catch {
-      setError(t("registerError"))
+      const email = await register(form.email, form.password, form.name, form.company || undefined)
+      router.push(`/${locale}/auth/verify-email?email=${encodeURIComponent(email)}`)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(msg ?? t("registerError"))
     } finally {
       setLoading(false)
     }

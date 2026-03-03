@@ -54,7 +54,18 @@
     "hasAccount": "已有账号？",
     "forgotPassword": "忘记密码？",
     "loginError": "登录失败，请检查邮箱和密码",
-    "registerError": "注册失败，邮箱可能已被使用"
+    "registerError": "注册失败，请稍后重试",
+    "verifyEmailLabel": "邮箱验证",
+    "verifyEmailTitle": "请验证您的邮箱",
+    "verifyEmailDesc": "我们已将 6 位验证码发送至",
+    "verifyButton": "验证并登录",
+    "verifying": "验证中...",
+    "verifyCodeRequired": "请输入完整的 6 位验证码",
+    "verifyCodeError": "验证码错误或已过期，请重试",
+    "noVerifyCode": "没收到验证码？",
+    "resendCode": "重新发送",
+    "resendCooldown": "{seconds} 秒后可重发",
+    "resendError": "发送失败，请稍后重试"
   },
   "dashboard": {
     "title": "仪表板",

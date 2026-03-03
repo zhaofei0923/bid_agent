@@ -19,17 +19,24 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [unverifiedEmail, setUnverifiedEmail] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setUnverifiedEmail("")
     setLoading(true)
     try {
       await login(email, password)
       router.push(`/${locale}/dashboard`)
-    } catch {
-      setError(t("loginError"))
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      if (detail?.includes("验证")) {
+        setUnverifiedEmail(email)
+      } else {
+        setError(detail ?? t("loginError"))
+      }
     } finally {
       setLoading(false)
     }
@@ -82,6 +89,17 @@ export default function LoginPage() {
             {error && (
               <div className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
+              </div>
+            )}
+            {unverifiedEmail && (
+              <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p>{t("verifyEmailTitle")} — 邮筱尚未验证。</p>
+                <a
+                  href={`/${locale}/auth/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                  className="mt-1 inline-block font-semibold underline"
+                >
+                  {t("verifyButton")} →
+                </a>
               </div>
             )}
 

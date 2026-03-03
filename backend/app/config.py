@@ -86,6 +86,18 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "data/uploads"
     MAX_UPLOAD_SIZE_MB: int = 50
 
+    # ── Email (腾讯云 SES SMTP) ─────────────────────────────────
+    SMTP_HOST: str = "smtp.qcloudmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = ""  # 腾讯云 SES 发件人邮箱
+    SMTP_PASSWORD: str = ""  # 腾讯云 SES SMTP 密钥
+    EMAIL_FROM_NAME: str = "BidAgent"
+    EMAIL_ENABLED: bool = False  # 开关：False 时只打印验证码到日志
+
+    # ── Verification Code ───────────────────────────────────────
+    VERIFY_CODE_TTL: int = 600  # 验证码有效期 (秒)
+    VERIFY_CODE_RATE_LIMIT: int = 60  # 重发冷却时间 (秒)
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Any) -> str:

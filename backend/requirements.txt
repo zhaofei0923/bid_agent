@@ -36,6 +36,8 @@ playwright>=1.50
 
 # ============ Utilities ============
 python-dotenv>=1.0
+aiosmtplib>=3.0
+redis>=4.5
 
 # ============ Testing ============
 pytest>=8.0

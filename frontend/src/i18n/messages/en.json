@@ -54,7 +54,18 @@
     "hasAccount": "Already have an account?",
     "forgotPassword": "Forgot Password?",
     "loginError": "Login failed. Please check your email and password",
-    "registerError": "Registration failed. Email may already be in use"
+    "registerError": "Registration failed. Please try again",
+    "verifyEmailLabel": "Email Verification",
+    "verifyEmailTitle": "Verify Your Email",
+    "verifyEmailDesc": "We sent a 6-digit code to",
+    "verifyButton": "Verify & Login",
+    "verifying": "Verifying...",
+    "verifyCodeRequired": "Please enter the complete 6-digit code",
+    "verifyCodeError": "Invalid or expired code, please try again",
+    "noVerifyCode": "Didn't receive the code?",
+    "resendCode": "Resend",
+    "resendCooldown": "Resend in {seconds}s",
+    "resendError": "Failed to send. Please try again"
   },
   "dashboard": {
     "title": "Dashboard",

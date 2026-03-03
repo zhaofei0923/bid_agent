@@ -7,6 +7,7 @@ export interface User {
   role: "user" | "admin"
   language: "zh" | "en"
   credits_balance: number
+  is_verified: boolean
   created_at: string
   updated_at: string
 }
