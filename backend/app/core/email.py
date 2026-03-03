@@ -96,15 +96,16 @@ async def send_verification_email(to_email: str, code: str, name: str = "") -> N
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
-        await aiosmtplib.send(
-            msg,
+        smtp = aiosmtplib.SMTP(
             hostname=settings.SMTP_HOST,
             port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASSWORD,
             use_tls=True,
             timeout=10,
         )
+        await smtp.connect()
+        await smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        await smtp.send_message(msg)
+        await smtp.quit()
         logger.info("Verification email sent to %s", to_email)
     except Exception as exc:
         logger.error("Failed to send verification email to %s: %s", to_email, exc)
