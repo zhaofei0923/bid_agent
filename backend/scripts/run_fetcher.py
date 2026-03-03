@@ -68,6 +68,21 @@ async def run_fetch(source: str, max_pages: int, dry_run: bool) -> list[TenderIn
     return tenders
 
 
+async def clear_opportunities() -> int:
+    """Delete all existing opportunities from the database. Returns count deleted."""
+    from sqlalchemy import delete
+
+    from app.database import async_session
+    from app.models.opportunity import Opportunity
+
+    async with async_session() as db:
+        result = await db.execute(delete(Opportunity))
+        await db.commit()
+        count = result.rowcount
+    logger.info("Cleared %d existing opportunities from DB", count)
+    return count
+
+
 async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
     """Save fetched tenders to the database using the same logic as fetcher_tasks."""
     from datetime import UTC, datetime
@@ -141,6 +156,8 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
 
 
 async def main(args: argparse.Namespace) -> None:
+    if args.clear and not args.dry_run:
+        await clear_opportunities()
     sources = [args.source] if args.source else VALID_SOURCES
     for source in sources:
         await run_fetch(source, args.max_pages, args.dry_run)
@@ -164,6 +181,11 @@ if __name__ == "__main__":
         "--dry-run", "-n",
         action="store_true",
         help="Fetch but don't save to database",
+    )
+    parser.add_argument(
+        "--clear", "-c",
+        action="store_true",
+        help="Clear all existing opportunities from DB before fetching",
     )
 
     args = parser.parse_args()
