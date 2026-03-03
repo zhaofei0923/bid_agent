@@ -75,11 +75,11 @@ class BidDocumentService:
         # Create DB record
         doc = BidDocument(
             project_id=project_id,
+            filename=filename,
             original_filename=filename,
             file_path=str(file_path),
             file_size=len(content),
             file_hash=file_hash,
-            mime_type=content_type,
             status="pending",
         )
         self.db.add(doc)

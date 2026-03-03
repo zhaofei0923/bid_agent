@@ -37,10 +37,24 @@ export interface ProjectUpdate {
 export interface ProjectDocument {
   id: string
   project_id: string
-  file_name: string
-  file_type: string
-  file_size: number
-  document_type: "tor" | "rfp" | "other"
-  upload_status: "uploading" | "uploaded" | "processing" | "completed" | "failed"
+  filename: string
+  original_filename: string
+  file_size: number | null
+  file_hash: string | null
+  status: string
+  processing_progress: number
+  page_count: number | null
+  processed_pages: number
+  chunk_count: number
+  vectorized_chunk_count: number
+  error_message: string | null
+  is_scanned: boolean
+  ocr_confidence: number | null
+  original_language: string
+  ai_overview: string | null
+  ai_reading_tips: string | null
+  detected_institution: string | null
+  analysis_generated_at: string | null
   created_at: string
+  updated_at: string
 }

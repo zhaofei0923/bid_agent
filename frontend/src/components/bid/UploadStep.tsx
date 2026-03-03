@@ -20,18 +20,28 @@ export const UploadStep = memo(function UploadStep({
   const { data: documents } = useDocuments(projectId)
   const uploadMutation = useUploadDocument(projectId)
   const [isDragging, setIsDragging] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = useCallback(
     async (files: FileList | null) => {
       if (!files?.length) return
+      setUploadError(null)
       for (const file of Array.from(files)) {
         if (
           file.type === "application/pdf" ||
           file.type ===
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ) {
-          await uploadMutation.mutateAsync(file)
+          try {
+            await uploadMutation.mutateAsync(file)
+          } catch (err: unknown) {
+            const msg =
+              err instanceof Error ? err.message : "上传失败，请重试"
+            setUploadError(msg)
+          }
+        } else {
+          setUploadError(`不支持的文件类型: ${file.name}，仅支持 PDF / DOCX`)
         }
       }
     },
@@ -50,6 +60,12 @@ export const UploadStep = memo(function UploadStep({
   const handleNext = () => {
     completeStep("upload")
     goToStep("overview")
+  }
+
+  /** Derive a simple file type label from the filename extension */
+  const getFileTypeIcon = (filename: string) => {
+    const ext = filename.split(".").pop()?.toLowerCase()
+    return ext === "pdf" ? "📕" : "📘"
   }
 
   return (
@@ -88,19 +104,27 @@ export const UploadStep = memo(function UploadStep({
           accept=".pdf,.docx"
           multiple
           className="hidden"
-          onChange={(e) => handleFileSelect(e.target.files)}
+          onChange={(e) => {
+            handleFileSelect(e.target.files)
+            // Reset input so the same file can be re-selected after an error
+            e.target.value = ""
+          }}
         />
         <Button
           variant="outline"
           size="sm"
+          disabled={uploadMutation.isPending}
           onClick={() => fileInputRef.current?.click()}
         >
-          {t("upload.selectFile")}
+          {uploadMutation.isPending ? t("upload.uploading") : t("upload.selectFile")}
         </Button>
         {uploadMutation.isPending && (
           <p className="mt-4 text-sm text-muted-foreground animate-pulse">
             {t("upload.uploading")}
           </p>
+        )}
+        {uploadError && (
+          <p className="mt-4 text-sm text-destructive">⚠️ {uploadError}</p>
         )}
       </div>
 
@@ -114,14 +138,14 @@ export const UploadStep = memo(function UploadStep({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">
-                      {doc.file_type === "pdf" ? "📕" : "📘"}
+                      {getFileTypeIcon(doc.original_filename)}
                     </span>
                     <span className="text-sm font-medium">
-                      {doc.file_name}
+                      {doc.original_filename}
                     </span>
                   </div>
                   <Badge variant="secondary">
-                    {doc.upload_status || "uploaded"}
+                    {doc.status}
                   </Badge>
                 </div>
               </CardHeader>
