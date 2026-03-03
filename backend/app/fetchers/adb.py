@@ -1,12 +1,10 @@
 """ADB (Asian Development Bank) RSS feed fetcher.
 
-ADB provides招标信息 through RSS feeds:
-- Procurement Notices: http://feeds.feedburner.com/procurement-notices
-- Tenders - Invitation for Bids: http://feeds.feedburner.com/adb-invitation-for-bids
-- Tenders - Advanced Notices: http://feeds.feedburner.com/adb-advanced-notices
-- Tenders - Consulting Services: http://feeds.feedburner.com/adb-csrn
-- Tenders - Contracts Awarded: http://feeds.feedburner.com/adb-contracts-awarded
-- Tenders - Invitation for Prequalification: http://feeds.feedburner.com/adb-invitation-for-prequalification
+ADB provides procurement data through its official RSS feed:
+- Procurement Notices: https://www.adb.org/rss/procurement-notices
+
+Note: FeedBurner URLs (feeds.feedburner.com) were previously used but are
+blocker by GFW on mainland China servers. The official ADB RSS is used instead.
 """
 
 import logging
@@ -19,15 +17,10 @@ from app.fetchers.base import BaseFetcher, TenderInfo
 
 logger = logging.getLogger(__name__)
 
-# ADB RSS feed URLs — active tender feeds only.
-# 'contracts_awarded' is intentionally excluded: those items have
-# Status=Awarded (already signed), so they are NOT open opportunities.
+# ADB official RSS feed — FeedBurner URLs are blocked by GFW on CN servers.
+# Only one aggregated feed is publicly available without Cloudflare blocking.
 ADB_RSS_FEEDS = {
-    "procurement_notices": "http://feeds.feedburner.com/procurement-notices",
-    "invitation_for_bids": "http://feeds.feedburner.com/adb-invitation-for-bids",
-    "advanced_notices": "http://feeds.feedburner.com/adb-advanced-notices",
-    "consulting_services": "http://feeds.feedburner.com/adb-csrn",
-    "prequalification": "http://feeds.feedburner.com/adb-invitation-for-prequalification",
+    "procurement_notices": "https://www.adb.org/rss/procurement-notices",
 }
 
 # Statuses considered "open" / worth tracking
@@ -160,8 +153,10 @@ class ADBFetcher(BaseFetcher):
         cat = _parse_category(category_text)
 
         status_raw = cat.get("status", "active").lower()
-        if status_raw not in _ACTIVE_STATUSES:
-            # Skip awarded, closed, expired, etc.
+        # When no category field is present (direct ADB RSS has no metadata),
+        # default to active so items are not silently dropped.
+        if cat and status_raw not in _ACTIVE_STATUSES:
+            # Skip awarded, closed, expired, etc. only when we have category data
             return None
 
         status = "open"
