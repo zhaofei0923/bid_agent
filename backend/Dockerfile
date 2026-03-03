@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Playwright: install system deps (X11 libs, fonts, etc.)
-RUN playwright install-deps chromium
+RUN python -m playwright install-deps chromium
 
 # Download Playwright-compatible Chromium.
 # On GitHub Actions: default cdn.playwright.dev works fine.
@@ -21,7 +21,7 @@ RUN playwright install-deps chromium
 ARG PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=
 ENV PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST}
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
-RUN playwright install chromium && \
+RUN python -m playwright install chromium && \
     echo "Playwright Chromium installed successfully"
 
 # Application code
