@@ -4,11 +4,10 @@ This module provides official API and RSS based fetchers for
 ADB and World Bank procurement opportunities.
 
 Data Source Notes:
-- ADB: Uses https://www.adb.org/rss/procurement-notices (official RSS).
-  FeedBurner URLs were replaced because feeds.feedburner.com (Google) is
-  blocked by GFW on mainland China servers.
-  The direct ADB RSS provides minimal metadata (title + link only, no deadline
-  or category fields), so deadline-based filtering is skipped for ADB items.
+- ADB: Uses direct ADB RSS URLs (discovered from FeedBurner <source> tags).
+  FeedBurner URLs (feeds.feedburner.com) are blocked by GFW on mainland China
+  servers. The direct ADB URLs include full category metadata with Status field,
+  allowing proper filtering to only Active tenders.
 - AfDB: Currently unsupported — afdb.org blocks server-side requests at the
   WAF/IP level (HTTP 403), making reliable automated fetching impossible.
 """
