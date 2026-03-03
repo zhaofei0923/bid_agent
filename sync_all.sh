@@ -74,7 +74,7 @@ if $RUN_ADB; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   (
     cd "$BACKEND_DIR"
-    python -m scripts.export_adb \
+    python3 -m scripts.export_adb \
       --output "$LOCAL_TMP" \
       --max-pages "$ADB_PAGES"
   )
