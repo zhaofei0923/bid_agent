@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000"
     APP_NAME: str = "BidAgent V2"
     APP_VERSION: str = "2.0.0"
+    FRONTEND_URL: str = "https://bid.easudata.com"
 
     # ── Database ─────────────────────────────────────────────────
     DATABASE_URL: str = (

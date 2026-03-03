@@ -3,6 +3,8 @@
 import logging
 from uuid import UUID
 
+import secrets
+
 import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.email import (
     generate_verify_code,
+    pwd_reset_key,
+    pwd_reset_rate_key,
+    send_reset_password_email,
     send_verification_email,
     verify_code_key,
     verify_rate_key,
@@ -190,3 +195,52 @@ class UserService:
             raise AuthenticationError("当前密码不正确")
         user.hashed_password = hash_password(data.new_password)
         await self.db.commit()
+
+    # ── Forgot / Reset Password ────────────────────────────────────
+
+    async def forgot_password(self, email: str) -> None:
+        """Send a password-reset link to the given email (if it exists)."""
+        user = await self.get_by_email(email)
+        if not user or not user.is_verified:
+            # Don't leak whether email exists
+            logger.info("Forgot-password requested for %s (skipped)", email)
+            return
+
+        r = _get_redis()
+        try:
+            rate_key = pwd_reset_rate_key(email)
+            if await r.exists(rate_key):
+                ttl = await r.ttl(rate_key)
+                raise ValidationError(f"发送太频繁，请 {ttl} 秒后再试")
+
+            token = secrets.token_urlsafe(32)
+            await r.setex(pwd_reset_key(token), 1800, email)  # 30 min
+            await r.setex(rate_key, settings.VERIFY_CODE_RATE_LIMIT, "1")
+        finally:
+            await r.aclose()
+
+        locale = getattr(user, "language", "zh") or "zh"
+        reset_url = (
+            f"{settings.FRONTEND_URL}/{locale}/auth/reset-password?token={token}"
+        )
+        await send_reset_password_email(email, reset_url, user.name)
+        logger.info("Password reset link sent to %s", email)
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        """Verify reset token and update user password."""
+        r = _get_redis()
+        try:
+            email = await r.get(pwd_reset_key(token))
+            if not email:
+                raise ValidationError("重置链接已过期或无效，请重新申请")
+            await r.delete(pwd_reset_key(token))
+        finally:
+            await r.aclose()
+
+        user = await self.get_by_email(email)
+        if not user:
+            raise ValidationError("用户不存在")
+
+        user.hashed_password = hash_password(new_password)
+        await self.db.commit()
+        logger.info("Password reset for %s", email)

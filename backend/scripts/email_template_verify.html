@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Verification / 邮箱验证码</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f4f8;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);padding:36px 40px;text-align:center;">
+              <p style="margin:0;font-size:28px;font-weight:700;color:#ffffff;letter-spacing:1px;">BidAgent</p>
+              <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">多边机构投标 AI 平台 &nbsp;·&nbsp; AI Bidding Platform for MDBs</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 8px;">
+
+              <!-- Title -->
+              <p style="margin:0;font-size:20px;font-weight:600;color:#0f172a;">验证您的邮箱地址</p>
+              <p style="margin:4px 0 0;font-size:15px;font-weight:500;color:#3b82f6;">Verify Your Email Address</p>
+
+              <!-- Chinese greeting -->
+              <p style="margin:20px 0 4px;font-size:14px;color:#475569;line-height:1.8;">
+                您好 {{name}}，感谢注册 <strong>BidAgent</strong>！请使用以下验证码完成邮箱验证。
+              </p>
+              <!-- English greeting -->
+              <p style="margin:0 0 24px;font-size:13px;color:#94a3b8;line-height:1.7;">
+                Hi {{name}}, thank you for registering with <strong>BidAgent</strong>. Please use the verification code below to verify your email address.
+              </p>
+
+              <!-- Code Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 28px;">
+                <tr>
+                  <td align="center" style="background:#f1f5f9;border-radius:12px;padding:28px 20px;">
+                    <p style="margin:0 0 10px;font-size:12px;color:#64748b;letter-spacing:1px;">验证码 &nbsp;·&nbsp; Verification Code</p>
+                    <p style="margin:0;font-size:48px;font-weight:700;letter-spacing:14px;color:#1e40af;font-family:'Courier New',monospace;">{{code}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notes -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-radius:10px;margin-bottom:32px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0;font-size:13px;color:#92400e;line-height:2.0;">
+                      • 验证码有效期为 <strong>10 分钟</strong>，请尽快完成验证<br>
+                      • This code is valid for <strong>10 minutes</strong>. Please verify promptly.<br>
+                      • 如非本人操作，请忽略此邮件，账号不会受影响<br>
+                      • If you didn't register, please ignore this email. Your account is safe.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid #e2e8f0;margin:0;">
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:2.0;">
+                此邮件由系统自动发送，请勿回复 &nbsp;·&nbsp; This is an automated email, please do not reply.<br>
+                © 2026 BidAgent &nbsp;·&nbsp; <a href="https://bid.easudata.com" style="color:#3b82f6;text-decoration:none;">bid.easudata.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

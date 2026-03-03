@@ -8,10 +8,12 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import (
     EmailVerifyRequest,
+    ForgotPasswordRequest,
     MessageResponse,
     PasswordChange,
     RegisterPendingResponse,
     ResendVerifyRequest,
+    ResetPasswordRequest,
     TokenRefresh,
     TokenResponse,
     UserLogin,
@@ -88,3 +90,19 @@ async def change_password(
     service = UserService(db)
     await service.change_password(current_user, data)
     return MessageResponse(message="密码已更新")
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Send a password-reset link to the email if it exists."""
+    service = UserService(db)
+    await service.forgot_password(data.email)
+    return MessageResponse(message="如果该邮筱已注册，重置链接已发送，请查收邮件")
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Reset password with a valid token."""
+    service = UserService(db)
+    await service.reset_password(data.token, data.new_password)
+    return MessageResponse(message="密码重置成功，请使用新密码登录")

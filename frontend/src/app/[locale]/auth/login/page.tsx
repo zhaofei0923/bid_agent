@@ -120,9 +120,12 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-stone-700">
                   {t("password")}
                 </label>
-                <span className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
+                <Link
+                  href={`/${locale}/auth/forgot-password`}
+                  className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500 transition-colors hover:text-slate-900"
+                >
                   {t("forgotPassword")}
-                </span>
+                </Link>
               </div>
               <Input
                 type="password"
