@@ -61,7 +61,7 @@ class ADBFetcher(BaseFetcher):
         # Extend headers with Cloudflare-friendly browser signals
         self._headers.update({
             "Referer": "https://www.adb.org/",
-            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Encoding": "gzip, deflate",  # no 'br': brotli needs extra package
             "sec-ch-ua": '"Chromium";v="120", "Google Chrome";v="120"',
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": '"Windows"',
