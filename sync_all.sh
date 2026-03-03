@@ -26,7 +26,7 @@ set -euo pipefail
 # ╚══════════════════════════════════════════════════════════════════╝
 SERVER_IP="${SERVER_IP:-152.136.160.173}"
 SSH_USER="${SSH_USER:-ubuntu}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_rsa}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 BACKEND_DIR="${BACKEND_DIR:-$(cd "$(dirname "$0")/backend" && pwd)}"
 REMOTE_CONTAINER="${REMOTE_CONTAINER:-bidagent-backend}"
 
