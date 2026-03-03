@@ -97,7 +97,7 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
     """Send a password-reset link to the email if it exists."""
     service = UserService(db)
     await service.forgot_password(data.email)
-    return MessageResponse(message="如果该邮筱已注册，重置链接已发送，请查收邮件")
+    return MessageResponse(message="如果该邮箱已注册，重置链接已发送，请查收邮件")
 
 
 @router.post("/reset-password", response_model=MessageResponse)
