@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -134,6 +135,218 @@ async def _parse_pdf(file_path: str) -> list[dict]:
     return pages
 
 
+# ── TOC Extraction ─────────────────────────────────────
+
+
+def _extract_pdf_bookmarks_sync(file_path: str, total_pages: int) -> list[dict]:
+    """Extract sections from PDF bookmark / outline tree (sync).
+
+    Returns list of {title, start_page, end_page, from_bookmark} dicts,
+    sorted by start_page. Returns [] on failure or empty outline.
+    """
+    try:
+        import pypdf  # pdfplumber ships pypdf as a dependency
+    except ImportError:
+        return []
+
+    try:
+        reader = pypdf.PdfReader(file_path)
+        outline = reader.outline
+        if not outline:
+            return []
+
+        flat: list[dict] = []
+
+        def _traverse(items: list, level: int = 0) -> None:
+            for item in items:
+                if isinstance(item, list):
+                    _traverse(item, level + 1)
+                elif hasattr(item, "title"):
+                    try:
+                        page_num = reader.get_destination_page_number(item) + 1  # 1-indexed
+                        title = (item.title or "").strip()
+                        if title and page_num >= 1:
+                            flat.append(
+                                {"title": title, "start_page": page_num, "level": level}
+                            )
+                    except Exception:
+                        pass
+
+        _traverse(outline)
+        if not flat:
+            return []
+
+        # Sort by page number, deduplicate identical pages (keep first)
+        flat.sort(key=lambda s: s["start_page"])
+        seen_pages: set[int] = set()
+        unique: list[dict] = []
+        for entry in flat:
+            if entry["start_page"] not in seen_pages:
+                seen_pages.add(entry["start_page"])
+                unique.append(entry)
+
+        # Only keep top-level (level 0) or level 1 entries if there are too many
+        top_entries = [e for e in unique if e["level"] == 0]
+        if not top_entries:
+            top_entries = unique
+
+        # Compute end_page
+        result: list[dict] = []
+        for i, sec in enumerate(top_entries):
+            end_page = top_entries[i + 1]["start_page"] - 1 if i + 1 < len(top_entries) else total_pages
+            if end_page < sec["start_page"]:
+                end_page = total_pages
+            result.append(
+                {
+                    "title": sec["title"],
+                    "start_page": sec["start_page"],
+                    "end_page": end_page,
+                    "from_bookmark": True,
+                }
+            )
+        return result
+    except Exception:
+        logger.exception("Failed to extract PDF bookmarks from %s", file_path)
+        return []
+
+
+# TOC text-line pattern: optional leading number, title, optional dots/spaces, page number
+_TOC_LINE_RE = re.compile(
+    r"^(?:(?:[0-9]+[\.\-]?)+\s+)?(.{3,80}?)\s*[\.·•\-]{0,15}\s*(\d{1,4})\s*$"
+)
+_TOC_KEYWORDS = {"table of contents", "contents", "index", "目录", "índice"}
+
+
+def _scan_text_for_toc(pages: list[dict]) -> list[dict]:
+    """Scan first ~10 pages for a TOC page and parse entries.
+
+    Returns list of {title, start_page, end_page} dicts, or [].
+    """
+    toc_entries: list[tuple[str, int]] = []  # (title, page_number)
+
+    for page_data in pages[:10]:
+        text = page_data.get("text", "") or ""
+        if not text.strip():
+            continue
+
+        # Check if this page looks like a TOC page
+        lower = text.lower()
+        if not any(kw in lower for kw in _TOC_KEYWORDS):
+            continue
+
+        # Parse TOC lines
+        matches: list[tuple[str, int]] = []
+        for line in text.splitlines():
+            line = line.strip()
+            m = _TOC_LINE_RE.match(line)
+            if m:
+                title = m.group(1).strip(" .")
+                pg = int(m.group(2))
+                if title and 1 <= pg <= 2000 and len(title) >= 3:
+                    matches.append((title, pg))
+
+        if len(matches) >= 3:
+            toc_entries = matches
+            break
+
+    if not toc_entries:
+        return []
+
+    total_pages = len(pages)
+    result: list[dict] = []
+    for i, (title, start_page) in enumerate(toc_entries):
+        if start_page > total_pages:
+            continue
+        end_page = toc_entries[i + 1][1] - 1 if i + 1 < len(toc_entries) else total_pages
+        end_page = max(start_page, min(end_page, total_pages))
+        result.append(
+            {
+                "title": title,
+                "start_page": start_page,
+                "end_page": end_page,
+                "from_bookmark": False,
+            }
+        )
+    return result
+
+
+async def _extract_toc_from_pdf(file_path: str, pages: list[dict]) -> list[dict]:
+    """Extract table of contents from a PDF (async wrapper).
+
+    Tries PDF bookmarks first, then text-based TOC scan.
+    Returns list of {title, start_page, end_page, from_bookmark} dicts.
+    Empty list → caller should fall back to page-group sectioning.
+    """
+    toc = await asyncio.to_thread(_extract_pdf_bookmarks_sync, file_path, len(pages))
+    if toc:
+        logger.info("Extracted %d TOC sections from PDF bookmarks", len(toc))
+        return toc
+
+    toc = _scan_text_for_toc(pages)
+    if toc:
+        logger.info("Extracted %d TOC sections from text scan", len(toc))
+        return toc
+
+    logger.info("No TOC found in PDF; will fall back to page-group sections")
+    return []
+
+
+def _build_sections_from_toc(
+    toc: list[dict], pages: list[dict], document_id: object
+) -> list[tuple]:
+    """Create BidDocumentSection ORM objects from extracted TOC entries.
+
+    Returns list of (section_orm, content_str) tuples ready to add to the session.
+    """
+    sections_and_content: list[tuple] = []
+    for item in toc:
+        start_p = item["start_page"]
+        end_p = item["end_page"]
+        section_pages = [p for p in pages if start_p <= p["page_number"] <= end_p]
+        content = "\n\n".join(
+            f"=== 第{p['page_number']}页 ===\n{p['text']}"
+            for p in section_pages
+            if p["text"].strip()
+        )
+        section = BidDocumentSection(
+            bid_document_id=document_id,
+            section_type="toc_section",
+            section_title=item["title"],
+            start_page=start_p,
+            end_page=end_p,
+            content_preview=content[:500],
+            detected_by="bookmark" if item.get("from_bookmark") else "toc_scan",
+        )
+        sections_and_content.append((section, content))
+    return sections_and_content
+
+
+def _build_page_group_sections(
+    pages: list[dict], document_id: object, group_size: int = 5
+) -> list[tuple]:
+    """Fall-back: split pages into fixed-size groups as BidDocumentSection objects."""
+    sections_and_content: list[tuple] = []
+    for start_idx in range(0, len(pages), group_size):
+        page_group = pages[start_idx : start_idx + group_size]
+        content = "\n\n".join(
+            f"=== 第{p['page_number']}页 ===\n{p['text']}"
+            for p in page_group
+            if p["text"].strip()
+        )
+        if not content.strip():
+            continue
+        section = BidDocumentSection(
+            bid_document_id=document_id,
+            section_type="full_document",
+            section_title=f"第{page_group[0]['page_number']}-{page_group[-1]['page_number']}页",
+            start_page=page_group[0]["page_number"],
+            end_page=page_group[-1]["page_number"],
+            content_preview=content[:500],
+        )
+        sections_and_content.append((section, content))
+    return sections_and_content
+
+
 async def _generate_ai_analysis(sample_text: str) -> tuple[str, str]:
     """Call LLM to generate ai_overview and ai_reading_tips.
 
@@ -173,7 +386,7 @@ async def _generate_ai_analysis(sample_text: str) -> tuple[str, str]:
 
 
 async def _analyze_document_from_db(document_id: str) -> dict:
-    """Re-analyze an existing document: re-parse PDF and generate AI overview."""
+    """Re-analyze an existing document: regenerate sections (if needed) and generate AI overview."""
     async with async_session() as db:
         result = await db.execute(
             select(BidDocument).where(BidDocument.id == document_id)
@@ -187,6 +400,34 @@ async def _analyze_document_from_db(document_id: str) -> dict:
         if not pages:
             logger.warning("No pages for document %s — cannot generate AI overview", document_id)
             return {"status": "error", "reason": "no_content"}
+
+        # Regenerate sections if all existing sections are plain page groups
+        existing_result = await db.execute(
+            select(BidDocumentSection).where(BidDocumentSection.bid_document_id == document_id)
+        )
+        existing_sections = existing_result.scalars().all()
+        all_page_groups = all(s.section_type == "full_document" for s in existing_sections)
+
+        if all_page_groups:
+            logger.info(
+                "Document %s has only page-group sections — attempting TOC extraction",
+                document_id,
+            )
+            toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
+            if toc_items:
+                # Delete old page-group sections and replace with TOC sections
+                for sec in existing_sections:
+                    await db.delete(sec)
+                await db.flush()
+                toc_section_tuples = _build_sections_from_toc(toc_items, pages, document_id)
+                for section, _content in toc_section_tuples:
+                    db.add(section)
+                logger.info(
+                    "Replaced %d page-group sections with %d TOC sections for document %s",
+                    len(existing_sections),
+                    len(toc_section_tuples),
+                    document_id,
+                )
 
         sample_text = "\n\n".join(
             p["text"] for p in pages[:30] if p["text"].strip()
@@ -249,29 +490,14 @@ async def _process_document(document_id: str) -> dict:
                 await db.delete(section)
             await db.commit()
 
-            # 4. Create sections — one per page group or logical section
-            # Simple strategy: group pages into 5-page sections
-            group_size = 5
-            for start_idx in range(0, len(pages), group_size):
-                page_group = pages[start_idx : start_idx + group_size]
-                content = "\n\n".join(
-                    f"=== 第{p['page_number']}页 ===\n{p['text']}"
-                    for p in page_group
-                    if p["text"].strip()
-                )
-                if not content.strip():
-                    continue
-
-                section = BidDocumentSection(
-                    bid_document_id=doc.id,
-                    section_type="full_document",
-                    section_title=f"第{page_group[0]['page_number']}-{page_group[-1]['page_number']}页",
-                    start_page=page_group[0]["page_number"],
-                    end_page=page_group[-1]["page_number"],
-                    content_preview=content[:500],
-                )
+            # 4. Create sections — try PDF TOC first, fallback to page groups
+            toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
+            if toc_items:
+                section_tuples = _build_sections_from_toc(toc_items, pages, doc.id)
+            else:
+                section_tuples = _build_page_group_sections(pages, doc.id)
+            for section, _content in section_tuples:
                 db.add(section)
-                section_tuples.append((section, content))
 
             await db.flush()  # Assign IDs to sections
 

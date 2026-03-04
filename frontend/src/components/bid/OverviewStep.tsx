@@ -15,6 +15,8 @@ import type { ProjectDocument, DocumentSection } from "@/types"
 // Section type → color mapping
 // ──────────────────────────────────────────────
 const SECTION_TYPE_COLOR: Record<string, string> = {
+  toc_section: "bg-blue-100 text-blue-700 border-blue-200",
+  full_document: "bg-slate-100 text-slate-600 border-slate-200",
   tor: "bg-indigo-100 text-indigo-700 border-indigo-200",
   references_to_tor: "bg-indigo-100 text-indigo-700 border-indigo-200",
   qualification: "bg-amber-100 text-amber-700 border-amber-200",
@@ -32,6 +34,27 @@ const DEFAULT_SECTION_COLOR = "bg-stone-100 text-stone-600 border-stone-200"
 
 function getSectionColor(type: string) {
   return SECTION_TYPE_COLOR[type.toLowerCase()] ?? DEFAULT_SECTION_COLOR
+}
+
+const SECTION_TYPE_LABEL: Record<string, string> = {
+  toc_section: "章节",
+  full_document: "页组",
+  tor: "TOR",
+  references_to_tor: "TOR引用",
+  qualification: "资质",
+  qualification_requirements: "资质要求",
+  evaluation: "评估",
+  evaluation_criteria: "评分标准",
+  key_dates: "时间节点",
+  timeline: "时间表",
+  submission: "提交",
+  submission_requirements: "提交要求",
+  commercial: "商务",
+  technical: "技术",
+}
+
+function getSectionLabel(type: string) {
+  return SECTION_TYPE_LABEL[type.toLowerCase()] ?? type
 }
 
 // ──────────────────────────────────────────────
@@ -116,7 +139,7 @@ function SectionRow({ section }: { section: DocumentSection }) {
         <span
           className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colorCls}`}
         >
-          {section.section_type}
+          {getSectionLabel(section.section_type)}
         </span>
 
         {/* Title */}
