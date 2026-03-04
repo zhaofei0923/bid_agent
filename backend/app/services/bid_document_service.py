@@ -6,12 +6,14 @@ import os
 from pathlib import Path
 from uuid import UUID
 
+from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
 
 from app.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models.bid_document import BidDocument, BidDocumentSection
+from app.models.bid_document import BidDocument, BidDocumentChunk, BidDocumentSection
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -115,19 +117,54 @@ class BidDocumentService:
         """Get all sections for a document."""
         result = await self.db.execute(
             select(BidDocumentSection)
-            .where(BidDocumentSection.document_id == document_id)
-            .order_by(BidDocumentSection.order_index)
+            .where(BidDocumentSection.bid_document_id == document_id)
+            .order_by(BidDocumentSection.start_page)
         )
         return list(result.scalars().all())
 
     async def delete(self, document_id: UUID) -> None:
-        """Delete a document and remove its file from disk."""
-        doc = await self.get_by_id(document_id)
+        """Delete a document and remove its file from disk.
 
-        # Remove file
-        if doc.file_path and os.path.exists(doc.file_path):
-            os.remove(doc.file_path)
+        Uses raw SQL DELETE to avoid ORM session conflicts caused by
+        lazy="selectin" pre-loading child objects into the session.
+        DB ON DELETE CASCADE handles sections/chunks automatically.
+        """
+        # Fetch file_path only — noload prevents selectin from loading sections
+        result = await self.db.execute(
+            select(BidDocument)
+            .where(BidDocument.id == document_id)
+            .options(noload(BidDocument.sections), noload(BidDocument.chunks))
+        )
+        doc = result.scalar_one_or_none()
+        if not doc:
+            raise NotFoundError("BidDocument", str(document_id))
 
-        await self.db.delete(doc)
+        file_path = doc.file_path
+
+        # Expunge from session before raw SQL to avoid stale-state conflicts
+        self.db.expunge(doc)
+
+        # Raw SQL DELETE — DB CASCADE removes sections and chunks
+        await self.db.execute(
+            sql_delete(BidDocumentChunk).where(
+                BidDocumentChunk.bid_document_id == document_id
+            )
+        )
+        await self.db.execute(
+            sql_delete(BidDocumentSection).where(
+                BidDocumentSection.bid_document_id == document_id
+            )
+        )
+        await self.db.execute(
+            sql_delete(BidDocument).where(BidDocument.id == document_id)
+        )
         await self.db.commit()
+
+        # Remove file from disk after successful DB delete
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError as exc:
+                logger.warning("Could not remove file %s: %s", file_path, exc)
+
         logger.info("Deleted document %s", document_id)
