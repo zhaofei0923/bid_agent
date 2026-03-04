@@ -38,21 +38,26 @@ function getSectionColor(type: string) {
 // Sub-components
 // ──────────────────────────────────────────────
 
+// Backend statuses: pending → processing → processed (success) | error (failure)
+const SUCCESS_STATUSES = new Set(["processed", "completed"])
+const ACTIVE_STATUSES = new Set(["pending", "processing"])
+
 function DocStatusBadge({ status }: { status: string }) {
   const t = useTranslations("bid")
   const map: Record<string, string> = {
+    processed: "bg-emerald-100 text-emerald-700 border-emerald-200",
     completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
     processing: "bg-blue-100 text-blue-700 border-blue-200",
     pending: "bg-stone-100 text-stone-600 border-stone-200",
+    error: "bg-red-100 text-red-700 border-red-200",
     failed: "bg-red-100 text-red-700 border-red-200",
   }
-  const cls = map[status] ?? map.pending
-  const label =
-    status === "completed"
-      ? t("overview.completed")
-      : status === "processing" || status === "pending"
-        ? t("overview.processing")
-        : t("overview.failed")
+  const cls = map[status] ?? "bg-stone-100 text-stone-600 border-stone-200"
+  const label = SUCCESS_STATUSES.has(status)
+    ? t("overview.completed")
+    : ACTIVE_STATUSES.has(status)
+      ? t("overview.processing")
+      : t("overview.failed")
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}
@@ -66,7 +71,7 @@ function DocMetaCard({ doc }: { doc: ProjectDocument }) {
   const t = useTranslations("bid")
   const ext = (doc.original_filename || doc.filename).split(".").pop()?.toUpperCase() ?? ""
   const sizeKb = doc.file_size != null ? Math.round(doc.file_size / 1024) : null
-  const isProcessing = doc.status === "processing" || doc.status === "pending"
+  const isProcessing = ACTIVE_STATUSES.has(doc.status)
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
@@ -157,7 +162,8 @@ function DocDetailPanel({
   doc: ProjectDocument
 }) {
   const t = useTranslations("bid")
-  const isProcessing = doc.status === "processing" || doc.status === "pending"
+  const isProcessing = ACTIVE_STATUSES.has(doc.status)
+  const hasFailed = doc.status === "error" || doc.status === "failed"
   const { data: sections, isLoading: sectionsLoading } = useDocumentSections(
     projectId,
     doc.id
@@ -171,7 +177,14 @@ function DocDetailPanel({
           <h3 className="text-sm font-semibold">{t("overview.aiReading")}</h3>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isProcessing ? (
+          {hasFailed ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm font-medium text-red-700">{t("overview.failed")}</p>
+              {doc.error_message && (
+                <p className="mt-1 text-xs text-red-600">{doc.error_message}</p>
+              )}
+            </div>
+          ) : isProcessing ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />
@@ -205,13 +218,13 @@ function DocDetailPanel({
           <h3 className="text-sm font-semibold">{t("overview.sectionStructure")}</h3>
         </CardHeader>
         <CardContent>
-          {isProcessing || sectionsLoading ? (
+          {(isProcessing || sectionsLoading) && !hasFailed ? (
             <div className="space-y-2">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-12 w-full rounded-lg" />
               ))}
             </div>
-          ) : sections && sections.length > 0 ? (
+          ) : hasFailed ? null : sections && sections.length > 0 ? (
             <div className="space-y-2">
               {sections.map((s) => (
                 <SectionRow key={s.id} section={s} />
