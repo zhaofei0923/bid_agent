@@ -35,9 +35,21 @@ jobs:
           pip install ruff
 
       - name: Lint backend (ruff)
+        id: ruff_lint
+        shell: bash
         run: |
           cd backend
-          ruff check .
+          ruff --version
+          ruff check . 2>&1 | tee /tmp/ruff_output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload ruff output on failure
+        if: failure() && steps.ruff_lint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-output
+          path: /tmp/ruff_output.txt
+          retention-days: 1
 
       # ── Frontend ─────────────────────────────────────
       - name: Set up Node 20
