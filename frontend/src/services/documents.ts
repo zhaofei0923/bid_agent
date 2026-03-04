@@ -1,5 +1,5 @@
 import apiClient from "./api-client"
-import type { ProjectDocument } from "@/types"
+import type { ProjectDocument, DocumentSection } from "@/types"
 
 export const documentService = {
   async list(projectId: string): Promise<ProjectDocument[]> {
@@ -29,6 +29,16 @@ export const documentService = {
         // Large file uploads may exceed the default 30s timeout
         timeout: 120_000,
       }
+    )
+    return res.data
+  },
+
+  async getSections(
+    projectId: string,
+    documentId: string
+  ): Promise<DocumentSection[]> {
+    const res = await apiClient.get<DocumentSection[]>(
+      `/projects/${projectId}/bid-documents/${documentId}/sections`
     )
     return res.data
   },

@@ -9,6 +9,7 @@ export type {
   ProjectCreate,
   ProjectUpdate,
   ProjectDocument,
+  DocumentSection,
   ProjectStatus,
 } from "./project"
 export type {

@@ -897,7 +897,19 @@
       "qualificationReqs": "Qualification Requirements",
       "evaluationCriteria": "Evaluation Criteria",
       "extracted": "Extracted",
-      "nextStep": "Next: Bid Analysis →"
+      "nextStep": "Next: Bid Analysis →",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "pages": "pages",
+      "aiReading": "AI Interpretation",
+      "aiReadingTips": "Reading Tips",
+      "sectionStructure": "Section Structure",
+      "noSections": "No section data available. The document may still be processing or no structure was detected.",
+      "noOverview": "No interpretation yet. The document may still be processing…",
+      "processingHint": "AI is interpreting the document, please wait...",
+      "pageRange": "P{start}–P{end}",
+      "institution": "Detected Institution"
     },
     "analysis": {
       "title": "Bid Analysis",

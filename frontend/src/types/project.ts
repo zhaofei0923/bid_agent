@@ -58,3 +58,19 @@ export interface ProjectDocument {
   created_at: string
   updated_at: string
 }
+
+export interface DocumentSection {
+  id: string
+  bid_document_id: string
+  section_type: string
+  section_title: string | null
+  section_number: string | null
+  start_page: number
+  end_page: number
+  content_preview: string | null
+  detected_by: string
+  confidence: number | null
+  ai_summary: string | null
+  reading_guide: string | null
+  created_at: string
+}

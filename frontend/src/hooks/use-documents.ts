@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { documentService } from "@/services/documents"
 import type { ProjectDocument } from "@/types/project"
 
+export function useDocumentSections(projectId: string, documentId: string) {
+  return useQuery({
+    queryKey: ["document-sections", projectId, documentId],
+    queryFn: () => documentService.getSections(projectId, documentId),
+    enabled: !!projectId && !!documentId,
+  })
+}
+
 const PROCESSING_STATUSES = new Set(["pending", "processing"])
 
 export function useDocuments(projectId: string) {
