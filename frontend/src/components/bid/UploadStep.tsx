@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "待处理",
   processing: "解析中",
   processed: "已就绪",
+  completed: "已就绪",
   error: "失败",
 }
 
@@ -25,6 +26,7 @@ const STATUS_VARIANTS: Record<string, "secondary" | "outline" | "default" | "des
   pending: "secondary",
   processing: "secondary",
   processed: "default",
+  completed: "default",
   error: "destructive",
 }
 
