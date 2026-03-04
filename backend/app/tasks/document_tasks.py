@@ -1,4 +1,4 @@
-"""Document processing tasks — PDF parsing, chunking, vectorization."""
+"""Document processing tasks — PDF parsing, chunking, vectorization, AI analysis."""
 
 import asyncio
 import logging
@@ -134,6 +134,73 @@ async def _parse_pdf(file_path: str) -> list[dict]:
     return pages
 
 
+async def _generate_ai_analysis(sample_text: str) -> tuple[str, str]:
+    """Call LLM to generate ai_overview and ai_reading_tips.
+
+    Returns (overview, reading_tips). Falls back to empty strings on failure.
+    """
+    from app.agents.llm_client import LLMClient
+
+    client = LLMClient()
+    clipped = sample_text[:8000]
+
+    try:
+        result = await client.extract_json(
+            prompt=f"以下是招标文件的部分内容：\n\n{clipped}",
+            system_prompt=(
+                "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
+                "请仔细阅读提供的招标文件内容，生成以下JSON格式的输出：\n"
+                '{"overview": "文档概述", "reading_tips": "阅读建议"}\n\n'
+                "overview要求（300-500字中文）：项目名称、项目国家/地区、主要目标、"
+                "核心技术要求、投标人资质要求、关键时间节点。\n"
+                "reading_tips要求（150-250字中文）：针对投标人的阅读重点、"
+                "需特别注意的条款、常见误解和注意事项。\n"
+                "仅输出JSON，不要有任何其他内容。"
+            ),
+            temperature=0.3,
+            max_tokens=2000,
+        )
+        data = result.data
+        if data.get("parse_error"):
+            logger.warning("LLM returned non-JSON for AI analysis")
+            return "", ""
+        overview = str(data.get("overview", ""))
+        reading_tips = str(data.get("reading_tips", ""))
+        return overview, reading_tips
+    except Exception:
+        logger.exception("AI analysis generation failed")
+        return "", ""
+
+
+async def _analyze_document_from_db(document_id: str) -> dict:
+    """Re-analyze an existing document: re-parse PDF and generate AI overview."""
+    async with async_session() as db:
+        result = await db.execute(
+            select(BidDocument).where(BidDocument.id == document_id)
+        )
+        doc = result.scalar_one_or_none()
+        if not doc:
+            raise ValueError(f"Document not found: {document_id}")
+
+        # Re-parse PDF to get text
+        pages = await _parse_pdf(doc.file_path)
+        if not pages:
+            logger.warning("No pages for document %s — cannot generate AI overview", document_id)
+            return {"status": "error", "reason": "no_content"}
+
+        sample_text = "\n\n".join(
+            p["text"] for p in pages[:30] if p["text"].strip()
+        )
+
+        overview, reading_tips = await _generate_ai_analysis(sample_text)
+        doc.ai_overview = overview or None
+        doc.ai_reading_tips = reading_tips or None
+        await db.commit()
+
+        logger.info("AI analysis generated for document %s", document_id)
+        return {"status": "ok", "document_id": document_id}
+
+
 async def _process_document(document_id: str) -> dict:
     """Parse, chunk, and vectorize a bid document."""
     embedding_client = get_embedding_client()
@@ -262,7 +329,17 @@ async def _process_document(document_id: str) -> dict:
                     )
 
             doc.vectorized_chunk_count = total_vectorized
-            doc.processing_progress = 90
+            doc.processing_progress = 85
+            await db.commit()
+
+            # 7. Generate AI overview and reading tips
+            sample_text = "\n\n".join(
+                p["text"] for p in pages[:30] if p["text"].strip()
+            )
+            overview, reading_tips = await _generate_ai_analysis(sample_text)
+            doc.ai_overview = overview or None
+            doc.ai_reading_tips = reading_tips or None
+            doc.processing_progress = 95
             await db.commit()
 
         except Exception:
@@ -326,3 +403,21 @@ def process_all_pending() -> list[str]:
 
     logger.info("Queued %d pending documents for processing", len(pending_ids))
     return pending_ids
+
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=10)
+def generate_document_ai(self, document_id: str) -> dict:
+    """Generate (or regenerate) AI overview and reading tips for an existing document.
+
+    Safe to call on already-processed documents that lack ai_overview.
+    """
+    logger.info("Generating AI analysis for document %s", document_id)
+    try:
+        result = asyncio.get_event_loop().run_until_complete(
+            _analyze_document_from_db(document_id)
+        )
+        logger.info("AI analysis done for document %s: %s", document_id, result)
+        return result
+    except Exception as exc:
+        logger.exception("AI analysis failed for document %s", document_id)
+        raise self.retry(exc=exc) from exc

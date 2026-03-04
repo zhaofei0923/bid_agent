@@ -906,7 +906,8 @@
       "aiReadingTips": "阅读建议",
       "sectionStructure": "章节结构",
       "noSections": "暂无章节数据，文档可能尚在处理中或未检测到结构",
-      "noOverview": "暂无解读内容，文档可能尚在处理中…",
+      "noOverview": "AI 解读内容为空，请尝试重新进入页面",
+      "generatingOverview": "正在生成 AI 解读，请稍候...",
       "processingHint": "AI 正在解读文档，请稍候...",
       "pageRange": "P{start}–P{end}",
       "institution": "检测机构"

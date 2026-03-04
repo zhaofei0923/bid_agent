@@ -11,18 +11,22 @@ export function useDocumentSections(projectId: string, documentId: string) {
 }
 
 const PROCESSING_STATUSES = new Set(["pending", "processing"])
+const SUCCESS_STATUSES = new Set(["processed", "completed"])
 
 export function useDocuments(projectId: string) {
   return useQuery({
     queryKey: ["documents", projectId],
     queryFn: () => documentService.list(projectId),
     enabled: !!projectId,
-    // Poll every 3 seconds while any document is still processing
+    // Poll when any doc is processing OR is processed-but-missing ai_overview
     refetchInterval: (query) => {
       const docs = query.state.data as ProjectDocument[] | undefined
       if (!docs) return false
       const hasProcessing = docs.some((d) => PROCESSING_STATUSES.has(d.status))
-      return hasProcessing ? 3000 : false
+      const hasPendingAnalysis = docs.some(
+        (d) => SUCCESS_STATUSES.has(d.status) && d.ai_overview === null
+      )
+      return hasProcessing || hasPendingAnalysis ? 3000 : false
     },
   })
 }
@@ -43,6 +47,18 @@ export function useDeleteDocument(projectId: string) {
     mutationFn: (documentId: string) =>
       documentService.delete(projectId, documentId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents", projectId] })
+    },
+  })
+}
+
+export function useAnalyzeDocument(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      documentService.analyze(projectId, documentId),
+    onSuccess: () => {
+      // Invalidate so the polling picks up the updated ai_overview
       queryClient.invalidateQueries({ queryKey: ["documents", projectId] })
     },
   })

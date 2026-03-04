@@ -1,8 +1,8 @@
 "use client"
 
-import { memo, useState } from "react"
+import { memo, useState, useEffect } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
-import { useDocuments, useDocumentSections } from "@/hooks/use-documents"
+import { useDocuments, useDocumentSections, useAnalyzeDocument } from "@/hooks/use-documents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -164,10 +164,21 @@ function DocDetailPanel({
   const t = useTranslations("bid")
   const isProcessing = ACTIVE_STATUSES.has(doc.status)
   const hasFailed = doc.status === "error" || doc.status === "failed"
+  const isSuccess = SUCCESS_STATUSES.has(doc.status)
+  const needsAiAnalysis = isSuccess && doc.ai_overview === null
   const { data: sections, isLoading: sectionsLoading } = useDocumentSections(
     projectId,
     doc.id
   )
+  const analyzeMutation = useAnalyzeDocument(projectId)
+
+  // Auto-trigger AI analysis for processed docs that have no overview yet
+  useEffect(() => {
+    if (needsAiAnalysis && !analyzeMutation.isPending && !analyzeMutation.isSuccess) {
+      analyzeMutation.mutate(doc.id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc.id, needsAiAnalysis])
 
   return (
     <div className="space-y-5">
@@ -186,6 +197,13 @@ function DocDetailPanel({
             </div>
           ) : isProcessing ? (
             <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </div>
+          ) : needsAiAnalysis || analyzeMutation.isPending ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground animate-pulse">⏳ {t("overview.generatingOverview")}</p>
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />
               <Skeleton className="h-4 w-4/6" />

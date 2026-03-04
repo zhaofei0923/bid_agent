@@ -42,4 +42,10 @@ export const documentService = {
     )
     return res.data
   },
+
+  async analyze(projectId: string, documentId: string): Promise<void> {
+    await apiClient.post(
+      `/projects/${projectId}/bid-documents/${documentId}/analyze`
+    )
+  },
 }

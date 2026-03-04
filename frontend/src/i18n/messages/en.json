@@ -906,7 +906,8 @@
       "aiReadingTips": "Reading Tips",
       "sectionStructure": "Section Structure",
       "noSections": "No section data available. The document may still be processing or no structure was detected.",
-      "noOverview": "No interpretation yet. The document may still be processing…",
+      "noOverview": "AI interpretation is empty. Please try refreshing the page.",
+      "generatingOverview": "Generating AI interpretation, please wait...",
       "processingHint": "AI is interpreting the document, please wait...",
       "pageRange": "P{start}–P{end}",
       "institution": "Detected Institution"

@@ -94,6 +94,38 @@ async def delete_bid_document(
     await doc_svc.delete(document_id)
 
 
+@router.post(
+    "/{project_id}/bid-documents/{document_id}/analyze",
+    status_code=202,
+)
+async def analyze_bid_document(
+    project_id: UUID,
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger (or re-trigger) AI overview + reading tips generation for a document."""
+    from app.services.bid_document_service import BidDocumentService
+    from app.services.project_service import ProjectService
+
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    doc_svc = BidDocumentService(db)
+    await doc_svc.get_by_id(document_id)  # validates existence
+
+    try:
+        from app.tasks.document_tasks import generate_document_ai
+        generate_document_ai.delay(str(document_id))
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Celery not available — AI analysis will not run for document %s", document_id
+        )
+
+    return {"message": "AI analysis queued", "document_id": str(document_id)}
+
+
 @router.get(
     "/{project_id}/bid-documents/{document_id}/sections",
     response_model=list[BidDocumentSectionResponse],
