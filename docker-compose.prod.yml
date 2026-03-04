@@ -74,7 +74,7 @@ services:
     image: bidagent-backend:latest
     container_name: bidagent-celery
     env_file: .env
-    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=1 --queues=celery,documents
     # Chromium in Docker needs host IPC and relaxed seccomp
     ipc: host
     security_opt:
@@ -92,7 +92,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
+          memory: 1536M
     networks:
       - bidagent-net
 
