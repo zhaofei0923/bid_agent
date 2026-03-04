@@ -61,7 +61,7 @@ async def intake_documents_node(state: BidGuidanceState) -> dict:
         return {"current_step": "intake_complete", "tor_analysis": {}}
 
     try:
-        from app.models.bid_analysis import BidAnalysis  # noqa: PLC0415
+        from app.models.bid_analysis import BidAnalysis
         result = await db.execute(
             select(BidAnalysis).where(BidAnalysis.project_id == project_id)
         )

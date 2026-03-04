@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy import select
 
@@ -118,7 +117,7 @@ async def _parse_pdf(file_path: str) -> list[dict]:
         List of {page_number, text} dicts.
     """
     try:
-        import pdfplumber  # noqa: PLC0415
+        import pdfplumber
     except ImportError:
         logger.error("pdfplumber not installed — run: pip install pdfplumber")
         return []
