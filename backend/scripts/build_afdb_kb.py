@@ -9,6 +9,7 @@ Usage:
 """
 
 import asyncio
+import contextlib
 import hashlib
 import logging
 import os
@@ -90,7 +91,7 @@ def wget_download(url: str, dest_path: str, retries: int = 3) -> bool:
             wait = random.uniform(8, 15)
             log.info("    Retry %d/%d, waiting %.1fs...", attempt, retries, wait)
             time.sleep(wait)
-        cmd = ["wget", "-nv", "-O", dest_path, "--timeout=60", "--tries=1"] + WGET_HEADERS + [url]
+        cmd = ["wget", "-nv", "-O", dest_path, "--timeout=60", "--tries=1", *WGET_HEADERS, url]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             log.warning("    wget exit %d: %s", result.returncode, result.stderr[:120].strip())
@@ -222,7 +223,7 @@ async def run() -> None:
     skip_count = 0
     fail_count = 0
 
-    for url, title, category in AFDB_DOCUMENTS:
+    for url, title, _category in AFDB_DOCUMENTS:
         # 检查是否已入库
         if await doc_exists(session, url):
             log.info("  SKIP (already in DB): %s", title)
@@ -272,10 +273,8 @@ async def run() -> None:
             log.exception("  ✗ Error processing %s: %s", title, exc)
             fail_count += 1
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp_path)
-            except OSError:
-                pass
 
     log.info("\n=== Done ===")
     log.info("Success: %d | Skipped: %d | Failed: %d", ok_count, skip_count, fail_count)

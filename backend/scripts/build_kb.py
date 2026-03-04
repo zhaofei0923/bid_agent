@@ -17,6 +17,7 @@ Usage:
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import logging
 import os
@@ -28,9 +29,7 @@ from uuid import uuid4
 
 import httpx
 import pdfplumber
-from bs4 import BeautifulSoup
-from sqlalchemy import select, text
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -553,7 +552,7 @@ def parse_pdf(path: str) -> list[dict[str, Any]]:
                 t = page.extract_text() or ""
                 if t.strip():
                     pages.append({"page": i, "text": t})
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("page %d extraction failed: %s", i, exc)
     return pages
 
@@ -594,7 +593,7 @@ async def download_pdf(url: str, dest: str) -> bool:
             resp.raise_for_status()
             Path(dest).write_bytes(resp.content)
             return True
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.error("download failed %s: %s", url, exc)
         return False
 
@@ -643,17 +642,12 @@ async def process_document(
         await insert_chunks(session, doc_id, kb_id, chunks)
         log.info("  ✓ Inserted doc %s with %d chunks", doc_id, len(chunks))
     finally:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 async def run(source: str, limit: int) -> None:
-    if source == "all":
-        sources = list(SOURCE_MAP.keys())
-    else:
-        sources = [source]
+    sources = list(SOURCE_MAP.keys()) if source == "all" else [source]
 
     session = await get_session()
     emb_client = get_embedding_client()

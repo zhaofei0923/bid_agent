@@ -1,5 +1,6 @@
 """RAG utilities — context assembly and question answering."""
 
+import contextlib
 import logging
 from typing import Any
 
@@ -119,10 +120,8 @@ async def build_analysis_context(
             all_chunks.extend(chunks)
         except Exception:
             # Roll back aborted transaction so subsequent queries can proceed
-            try:
+            with contextlib.suppress(Exception):
                 await db.rollback()
-            except Exception:
-                pass
             logger.warning("Embedding/search failed for query '%s'", query, exc_info=True)
 
     unique_chunks = _deduplicate_by_id(all_chunks)
@@ -142,10 +141,8 @@ async def build_analysis_context(
             kb_chunks.extend(results)
         except Exception:
             # Roll back aborted transaction so subsequent queries can proceed
-            try:
+            with contextlib.suppress(Exception):
                 await db.rollback()
-            except Exception:
-                pass
             logger.warning("KB search failed for query '%s'", query, exc_info=True)
 
     top_kb = sorted(kb_chunks, key=lambda c: c.get("score", 0), reverse=True)[:5]

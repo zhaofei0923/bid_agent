@@ -34,6 +34,10 @@ pdfplumber>=0.11
 # python-docx>=1.1
 # paddleocr>=2.7  # Optional: CPU-based OCR
 
+# ============ Embedding Providers ============
+tencentcloud-sdk-python-hunyuan>=3.1.48
+zhipuai>=2.1.5
+
 # ============ Utilities ============
 python-dotenv>=1.0
 aiosmtplib>=3.0
