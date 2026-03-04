@@ -92,9 +92,16 @@ class BidDocument(Base):
     # Relationships
     project = relationship("Project", back_populates="bid_documents")
     sections = relationship(
-        "BidDocumentSection", back_populates="bid_document", lazy="selectin"
+        "BidDocumentSection",
+        back_populates="bid_document",
+        lazy="selectin",
+        passive_deletes=True,
     )
-    chunks = relationship("BidDocumentChunk", back_populates="bid_document")
+    chunks = relationship(
+        "BidDocumentChunk",
+        back_populates="bid_document",
+        passive_deletes=True,
+    )
 
 
 class BidDocumentSection(Base):

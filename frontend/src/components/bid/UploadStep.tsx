@@ -40,6 +40,7 @@ export const UploadStep = memo(function UploadStep({
   const deleteMutation = useDeleteDocument(projectId)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -51,10 +52,12 @@ export const UploadStep = memo(function UploadStep({
     async (documentId: string) => {
       if (!window.confirm("确定要删除这个文件吗？")) return
       setDeletingId(documentId)
+      setDeleteError(null)
       try {
         await deleteMutation.mutateAsync(documentId)
-      } catch {
-        // silent — list will not update on error
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "删除失败，请重试"
+        setDeleteError(msg)
       } finally {
         setDeletingId(null)
       }
@@ -166,6 +169,10 @@ export const UploadStep = memo(function UploadStep({
           <p className="mt-4 text-sm text-destructive">⚠️ {uploadError}</p>
         )}
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive">⚠️ {deleteError}</p>
+      )}
 
       {/* Document list */}
       {documents && documents.length > 0 && (
