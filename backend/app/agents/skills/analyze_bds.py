@@ -71,8 +71,8 @@ class AnalyzeBDS(Skill):
             )
             return SkillResult(
                 success=True,
-                data=result,
-                tokens_consumed=0,
+                data=result.data,
+                tokens_consumed=result.tokens_used,
             )
         except Exception as e:
             return SkillResult(success=False, error=str(e))

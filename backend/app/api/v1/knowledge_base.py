@@ -77,14 +77,20 @@ async def search_knowledge(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Semantic search across knowledge base."""
+    """Semantic search across knowledge base (pgvector cosine similarity)."""
+    from app.agents.embedding_client import get_embedding_client
     from app.services.knowledge_base_service import KnowledgeBaseService
 
+    # Step 1: embed the query string into a vector
+    emb_client = get_embedding_client()
+    emb_result = await emb_client.embed_text(request.query)
+
+    # Step 2: vector search via pgvector
     service = KnowledgeBaseService(db)
     return await service.search(
-        query=request.query,
+        query_embedding=emb_result.embedding,
         institution=request.institution,
-        top_k=request.top_k if hasattr(request, "top_k") else 10,
+        kb_type=request.kb_type,
+        top_k=request.top_k,
+        score_threshold=request.score_threshold,
     )
-    # TODO: Implement vector search via pgvector
-    return []

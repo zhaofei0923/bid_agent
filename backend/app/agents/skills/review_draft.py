@@ -57,6 +57,6 @@ class ReviewDraft(Skill):
                 temperature=0.2,
                 max_tokens=4000,
             )
-            return SkillResult(success=True, data=result)
+            return SkillResult(success=True, data=result.data, tokens_consumed=result.tokens_used)
         except Exception as exc:
             return SkillResult(success=False, error=str(exc))

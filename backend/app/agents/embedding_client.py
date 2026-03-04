@@ -9,8 +9,6 @@ import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
 
-import httpx
-
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -51,14 +49,20 @@ class EmbeddingProvider:
 
 
 class TencentHunyuanProvider(EmbeddingProvider):
-    """腾讯混元 Embedding — primary provider."""
+    """腾讯混元 Embedding — primary provider (via tencentcloud SDK)."""
 
     name = "tencent_hunyuan"
 
     def __init__(self) -> None:
-        self.api_url = settings.EMBEDDING_API_URL
-        self.api_key = settings.EMBEDDING_API_KEY
+        self.secret_id = settings.HUNYUAN_SECRET_ID
+        self.secret_key = settings.HUNYUAN_SECRET_KEY
         self.model = settings.EMBEDDING_MODEL
+
+    def _get_client(self):
+        from tencentcloud.common import credential
+        from tencentcloud.hunyuan.v20230901 import hunyuan_client
+        cred = credential.Credential(self.secret_id, self.secret_key)
+        return hunyuan_client.HunyuanClient(cred, "")
 
     async def embed_single(self, text: str) -> EmbeddingResult:
         result = await self.embed_batch([text])
@@ -69,37 +73,36 @@ class TencentHunyuanProvider(EmbeddingProvider):
         )
 
     async def embed_batch(self, texts: list[str]) -> BatchEmbeddingResult:
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                self.api_url,
-                json={"input": texts, "model": self.model},
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
+        from tencentcloud.hunyuan.v20230901 import models as hunyuan_models
+        client = self._get_client()
+        loop = asyncio.get_event_loop()
 
-        embeddings = [item["embedding"] for item in data["data"]]
-        total_tokens = data.get("usage", {}).get("total_tokens", 0)
+        req = hunyuan_models.GetEmbeddingRequest()
+        req.InputList = texts
+
+        resp = await loop.run_in_executor(None, client.GetEmbedding, req)
+        all_embeddings = [list(item.Embedding) for item in resp.Data]
+        total_tokens = (resp.Usage.TotalTokens or 0) if resp.Usage else 0
 
         return BatchEmbeddingResult(
-            embeddings=embeddings,
-            model=self.model,
+            embeddings=all_embeddings,
+            model="hunyuan-embedding",
             total_tokens=total_tokens,
         )
 
 
 class ZhipuProvider(EmbeddingProvider):
-    """智谱 Embedding — fallback provider."""
+    """智谱 Embedding — fallback provider (via zhipuai SDK)."""
 
     name = "zhipu"
 
     def __init__(self) -> None:
-        self.api_url = settings.EMBEDDING_FALLBACK_URL
-        self.api_key = settings.EMBEDDING_FALLBACK_KEY
+        self.api_key = settings.ZHIPU_API_KEY
         self.model = settings.EMBEDDING_FALLBACK_MODEL
+
+    def _get_client(self):
+        from zhipuai import ZhipuAI
+        return ZhipuAI(api_key=self.api_key)
 
     async def embed_single(self, text: str) -> EmbeddingResult:
         result = await self.embed_batch([text])
@@ -110,21 +113,20 @@ class ZhipuProvider(EmbeddingProvider):
         )
 
     async def embed_batch(self, texts: list[str]) -> BatchEmbeddingResult:
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                self.api_url,
-                json={"input": texts, "model": self.model},
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
+        client = self._get_client()
+        loop = asyncio.get_event_loop()
+
+        def _call():
+            resp = client.embeddings.create(
+                model=self.model,
+                input=texts,
+                dimensions=1024,
             )
-            response.raise_for_status()
-            data = response.json()
+            embeddings = [item.embedding for item in resp.data]
+            total = getattr(getattr(resp, "usage", None), "total_tokens", 0) or 0
+            return embeddings, total
 
-        embeddings = [item["embedding"] for item in data["data"]]
-        total_tokens = data.get("usage", {}).get("total_tokens", 0)
-
+        embeddings, total_tokens = await loop.run_in_executor(None, _call)
         return BatchEmbeddingResult(
             embeddings=embeddings,
             model=self.model,

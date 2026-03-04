@@ -51,21 +51,18 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 ADB_DOCUMENTS = [
+    # ── 核心政策与指令 (Core Policy & Directive) ────────────────────────────
     (
-        "https://www.adb.org/sites/default/files/procurement/27431/procurement-regulations.pdf",
-        "ADB Procurement Regulations for ADB Borrowers",
+        "https://www.adb.org/sites/default/files/adb-procurement-policy.pdf",
+        "ADB Procurement Policy — Goods, Works, Nonconsulting and Consulting Services (2017)",
         "procurement_regulations",
     ),
     (
-        "https://www.adb.org/sites/default/files/procurement/27432/staff-instructions-procurement.pdf",
-        "ADB Staff Instructions — Procurement",
-        "staff_instructions",
+        "https://www.adb.org/sites/default/files/procurement-directive-adb-borrowers.pdf",
+        "ADB Procurement Directive for ADB Borrowers (Effective 1 January 2026)",
+        "procurement_regulations",
     ),
-    (
-        "https://www.adb.org/sites/default/files/procurement/27433/consulting-guidelines.pdf",
-        "ADB Guidelines on the Use of Consultants",
-        "consulting_guidelines",
-    ),
+    # ── 采购标准文件 — 咨询服务 (SBDs — Consulting Services) ──────────────────
     (
         "https://www.adb.org/sites/default/files/procurement/485577/adb-sbd-consulting-firm.pdf",
         "ADB Standard Bidding Document — Consultant Services (Firm)",
@@ -76,23 +73,348 @@ ADB_DOCUMENTS = [
         "ADB Standard Bidding Document — Individual Consultant",
         "sbd",
     ),
+    # ── 指导手册 — 准备与规划 (Guidance Notes — Preparation & Planning) ──────
+    (
+        "https://www.adb.org/sites/default/files/procurement-risk-framework.pdf",
+        "ADB Procurement Risk Framework — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-planning.pdf",
+        "ADB Strategic Procurement Planning — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-review.pdf",
+        "ADB Procurement Review — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/alternative-procurement-arrangements.pdf",
+        "ADB Alternative Procurement Arrangements — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/early-market-engagement-procurement-guidance-note.pdf",
+        "ADB Early Market Engagement — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    # ── 指导手册 — 采购方法 (Guidance Notes — Procurement Methods) ────────────
+    (
+        "https://www.adb.org/sites/default/files/open-competitive-bidding.pdf",
+        "ADB Open Competitive Bidding — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/consulting-services.pdf",
+        "ADB Consulting Services Administered by ADB Borrowers — Guidance Note",
+        "consulting_guidelines",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/nonconsulting-services.pdf",
+        "ADB Nonconsulting Services Administered by ADB Borrowers — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/framework-agreements-consulting.pdf",
+        "ADB Framework Agreements for Consulting Services — Guidance Note",
+        "procurement_guidance",
+    ),
+    # ── 指导手册 — 投标程序 (Guidance Notes — Bidding Procedures) ─────────────
+    (
+        "https://www.adb.org/sites/default/files/procurement-price-adjustment.pdf",
+        "ADB Price Adjustment — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-prequalification.pdf",
+        "ADB Prequalification — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-subcontracting.pdf",
+        "ADB Subcontracting — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-domestic-preference.pdf",
+        "ADB Domestic Preference — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/bid-evaluation-procurement-guidance-note.pdf",
+        "ADB Bid Evaluation — Procurement Guidance Note (January 2026)",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/merit-point-criteria-procurement-guidance-note.pdf",
+        "ADB Merit Point Criteria — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    # ── 指导手册 — 原则与实践 (Guidance Notes — Principles & Practices) ────────
+    (
+        "https://www.adb.org/sites/default/files/procurement-value-money.pdf",
+        "ADB Value for Money — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-quality.pdf",
+        "ADB Quality — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/contract-management.pdf",
+        "ADB Contract Management — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/abnormally-low-bids.pdf",
+        "ADB Abnormally Low Bids — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/local-participation-procurement-guidance-note.pdf",
+        "ADB Local Participation — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    # ── 指导手册 — 投诉、合规与资格 (Guidance Notes — Complaints & Compliance) ─
+    (
+        "https://www.adb.org/sites/default/files/bidding-related-complaints.pdf",
+        "ADB Bidding-Related Complaints — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/noncompliance-procurement.pdf",
+        "ADB Noncompliance in Procurement — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-standstill-period.pdf",
+        "ADB Standstill Period — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/procurement-state-owned-enterprises.pdf",
+        "ADB State-Owned Enterprises — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    # ── 指导手册 — 专项领域 (Guidance Notes — Specialized Areas) ──────────────
+    (
+        "https://www.adb.org/sites/default/files/procurement-fragile-situations.pdf",
+        "ADB Fragile and Conflict-Affected Situations, SIDS, and Emergency Situations — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/eprocurement.pdf",
+        "ADB E-Procurement — Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/ppp-procurement.pdf",
+        "ADB Public–Private Partnerships — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/high-level-technology.pdf",
+        "ADB High-Level Technology — Procurement Guidance Note",
+        "procurement_guidance",
+    ),
+    (
+        "https://www.adb.org/sites/default/files/sustainable-public-procurement.pdf",
+        "ADB Sustainable Public Procurement — Guidance Note",
+        "procurement_guidance",
+    ),
 ]
 
 WORLDBANK_DOCUMENTS = [
+    # ── 核心强制性文件 (Mandatory Requirements) ──────────────────────────────
     (
-        "https://thedocs.worldbank.org/en/doc/a5a4ddca47d3d269ece2a1ce5e1b02ed-0290032021/related/ProcurementRegulations07-2016revised07-2019-ES.pdf",
-        "World Bank Procurement Regulations for IPF Borrowers",
+        "https://thedocs.worldbank.org/en/doc/c84273d1b230aeb2b0b8134de5dc8cd7-0290012025/original/Procurement-Regulations-7th-Edition-Sep-2025.pdf",
+        "WB Procurement Regulations for IPF Borrowers — 7th Edition (Sep 2025)",
         "procurement_regulations",
     ),
     (
+        "https://thedocs.worldbank.org/en/doc/02c022198520f5b6ab2ecfe64e56ec19-0290012023/original/Bank-Policy-Procurement-in-IPF-and-Other-Operational-Procurement-Matters.pdf",
+        "WB Bank Policy — Procurement in IPF and Other Operational Procurement Matters",
+        "procurement_regulations",
+    ),
+    (
+        "https://thedocs.worldbank.org/en/doc/2d4449540430ed046e159dc5d1ff45ed-0290012024/original/Procurement-Directive-April-2024.pdf",
+        "WB Procurement Directive in IPF and Other Operational Procurement Matters (Apr 2024)",
+        "procurement_regulations",
+    ),
+    (
+        "https://thedocs.worldbank.org/en/doc/6b5517ea27b46baf0e1328ba369ea214-0290012025/original/Bank-Procedure-Procurement-in-IPF-and-other-Operational-Procurement-Matters.pdf",
+        "WB Bank Procedure — Procurement in IPF and Other Operational Procurement Matters (Sep 2025)",
+        "procurement_regulations",
+    ),
+    # ── 标准采购文件 (Standard Procurement Documents — SPDs) ─────────────────
+    (
         "https://thedocs.worldbank.org/en/doc/6f49ee6c71954d5a14f22e7a0fbdab16-0290032021/related/StandardConsultingServicesSelection-Individual-English.pdf",
-        "WB Standard Procurement Document — Selection of Individual Consultants",
+        "WB SPD — Selection of Individual Consultants",
         "sbd",
     ),
     (
         "https://thedocs.worldbank.org/en/doc/7db7dbaaad96fd5e7e60cac0a31f83ce-0290032021/related/StandardConsultingServicesSelection-Firms-English.pdf",
-        "WB Standard Procurement Document — Selection of Consulting Firms",
+        "WB SPD — Selection of Consulting Firms (QCBS / QBS / FBS / LCS)",
         "sbd",
+    ),
+    # ── 采购入门指南 (Beginner Guides) ───────────────────────────────────────
+    (
+        "https://documents1.worldbank.org/curated/en/099825508192516096/pdf/IDU-89b91972-9bb3-4b74-8382-101e7bb13e95.pdf",
+        "WB Beginner's Guide for Borrowers — Procurement under World Bank IPF",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099413404292517723/pdf/IDU-7301cb21-f811-432d-8bbc-33fd64040959.pdf",
+        "WB Beginner's Guide for Suppliers — Finding Opportunities and Winning Contracts",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099133508192535977/pdf/IDU-585b8ced-fd94-490c-828b-34083b46f90f.pdf",
+        "WB Beginner's Guide to Standard Procurement Documents (SPDs)",
+        "procurement_guidance",
+    ),
+    # ── 阈值与采购策略 (Thresholds & Strategy) ───────────────────────────────
+    (
+        "https://thedocs.worldbank.org/en/doc/656a913f77e8ac21084b1fa2c4e3a5b1-0290012024/original/BG-TfP.pdf",
+        "WB Thresholds for Procurement Approaches and Methods by Country",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099629208202516861/pdf/IDU-e2e57ebf-34aa-4499-9ed1-99d1b06fe315.pdf",
+        "WB PPSD Guidance Long Form — Project Procurement Strategy for Development",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099637208202516621/pdf/IDU-bf05be13-141f-4672-8d9a-8ae750628a9f.pdf",
+        "WB PPSD Guidance Short Form — Project Procurement Strategy for Development",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099646308202517077/pdf/IDU-b7e5df0d-12a7-4c11-a217-c46a3557aa2c.pdf",
+        "WB PPSD Guidance Short Form (Chinese) — 项目采购策略指南（短表）",
+        "procurement_guidance",
+    ),
+    # ── 采购发起与资格 (Initiating Procurement) ──────────────────────────────
+    (
+        "https://documents1.worldbank.org/curated/en/099557008202532821/pdf/IDU-b82f9f90-bf98-4c25-b6d4-929201de045b.pdf",
+        "WB Conflict of Interest — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099133308192536038/pdf/IDU-2e6ac2e4-ae16-4622-ad51-8ef7f6afbc89.pdf",
+        "WB Request for Expression of Interest (REoI) — Template and Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099710507092534067/pdf/IDU-2f5f55a5-f19b-41cb-bf5e-601fd69cce52.pdf",
+        "WB How to Write Technical Specifications — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099803108202534425/pdf/IDU-54262265-fe12-4ae3-9fea-e82f800cec96.pdf",
+        "WB Value for Money — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099606408202533891/pdf/IDU-af48d92a-b02c-431c-9354-5d4b82a8fb6f.pdf",
+        "WB Early Market Engagement — Procurement Fact Sheet",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099616508202518912/pdf/IDU-7b275269-09c6-43cc-a853-a9313396325d.pdf",
+        "WB Framework Agreements — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099228308192560599/pdf/IDU-c59e6c91-d2f6-4191-bd6b-ac99fc6a6182.pdf",
+        "WB Aggregated Procurement — Fact Sheet",
+        "procurement_guidance",
+    ),
+    # ── 评标与选择 (Evaluating and Selecting) ────────────────────────────────
+    (
+        "https://documents1.worldbank.org/curated/en/099325208202512194/pdf/IDU-a052dfd8-ab44-44c1-b854-870b4cccacdb.pdf",
+        "WB Evaluating Bids and Proposals Using Rated Criteria — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099343408202523703/pdf/IDU-269b9721-a8ff-49b1-bf3d-d05e51bf69e1.pdf",
+        "WB Evaluating Bids Using Rated Criteria (Chinese) — 使用评分标准评估投标",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099812008202522046/pdf/IDU-3d758f2f-9715-47ca-a1d8-79011ae808d9.pdf",
+        "WB Abnormally Low Bids and Proposals — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099826508202525853/pdf/IDU-db90b397-d1d2-4c55-bfd2-473e10127c2f.pdf",
+        "WB Competitive Dialogue — How to Undertake a Competitive Dialogue Procurement Process",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099217108262522575/pdf/IDU-d1454a14-b000-459d-a327-ae943ec3c3a9.pdf",
+        "WB Negotiations and Best and Final Offer — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    # ── 合同实施 (Contract Implementation) ───────────────────────────────────
+    (
+        "https://documents1.worldbank.org/curated/en/099513208262519456/pdf/IDU-01fc74fa-175d-4707-a892-90ecc1b8167f.pdf",
+        "WB Contract Management General Principles — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099812309012526724/pdf/IDU-f71614f0-c8a8-4150-9d74-a3bf98f6e52c.pdf",
+        "WB Contract Management Practice — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099539108262581005/pdf/IDU-90a965a9-13c9-4734-bae6-c72f71653e97.pdf",
+        "WB Supply Chain Management — Procurement Guidance",
+        "procurement_guidance",
+    ),
+    # ── 投诉与监督 (Complaints & Oversight) ──────────────────────────────────
+    (
+        "https://documents1.worldbank.org/curated/en/099149508192519086/pdf/IDU-5d2efb17-fc21-47f9-a7d1-08bcbd0b087b.pdf",
+        "WB Procurement-Related Complaints — Procurement Guidance (English)",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099156108192528177/pdf/IDU-4648c799-e92a-43fd-a581-0bec98f7dc8b.pdf",
+        "WB Procurement-Related Complaints — Procurement Guidance (Chinese 中文)",
+        "procurement_guidance",
+    ),
+    (
+        "https://thedocs.worldbank.org/en/doc/b34ab66724064f5d88cf0381e1e11eae-0290012023/original/Bank-Guidance-Procurement-Post-Review-Independent-Procurement-Review-and-Integrated-Fiduciary-Reviews.pdf",
+        "WB Bank Oversight — Post Review, Independent Procurement Review, and Integrated Fiduciary Reviews",
+        "procurement_guidance",
+    ),
+    (
+        "https://thedocs.worldbank.org/en/doc/e75f33d5a27809c47675b20f41240334-0290012023/original/Bank-Guidance-Procurement-Noncompliance-in-IPF-Operations.pdf",
+        "WB Noncompliance in IPF Operations — Bank Guidance",
+        "procurement_guidance",
+    ),
+    # ── 紧急与特殊情形 (Specialized & Emergency) ─────────────────────────────
+    (
+        "https://thedocs.worldbank.org/en/doc/975d0cb5b71e5ce28bd65312c8066815-0290012023/original/Bank-Guidance-Procurement-in-Situations-of-Urgent-need-of-Assistance-or-Capacity-Constraints.pdf",
+        "WB Situations of Urgent Need of Assistance or Capacity Constraints — Bank Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://thedocs.worldbank.org/en/doc/a9d40aabedcd96ec86b8d7743a09a95d-0290012023/original/Bank-Guidance-Procurement-Hands-on-Expanded-Implementation-Support.pdf",
+        "WB HEIS — Hands-on Expanded Implementation Support Bank Guidance",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099813310292526449/pdf/IDU-31c38df9-e9eb-44e2-aec9-e9e17fb0b826.pdf",
+        "WB Health — Engaging an Expert Consultant for Medical Diagnostic Equipment",
+        "procurement_guidance",
+    ),
+    (
+        "https://documents1.worldbank.org/curated/en/099701110292529690/pdf/IDU-a0c2520e-f4ae-48f3-8dd1-19db2c7e658f.pdf",
+        "WB Sexual Exploitation and Abuse and Sexual Harassment (SEA/SH) — Q&A for Procurement",
+        "procurement_guidance",
     ),
 ]
 
@@ -130,7 +452,7 @@ async def get_session() -> AsyncSession:
 async def upsert_kb(session: AsyncSession, source: str) -> str:
     """Return existing KB id for source, or create a new one."""
     row = await session.execute(
-        text("SELECT id FROM knowledge_bases WHERE source_name = :s LIMIT 1"),
+        text("SELECT id FROM knowledge_bases WHERE institution = :s AND kb_type = 'procurement' LIMIT 1"),
         {"s": source},
     )
     existing = row.scalar_one_or_none()
@@ -139,13 +461,13 @@ async def upsert_kb(session: AsyncSession, source: str) -> str:
     kb_id = str(uuid4())
     await session.execute(
         text(
-            "INSERT INTO knowledge_bases (id, name, source_name, description, is_active, created_at, updated_at) "
-            "VALUES (:id, :name, :sn, :desc, true, NOW(), NOW())"
+            "INSERT INTO knowledge_bases (id, name, institution, kb_type, description, created_at, updated_at) "
+            "VALUES (:id, :name, :inst, 'procurement', :desc, NOW(), NOW())"
         ),
         {
             "id": kb_id,
             "name": f"{source.upper()} Knowledge Base",
-            "sn": source,
+            "inst": source,
             "desc": f"Procurement guidelines and SBDs from {source.upper()}",
         },
     )
@@ -154,9 +476,10 @@ async def upsert_kb(session: AsyncSession, source: str) -> str:
 
 
 async def doc_exists(session: AsyncSession, url: str) -> bool:
+    url_hash = hashlib.md5(url.encode()).hexdigest()
     row = await session.execute(
-        text("SELECT 1 FROM knowledge_documents WHERE source_url = :u LIMIT 1"),
-        {"u": url},
+        text("SELECT 1 FROM knowledge_documents WHERE file_hash = :h LIMIT 1"),
+        {"h": url_hash},
     )
     return row.scalar_one_or_none() is not None
 
@@ -170,19 +493,19 @@ async def insert_doc(
     file_path: str,
 ) -> str:
     doc_id = str(uuid4())
+    url_hash = hashlib.md5(url.encode()).hexdigest()
     await session.execute(
         text(
             "INSERT INTO knowledge_documents "
-            "(id, knowledge_base_id, title, source_url, doc_type, file_path, status, created_at, updated_at) "
-            "VALUES (:id, :kb, :title, :url, :dtype, :fp, 'processed', NOW(), NOW())"
+            "(id, knowledge_base_id, filename, file_path, file_hash, status, created_at, updated_at) "
+            "VALUES (:id, :kb, :filename, :fp, :fhash, 'processed', NOW(), NOW())"
         ),
         {
             "id": doc_id,
             "kb": kb_id,
-            "title": title,
-            "url": url,
-            "dtype": category,
+            "filename": title[:255],
             "fp": file_path,
+            "fhash": url_hash,
         },
     )
     await session.commit()
@@ -200,14 +523,13 @@ async def insert_chunks(
         await session.execute(
             text(
                 "INSERT INTO knowledge_chunks "
-                "(id, knowledge_document_id, knowledge_base_id, content, chunk_index, "
+                "(id, document_id, content, chunk_index, "
                 " page_number, embedding, created_at) "
-                "VALUES (:id, :doc, :kb, :content, :idx, :page, :emb::vector, NOW())"
+                "VALUES (:id, :doc, :content, :idx, :page, CAST(:emb AS vector), NOW())"
             ),
             {
                 "id": str(uuid4()),
                 "doc": doc_id,
-                "kb": kb_id,
                 "content": chunk["content"],
                 "idx": chunk["index"],
                 "page": chunk.get("page"),

@@ -37,6 +37,14 @@ class LLMResponse:
     finish_reason: str = "stop"
 
 
+@dataclass
+class LLMJsonResult:
+    """Parsed JSON result from extract_json, including token usage."""
+
+    data: dict
+    tokens_used: int = 0
+
+
 class LLMClient:
     """DeepSeek API wrapper using OpenAI-compatible interface.
 
@@ -145,9 +153,10 @@ class LLMClient:
         system_prompt: str,
         temperature: float = 0.2,
         max_tokens: int = 4000,
-    ) -> dict:
+    ) -> LLMJsonResult:
         """Call LLM and parse the response as JSON.
 
+        Returns LLMJsonResult with parsed data and token usage.
         Automatically strips markdown code fences.
         """
         response = await self.chat(
@@ -159,16 +168,20 @@ class LLMClient:
             max_tokens=max_tokens,
         )
 
+        tokens_used = response.usage.get("total_tokens", 0)
+
         # Strip markdown code fences (```json ... ```)
         content = response.content.strip()
         content = re.sub(r"^```(?:json)?\s*\n?", "", content)
         content = re.sub(r"\n?```\s*$", "", content)
 
         try:
-            return json.loads(content)
+            data = json.loads(content)
         except json.JSONDecodeError:
             logger.warning("Failed to parse LLM JSON response: %s", content[:200])
-            return {"raw_content": response.content, "parse_error": True}
+            data = {"raw_content": response.content, "parse_error": True}
+
+        return LLMJsonResult(data=data, tokens_used=tokens_used)
 
     async def summarize(
         self, text: str, max_length: int = 500

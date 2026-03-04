@@ -45,7 +45,7 @@ class AnalyzeQualification(Skill):
     description = "分析招标文件中的资质要求"
 
     async def execute(self, ctx: SkillContext) -> SkillResult:
-        # TODO: Replace with actual MCP tool calls once vectors exist
+        # Context is retrieved upstream by the pipeline via RAG (build_analysis_context).
         bid_context = ctx.parameters.get("bid_context", "")
         kb_context = ctx.parameters.get("kb_context", "")
 
@@ -68,8 +68,8 @@ class AnalyzeQualification(Skill):
 
             return SkillResult(
                 success=True,
-                data=result,
-                tokens_consumed=0,  # TODO: track from LLM response
+                data=result.data,
+                tokens_consumed=result.tokens_used,
             )
         except Exception as exc:
             return SkillResult(success=False, error=str(exc))
