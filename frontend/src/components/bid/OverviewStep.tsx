@@ -20,9 +20,11 @@ const ACTIVE_STATUSES = new Set(["pending", "processing"])
 function DocDetailPanel({
   projectId,
   doc,
+  showFilename = false,
 }: {
   projectId: string
   doc: ProjectDocument
+  showFilename?: boolean
 }) {
   const t = useTranslations("bid")
   const isProcessing = ACTIVE_STATUSES.has(doc.status)
@@ -41,6 +43,13 @@ function DocDetailPanel({
 
   return (
     <div className="space-y-5">
+      {/* Document filename header — shown when multiple docs are stacked */}
+      {showFilename && (
+        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <span>📄</span>
+          <span className="truncate">{doc.original_filename || doc.filename}</span>
+        </div>
+      )}
       {/* Block B: AI Interpretation */}
       <Card>
         <CardHeader className="pb-2">
@@ -60,7 +69,7 @@ function DocDetailPanel({
               <Skeleton className="h-4 w-5/6" />
               <Skeleton className="h-4 w-4/6" />
             </div>
-          ) : needsAiAnalysis || analyzeMutation.isPending ? (
+          ) : analyzeMutation.isPending ? (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground animate-pulse">⏳ {t("overview.generatingOverview")}</p>
               <Skeleton className="h-4 w-full" />
@@ -71,6 +80,13 @@ function DocDetailPanel({
             <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
               {doc.ai_overview}
             </p>
+          ) : needsAiAnalysis ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground animate-pulse">⏳ {t("overview.generatingOverview")}</p>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">{t("overview.noOverview")}</p>
           )}
@@ -134,8 +150,8 @@ export const OverviewStep = memo(function OverviewStep({
   return (
     <div className="space-y-6">
       {/* per-document AI detail */}
-      {documents.map((doc) => (
-        <DocDetailPanel key={doc.id} projectId={projectId} doc={doc} />
+      {documents.map((doc, i) => (
+        <DocDetailPanel key={doc.id} projectId={projectId} doc={doc} showFilename={documents.length > 1} />
       ))}
 
       <div className="flex justify-end pt-2">
