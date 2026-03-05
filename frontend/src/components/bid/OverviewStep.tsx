@@ -6,7 +6,6 @@ import { useDocuments, useAnalyzeDocument } from "@/hooks/use-documents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "next-intl"
 import type { ProjectDocument } from "@/types"
 
@@ -134,25 +133,10 @@ export const OverviewStep = memo(function OverviewStep({
 
   return (
     <div className="space-y-6">
-      {/* Block B: per-document AI detail, with Tabs if multiple docs */}
-      {documents.length === 1 ? (
-        <DocDetailPanel projectId={projectId} doc={documents[0]} />
-      ) : (
-        <Tabs defaultValue={documents[0].id}>
-          <TabsList className="mb-4">
-            {documents.map((doc, i) => (
-              <TabsTrigger key={doc.id} value={doc.id} className="max-w-[200px] truncate">
-                {doc.original_filename || doc.filename || `Vol ${i + 1}`}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {documents.map((doc) => (
-            <TabsContent key={doc.id} value={doc.id}>
-              <DocDetailPanel projectId={projectId} doc={doc} />
-            </TabsContent>
-          ))}
-        </Tabs>
-      )}
+      {/* per-document AI detail */}
+      {documents.map((doc) => (
+        <DocDetailPanel key={doc.id} projectId={projectId} doc={doc} />
+      ))}
 
       <div className="flex justify-end pt-2">
         <Button onClick={handleNext}>{t("overview.nextStep")}</Button>
