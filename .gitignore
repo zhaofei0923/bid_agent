@@ -10,6 +10,7 @@ build/
 .venv/
 venv/
 .env
+set_server_apikeys.sh
 
 # Node
 node_modules/
