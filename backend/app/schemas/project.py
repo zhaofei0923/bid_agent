@@ -33,6 +33,8 @@ class ProjectResponse(BaseModel):
     current_step: str
     institution: str
     is_saved: bool
+    combined_ai_overview: str | None = None
+    combined_ai_reading_tips: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -48,4 +48,8 @@ export const documentService = {
       `/projects/${projectId}/bid-documents/${documentId}/analyze`
     )
   },
+
+  async analyzeCombined(projectId: string): Promise<void> {
+    await apiClient.post(`/projects/${projectId}/bid-documents/analyze-combined`)
+  },
 }

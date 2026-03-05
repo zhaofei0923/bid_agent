@@ -63,3 +63,13 @@ export function useAnalyzeDocument(projectId: string) {
     },
   })
 }
+
+export function useAnalyzeCombined(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => documentService.analyzeCombined(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+    },
+  })
+}

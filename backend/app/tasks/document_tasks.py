@@ -631,6 +631,96 @@ def process_all_pending() -> list[str]:
     return pending_ids
 
 
+async def _generate_combined_ai_analysis(project_id: str) -> dict:
+    """Merge all processed documents' text and generate one unified overview for the project."""
+    from app.models.project import Project
+
+    async with async_session() as db:
+        proj_result = await db.execute(select(Project).where(Project.id == project_id))
+        project = proj_result.scalar_one_or_none()
+        if not project:
+            raise ValueError(f"Project not found: {project_id}")
+
+        doc_result = await db.execute(
+            select(BidDocument).where(
+                BidDocument.project_id == project_id,
+                BidDocument.status.in_(["processed", "completed"]),
+            )
+        )
+        docs = doc_result.scalars().all()
+        if not docs:
+            logger.warning("No processed documents for project %s — skipping combined analysis", project_id)
+            return {"status": "no_content"}
+
+        # Collect sample text from each document (up to 6000 chars each, 12000 total)
+        parts: list[str] = []
+        per_doc_limit = max(2000, 12000 // len(docs))
+        for doc in docs:
+            pages = await _parse_pdf(doc.file_path)
+            if not pages:
+                continue
+            text = "\n\n".join(p["text"] for p in pages[:30] if p["text"].strip())
+            label = doc.original_filename or doc.filename
+            parts.append(f"【{label}】\n{text[:per_doc_limit]}")
+
+        if not parts:
+            return {"status": "no_content"}
+
+        combined_text = "\n\n---\n\n".join(parts)
+
+        from app.agents.llm_client import LLMClient
+        client = LLMClient()
+        try:
+            result = await client.extract_json(
+                prompt=f"以下是同一招标项目的多个招标文件内容（可能为不同卷册）：\n\n{combined_text[:12000]}",
+                system_prompt=(
+                    "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
+                    "以下提供了同一项目的多个招标文件（可能分为不同卷册，如技术卷、商务卷、图纸卷等），"
+                    "请将它们作为一个完整的招标项目综合分析，生成统一的解读，不要按文件分开描述。\n"
+                    "输出JSON格式：\n"
+                    '{"overview": "项目综合概述", "reading_tips": "阅读建议"}\n\n'
+                    "overview要求（400-600字中文）：项目名称、所在国家/地区、建设目标、核心技术范围、"
+                    "投标人资质要求、合同类型、关键时间节点。\n"
+                    "reading_tips要求（200-300字中文）：各卷册间的关系与阅读顺序、需特别关注的条款、"
+                    "常见误解与注意事项。\n"
+                    "仅输出JSON，不要有任何其他内容。"
+                ),
+                temperature=0.3,
+                max_tokens=2500,
+            )
+            data = result.data
+            if data.get("parse_error"):
+                logger.warning("LLM returned non-JSON for combined analysis of project %s", project_id)
+                return {"status": "parse_error"}
+            overview = str(data.get("overview", ""))
+            reading_tips = str(data.get("reading_tips", ""))
+        except Exception:
+            logger.exception("Combined AI analysis failed for project %s", project_id)
+            return {"status": "error"}
+
+        project.combined_ai_overview = overview or None
+        project.combined_ai_reading_tips = reading_tips or None
+        await db.commit()
+
+        logger.info("Combined AI analysis generated for project %s", project_id)
+        return {"status": "ok", "project_id": project_id}
+
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=10)
+def generate_combined_document_ai(self, project_id: str) -> dict:
+    """Generate a unified AI overview across all processed documents of a project."""
+    logger.info("Generating combined AI analysis for project %s", project_id)
+    try:
+        result = asyncio.get_event_loop().run_until_complete(
+            _generate_combined_ai_analysis(project_id)
+        )
+        logger.info("Combined AI analysis done for project %s: %s", project_id, result)
+        return result
+    except Exception as exc:
+        logger.exception("Combined AI analysis failed for project %s", project_id)
+        raise self.retry(exc=exc) from exc
+
+
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=10)
 def generate_document_ai(self, document_id: str) -> dict:
     """Generate (or regenerate) AI overview and reading tips for an existing document.

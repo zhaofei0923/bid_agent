@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { projectService } from "@/services/projects"
-import type { ProjectCreate, ProjectUpdate } from "@/types"
+import type { Project, ProjectCreate, ProjectUpdate } from "@/types"
 
 export function useProjects(params: { page?: number; page_size?: number } = {}) {
   return useQuery({
@@ -9,11 +9,17 @@ export function useProjects(params: { page?: number; page_size?: number } = {}) 
   })
 }
 
-export function useProject(id: string) {
+export function useProject(id: string, pollWhileNoCombined = false) {
   return useQuery({
     queryKey: ["project", id],
     queryFn: () => projectService.getById(id),
     enabled: !!id,
+    refetchInterval: pollWhileNoCombined
+      ? (query) => {
+          const p = query.state.data as Project | undefined
+          return !p || p.combined_ai_overview === null ? 3000 : false
+        }
+      : false,
   })
 }
 

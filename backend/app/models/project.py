@@ -47,6 +47,8 @@ class Project(Base):
     is_saved: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )
+    combined_ai_overview: Mapped[str | None] = mapped_column(Text)
+    combined_ai_reading_tips: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

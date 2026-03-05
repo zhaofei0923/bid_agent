@@ -73,6 +73,33 @@ async def list_bid_documents(
     return await doc_svc.list_by_project(project_id)
 
 
+@router.post(
+    "/{project_id}/bid-documents/analyze-combined",
+    status_code=202,
+)
+async def analyze_combined_documents(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger unified AI overview generation across all processed documents of a project."""
+    from app.services.project_service import ProjectService
+
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    try:
+        from app.tasks.document_tasks import generate_combined_document_ai
+        generate_combined_document_ai.delay(str(project_id))
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Celery not available — combined AI analysis will not run for project %s", project_id
+        )
+
+    return {"message": "Combined AI analysis queued", "project_id": str(project_id)}
+
+
 @router.delete(
     "/{project_id}/bid-documents/{document_id}",
     status_code=204,

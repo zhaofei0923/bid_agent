@@ -17,6 +17,8 @@ export interface Project {
   current_step: string | null
   institution: string | null
   is_saved: boolean
+  combined_ai_overview: string | null
+  combined_ai_reading_tips: string | null
   created_at: string
   updated_at: string
 }
