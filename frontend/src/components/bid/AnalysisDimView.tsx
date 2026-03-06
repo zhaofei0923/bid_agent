@@ -674,32 +674,8 @@ function RiskView({ data }: { data: Rec }) {
       {/* Decision card */}
       {decision && (
         <div className={`rounded-xl border-2 p-4 ${dStyle.border}`}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-2">
             <h3 className={`text-xl font-bold ${dStyle.cls}`}>{dStyle.label}</h3>
-            <div className="flex gap-5">
-              {confidence > 0 && (
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-700">
-                    {Math.round(confidence * 100)}%
-                  </p>
-                  <p className="text-xs text-slate-500">置信度</p>
-                </div>
-              )}
-              {winProb.mid !== undefined && (
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-700">
-                    {Math.round(num(winProb.mid) * 100)}%
-                  </p>
-                  <p className="text-xs text-slate-500">胜算估计</p>
-                </div>
-              )}
-              {overallScore > 0 && (
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-700">{overallScore}</p>
-                  <p className="text-xs text-slate-500">风险评分</p>
-                </div>
-              )}
-            </div>
           </div>
           {rationale && <p className="mb-3 text-sm text-slate-700">{rationale}</p>}
           {conditions.length > 0 && (

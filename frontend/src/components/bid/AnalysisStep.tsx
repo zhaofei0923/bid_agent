@@ -121,10 +121,6 @@ export const AnalysisStep = memo(function AnalysisStep({
     triggerMutation.mutate({})
   }
 
-  const handleRunSingleAnalysis = (step: string) => {
-    triggerMutation.mutate({ steps: [step], force_refresh: true })
-  }
-
   const handleNext = () => {
     completeStep("analysis")
     goToStep("plan")
@@ -143,27 +139,6 @@ export const AnalysisStep = memo(function AnalysisStep({
 
   return (
     <div className="space-y-6">
-      {/* Reanalyze button */}
-      <div className="flex justify-end">
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRunAnalysis}
-            disabled={triggerMutation.isPending}
-          >
-            {triggerMutation.isPending
-              ? t("analysis.analyzing")
-              : t("analysis.reanalyze")}
-          </Button>
-          {triggerMutation.isError && (
-            <p className="text-xs text-red-500">
-              ❌ {_extractErrorMessage(triggerMutation.error)}
-            </p>
-          )}
-        </div>
-      </div>
-
       {!analysis ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -211,15 +186,6 @@ export const AnalysisStep = memo(function AnalysisStep({
                       <Badge variant={hasData ? "default" : "secondary"}>
                         {hasData ? t("analysis.completed") : t("analysis.pending")}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => handleRunSingleAnalysis("risk_assessment")}
-                        disabled={triggerMutation.isPending}
-                      >
-                        {triggerMutation.isPending ? "..." : t("analysis.reanalyze")}
-                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -245,7 +211,11 @@ export const AnalysisStep = memo(function AnalysisStep({
             const summary = hasData ? getDimSummary(dim.key, dimData) : ""
 
             return (
-              <Card key={dim.key}>
+              <Card
+                key={dim.key}
+                className={hasData ? "cursor-pointer transition-colors hover:bg-slate-50" : ""}
+                onClick={hasData ? () => toggleDim(dim.key) : undefined}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -263,31 +233,22 @@ export const AnalysisStep = memo(function AnalysisStep({
                       <Badge variant={hasData ? "default" : "secondary"}>
                         {hasData ? t("analysis.completed") : t("analysis.pending")}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => handleRunSingleAnalysis(dim.key)}
-                        disabled={triggerMutation.isPending}
-                      >
-                        {triggerMutation.isPending ? "..." : t("analysis.reanalyze")}
-                      </Button>
                       {hasData && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => toggleDim(dim.key)}
-                        >
+                        <span className="text-muted-foreground">
                           {isExpanded ? (
-                            <ChevronUp className="h-3.5 w-3.5" />
+                            <ChevronUp className="h-4 w-4" />
                           ) : (
-                            <ChevronDown className="h-3.5 w-3.5" />
+                            <ChevronDown className="h-4 w-4" />
                           )}
-                        </Button>
+                        </span>
                       )}
                     </div>
                   </div>
+                  {hasData && !isExpanded && (
+                    <p className="mt-1 text-xs text-muted-foreground/60">
+                      点击展开详情 →
+                    </p>
+                  )}
                 </CardHeader>
                 {isExpanded && hasData && (
                   <CardContent>
