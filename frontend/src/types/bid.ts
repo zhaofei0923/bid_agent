@@ -11,12 +11,21 @@ export interface BidAnalysis {
   id: string
   project_id: string
   bid_type: string | null
-  evaluation_criteria: Record<string, unknown> | null
   qualification_requirements: Record<string, unknown> | null
-  scoring_breakdown: Record<string, unknown> | null
-  risk_assessment: Record<string, unknown> | null
+  evaluation_criteria: Record<string, unknown> | null
+  evaluation_methodology: Record<string, unknown> | null
+  commercial_terms: Record<string, unknown> | null
+  submission_checklist: Record<string, unknown> | null
   key_dates: Record<string, unknown> | null
+  bds_modifications: Record<string, unknown> | null
+  risk_assessment: Record<string, unknown> | null
+  budget_info: Record<string, unknown> | null
+  scoring_breakdown: Record<string, unknown> | null
+  quality_review: Record<string, unknown> | null
+  special_notes: string | null
+  tokens_consumed: number
   created_at: string
+  updated_at: string
 }
 
 export interface BidPlan {
