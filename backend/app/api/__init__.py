@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.bid_analysis import router as bid_analysis_router
 from app.api.v1.bid_documents import router as bid_documents_router
@@ -50,4 +51,7 @@ api_router.include_router(
 )
 api_router.include_router(
     stats_router, prefix="/stats", tags=["stats"]
+)
+api_router.include_router(
+    admin_router, prefix="/admin", tags=["admin"]
 )

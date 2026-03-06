@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useAuthStore } from "@/stores/auth"
 import { useCreditsBalance } from "@/hooks/use-credits"
-import { ArrowUpRight, Globe2 } from "lucide-react"
+import { ArrowUpRight, Globe2, ShieldCheck } from "lucide-react"
 
 export function Header() {
   const t = useTranslations("nav")
@@ -77,6 +77,16 @@ export function Header() {
               className="hidden h-10 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-slate-900 sm:flex"
             >
               {balance} {t("credits")}
+            </Link>
+          )}
+
+          {isAuthenticated && user?.role === "admin" && (
+            <Link
+              href={`/${locale}/admin`}
+              className="hidden h-10 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-700 transition-colors duration-200 hover:bg-amber-100 md:flex"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {t("adminPanel")}
             </Link>
           )}
 
