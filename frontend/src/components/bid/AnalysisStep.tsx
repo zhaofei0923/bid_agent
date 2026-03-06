@@ -43,20 +43,16 @@ const FIELD_MAP: Record<string, keyof BidAnalysis> = {
   qualification: "qualification_requirements",
   evaluation: "evaluation_criteria",
   key_dates: "key_dates",
-  submission: "submission_checklist",
   bds_modification: "bds_modifications",
   methodology: "evaluation_methodology",
-  commercial: "commercial_terms",
 }
 
 const ANALYSIS_DIMENSIONS = [
   { key: "qualification", icon: "📋" },
   { key: "evaluation", icon: "📊" },
   { key: "key_dates", icon: "📅" },
-  { key: "submission", icon: "📦" },
   { key: "bds_modification", icon: "📝" },
   { key: "methodology", icon: "🔬" },
-  { key: "commercial", icon: "💰" },
 ] as const
 
 // One-line summary shown in collapsed header
@@ -79,8 +75,6 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
       const w = a(data.warnings)
       return `${d.length} 个关键日期${w.length > 0 ? `，⚠️ ${w.length} 条预警` : ""}`
     }
-    case "submission":
-      return `${a(data.required_documents).length} 份必交文件`
     case "bds_modification": {
       const mods = a(data.bds_modifications)
       const hi = mods.filter(
@@ -95,10 +89,6 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
       const em = r(data.evaluation_method)
       const sc = n(em.minimum_technical_score)
       return em.type ? `${s(em.type)} · 最低通过分 ${sc}` : ""
-    }
-    case "commercial": {
-      const pt = r(data.payment_terms)
-      return `${a(pt.payment_schedule).length} 个支付节点 · ${a(data.guarantees).length} 项担保`
     }
     default:
       return ""
@@ -153,14 +143,8 @@ export const AnalysisStep = memo(function AnalysisStep({
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">{t("analysis.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("analysis.subtitle")}
-          </p>
-        </div>
+      {/* Reanalyze button */}
+      <div className="flex justify-end">
         <div className="flex flex-col items-end gap-1">
           <Button
             variant="outline"
