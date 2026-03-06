@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "next-intl"
 import type { Source } from "@/types/generation"
 
+type ChatMode = "bid_document" | "knowledge_base"
+
 interface QAStepProps {
   projectId: string
 }
@@ -44,10 +46,18 @@ function SourceCitations({ sources }: { sources: Source[] }) {
 export const QAStep = memo(function QAStep({ projectId }: QAStepProps) {
   const { completeStep, goToStep } = useBidWorkspaceStore()
   const t = useTranslations("bid")
+  const [mode, setMode] = useState<ChatMode>("bid_document")
   const suggestedQuestions = t.raw("qa.suggestedQuestions") as string[]
-  const { messages, isStreaming, streamingContent, send, stop } =
-    useGuidanceStream(projectId)
+  const kbSuggestedQuestions = t.raw("qa.kbSuggestedQuestions") as string[]
+  const { messages, isStreaming, streamingContent, send, stop, reset } =
+    useGuidanceStream(projectId, mode)
   const [input, setInput] = useState("")
+
+  const handleModeChange = (newMode: ChatMode) => {
+    if (newMode === mode) return
+    reset()
+    setMode(newMode)
+  }
 
   const handleSend = (question?: string) => {
     const q = question || input.trim()
@@ -70,10 +80,37 @@ export const QAStep = memo(function QAStep({ projectId }: QAStepProps) {
         </p>
       </div>
 
+      {/* Mode Tabs */}
+      <div className="flex rounded-lg border border-stone-200 overflow-hidden">
+        <button
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            mode === "bid_document"
+              ? "bg-slate-900 text-white"
+              : "bg-white text-stone-500 hover:text-slate-700"
+          }`}
+          onClick={() => handleModeChange("bid_document")}
+        >
+          📄 {t("qa.modeDocuments")}
+        </button>
+        <button
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            mode === "knowledge_base"
+              ? "bg-slate-900 text-white"
+              : "bg-white text-stone-500 hover:text-slate-700"
+          }`}
+          onClick={() => handleModeChange("knowledge_base")}
+        >
+          📚 {t("qa.modeKnowledge")}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        {mode === "bid_document" ? t("qa.modeDocHint") : t("qa.modeKbHint")}
+      </p>
+
       {/* Suggested questions */}
       {messages.length === 0 && (
         <div className="grid grid-cols-2 gap-2">
-          {suggestedQuestions.map((q) => (
+          {(mode === "bid_document" ? suggestedQuestions : kbSuggestedQuestions).map((q) => (
             <button
               key={q}
               onClick={() => handleSend(q)}

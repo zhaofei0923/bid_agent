@@ -162,11 +162,19 @@
       "stop": "停止",
       "greeting": "👋 您好！我是 AI 投标助手",
       "greetingHint": "可以问我关于招标文件、资质要求、评分标准等问题",
+      "modeDocuments": "投标文件",
+      "modeKnowledge": "知识库",
+      "modeDocHint": "向投标文件提问，快速定位关键条款",
+      "modeKbHint": "查询行业知识库，获取标书编制指导",
       "skills": {
         "extractDates": "提取关键日期",
         "analyzeQualification": "分析资质要求",
         "evaluateCriteria": "评估评分标准",
-        "analyzeCommercial": "审查商务条款"
+        "analyzeCommercial": "审查商务条款",
+        "writeTechnical": "如何编写技术方案",
+        "formatRequirements": "格式和装订要求",
+        "winningStrategy": "提高中标竞争力",
+        "commonMistakes": "常见失分项"
       }
     }
   },
@@ -967,6 +975,18 @@
         "提交投标书时有哪些格式要求？",
         "商务条款中有哪些特殊规定？"
       ],
+      "kbSuggestedQuestions": [
+        "ADB技术方案编写有哪些关键要点？",
+        "标书中经验案例应如何描述？",
+        "投标报价策略有哪些建议？",
+        "专家团队介绍应包含哪些内容？",
+        "如何提高技术评分标准得分？",
+        "格式和装订有哪些标准要求？"
+      ],
+      "modeDocuments": "投标文件",
+      "modeKnowledge": "知识库",
+      "modeDocHint": "根据招标文件条款提问，精准定位需求",
+      "modeKbHint": "查询编制指南，获取专业建议",
       "send": "发送",
       "stop": "停止",
       "nextStep": "下一步：质量审查 →"

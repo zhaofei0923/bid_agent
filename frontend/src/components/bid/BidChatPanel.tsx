@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "next-intl"
 
+type ChatMode = "bid_document" | "knowledge_base"
+
 interface BidChatPanelProps {
   projectId: string
 }
@@ -16,14 +18,21 @@ export const BidChatPanel = memo(function BidChatPanel({
 }: BidChatPanelProps) {
   const { isChatPanelOpen, toggleChatPanel } = useBidWorkspaceStore()
   const t = useTranslations("workspace")
-  const { messages, isStreaming, streamingContent, send, stop } =
-    useGuidanceStream(projectId)
+  const [mode, setMode] = useState<ChatMode>("bid_document")
+  const { messages, isStreaming, streamingContent, send, stop, reset } =
+    useGuidanceStream(projectId, mode)
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, streamingContent])
+
+  const handleModeChange = (newMode: ChatMode) => {
+    if (newMode === mode) return
+    reset()
+    setMode(newMode)
+  }
 
   if (!isChatPanelOpen) {
     return (
@@ -58,45 +67,69 @@ export const BidChatPanel = memo(function BidChatPanel({
         </button>
       </div>
 
+      {/* Mode Tabs */}
+      <div className="flex border-b border-stone-200">
+        <button
+          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+            mode === "bid_document"
+              ? "border-b-2 border-slate-900 text-slate-900"
+              : "text-stone-500 hover:text-slate-700"
+          }`}
+          onClick={() => handleModeChange("bid_document")}
+        >
+          📄 {t("chat.modeDocuments")}
+        </button>
+        <button
+          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+            mode === "knowledge_base"
+              ? "border-b-2 border-slate-900 text-slate-900"
+              : "text-stone-500 hover:text-slate-700"
+          }`}
+          onClick={() => handleModeChange("knowledge_base")}
+        >
+          📚 {t("chat.modeKnowledge")}
+        </button>
+      </div>
+
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && !isStreaming && (
-          <div className="app-surface-muted px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="app-surface-muted px-4 py-6 text-center text-sm text-muted-foreground">
             <p className="mb-2">{t("chat.greeting")}</p>
-            <p className="mb-6">{t("chat.greetingHint")}</p>
-
+            <p className="mb-4 text-xs">
+              {mode === "bid_document" ? t("chat.modeDocHint") : t("chat.modeKbHint")}
+            </p>
             <div className="grid grid-cols-2 gap-2 px-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-auto py-2 justify-start text-left"
-                onClick={() => send(t("chat.skills.extractDates") || "提取关键日期")}
-              >
-                📅 {t("chat.skills.extractDates") || "提取关键日期"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-auto py-2 justify-start text-left"
-                onClick={() => send(t("chat.skills.analyzeQualification") || "分析资质要求")}
-              >
-                📋 {t("chat.skills.analyzeQualification") || "分析资质要求"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-auto py-2 justify-start text-left"
-                onClick={() => send(t("chat.skills.evaluateCriteria") || "评估评分标准")}
-              >
-                📊 {t("chat.skills.evaluateCriteria") || "评估评分标准"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-auto py-2 justify-start text-left"
-                onClick={() => send(t("chat.skills.analyzeCommercial") || "审查商务条款")}
-              >
-                💰 {t("chat.skills.analyzeCommercial") || "审查商务条款"}
-              </Button>
+              {mode === "bid_document" ? (
+                <>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.extractDates"))}>
+                    📅 {t("chat.skills.extractDates")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.analyzeQualification"))}>
+                    📋 {t("chat.skills.analyzeQualification")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.evaluateCriteria"))}>
+                    📊 {t("chat.skills.evaluateCriteria")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.analyzeCommercial"))}>
+                    💰 {t("chat.skills.analyzeCommercial")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.writeTechnical"))}>
+                    ✍️ {t("chat.skills.writeTechnical")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.formatRequirements"))}>
+                    📐 {t("chat.skills.formatRequirements")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.winningStrategy"))}>
+                    🏆 {t("chat.skills.winningStrategy")}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.commonMistakes"))}>
+                    ⚠️ {t("chat.skills.commonMistakes")}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

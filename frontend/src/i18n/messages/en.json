@@ -162,11 +162,19 @@
       "stop": "Stop",
       "greeting": "👋 Hello! I'm your AI Bid Assistant",
       "greetingHint": "Ask me about tender documents, qualification requirements, evaluation criteria, and more",
+      "modeDocuments": "Bid Documents",
+      "modeKnowledge": "Knowledge Base",
+      "modeDocHint": "Ask about bid document clauses and key terms",
+      "modeKbHint": "Query knowledge base for proposal writing guidance",
       "skills": {
         "extractDates": "Extract Key Dates",
         "analyzeQualification": "Analyze Qualifications",
         "evaluateCriteria": "Evaluate Criteria",
-        "analyzeCommercial": "Analyze Commercial Terms"
+        "analyzeCommercial": "Analyze Commercial Terms",
+        "writeTechnical": "How to Write Technical Proposal",
+        "formatRequirements": "Format & Binding Requirements",
+        "winningStrategy": "Improve Win Strategy",
+        "commonMistakes": "Common Scoring Pitfalls"
       }
     }
   },
@@ -967,6 +975,20 @@
         "What are the format requirements for bid submission?",
         "Any special commercial terms?"
       ],
+      "kbSuggestedQuestions": [
+        "What are the key points for writing an ADB technical proposal?",
+        "How should past experience be described in the bid?",
+        "What are recommended bidding price strategies?",
+        "What should the expert team section include?",
+        "How to maximize technical evaluation scores?",
+        "What are the standard format and binding requirements?"
+      ],
+      "modeDocuments": "Bid Documents",
+      "modeKnowledge": "Knowledge Base",
+      "modeDocHint": "Ask about specific bid document clauses and requirements",
+      "modeKbHint": "Query procurement guides for expert writing advice",
+      "send": "Send",
+      "stop": "Stop",
       "nextStep": "Next: Quality Review →"
     },
     "quality": {

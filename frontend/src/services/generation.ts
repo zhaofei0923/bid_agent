@@ -13,7 +13,8 @@ export const generationService = {
   askStream: (
     projectId: string,
     message: string,
-    onEvent: (event: GuidanceStreamEvent) => void
+    onEvent: (event: GuidanceStreamEvent) => void,
+    contextType?: string
   ) => {
     const controller = new AbortController()
 
@@ -29,7 +30,7 @@ export const generationService = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, context_type: contextType }),
           signal: controller.signal,
         }
       )

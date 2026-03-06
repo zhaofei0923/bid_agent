@@ -15,7 +15,7 @@ export function useGuidance(projectId: string) {
   })
 }
 
-export function useGuidanceStream(projectId: string) {
+export function useGuidanceStream(projectId: string, contextType?: string) {
   const [messages, setMessages] = useState<GuidanceMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
@@ -60,12 +60,13 @@ export function useGuidanceStream(projectId: string) {
             setIsStreaming(false)
             setStreamingContent("")
           }
-        }
+        },
+        contextType
       )
 
       abortRef.current = cancel
     },
-    [projectId]
+    [projectId, contextType]
   )
 
   const stop = useCallback(() => {
