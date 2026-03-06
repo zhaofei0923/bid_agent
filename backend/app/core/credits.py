@@ -43,6 +43,7 @@ class InsufficientCreditsError(BidAgentException):
     """Raised when user doesn't have enough credits."""
 
     code = "INSUFFICIENT_CREDITS"
+    status_code = 402
 
     def __init__(self, required: int, available: int) -> None:
         super().__init__(

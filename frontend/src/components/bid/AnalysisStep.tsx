@@ -11,13 +11,28 @@ import { useTranslations } from "next-intl"
 
 function _extractErrorMessage(error: unknown): string {
   if (!error) return "未知错误"
-  const axiosErr = error as { response?: { data?: { message?: string; detail?: string }; status?: number } }
-  if (axiosErr.response?.status === 402) return "积分不足，无法执行分析（需要 20 积分）"
-  const msg = axiosErr.response?.data?.message ?? axiosErr.response?.data?.detail
+  const axiosErr = error as {
+    response?: {
+      data?: {
+        message?: string
+        detail?: string
+        error?: { message?: string; code?: string }
+      }
+      status?: number
+    }
+    message?: string
+  }
+  const status = axiosErr.response?.status
+  // Try nested data.error.message (BidAgentException format)
+  const nestedMsg = axiosErr.response?.data?.error?.message
+  const flatMsg = axiosErr.response?.data?.message ?? axiosErr.response?.data?.detail
+  const msg = nestedMsg ?? flatMsg
+  if (status === 402 || axiosErr.response?.data?.error?.code === "INSUFFICIENT_CREDITS") {
+    return msg ?? "积分不足，无法执行分析（需要 20 积分）"
+  }
   if (msg) return msg
-  const baseErr = error as { message?: string }
-  if (baseErr.message?.includes("timeout")) return "分析超时，请稍后重试"
-  return baseErr.message ?? "请求失败，请稍后重试"
+  if (axiosErr.message?.includes("timeout")) return "分析超时，请稍后重试"
+  return axiosErr.message ?? "请求失败，请稍后重试"
 }
 
 const ANALYSIS_DIMENSIONS = [
