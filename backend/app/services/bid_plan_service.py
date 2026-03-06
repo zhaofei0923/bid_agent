@@ -44,7 +44,6 @@ class BidPlanService:
         title: str = "",
         deadline: datetime | None = None,
     ) -> BidPlan:
-        """Create or update a bid plan for a project."""
         result = await self.db.execute(
             select(BidPlan).where(BidPlan.project_id == project_id)
         )
@@ -52,15 +51,12 @@ class BidPlanService:
 
         if plan:
             if title:
-                plan.title = title
-            if deadline:
-                plan.submission_deadline = deadline
+                plan.name = title
             plan.updated_at = datetime.now(UTC)
         else:
             plan = BidPlan(
                 project_id=project_id,
-                title=title or "Bid Preparation Plan",
-                submission_deadline=deadline,
+                name=title or "Bid Preparation Plan",
             )
             self.db.add(plan)
 
@@ -73,7 +69,7 @@ class BidPlanService:
         result = await self.db.execute(
             select(BidPlanTask)
             .where(BidPlanTask.plan_id == plan_id)
-            .order_by(BidPlanTask.order_index)
+            .order_by(BidPlanTask.sort_order)
         )
         return list(result.scalars().all())
 
@@ -84,7 +80,7 @@ class BidPlanService:
         description: str = "",
         assignee: str = "",
         due_date: datetime | None = None,
-        order_index: int = 0,
+        sort_order: int = 0,
     ) -> BidPlanTask:
         """Add a task to a bid plan."""
         task = BidPlanTask(
@@ -93,7 +89,7 @@ class BidPlanService:
             description=description,
             assignee=assignee,
             due_date=due_date,
-            order_index=order_index,
+            sort_order=sort_order,
             status="pending",
         )
         self.db.add(task)

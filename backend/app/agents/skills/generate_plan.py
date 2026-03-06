@@ -27,7 +27,7 @@ class GeneratePlan(Skill):
         institution = ctx.parameters.get("institution", "adb")
 
         if not analysis_summary:
-            return SkillResult(success=False, error="No analysis summary provided")
+            analysis_summary = "暂无投标分析数据，请根据通用投标流程生成准备任务清单。"
 
         institution_label = _INSTITUTION_LABELS.get(institution, institution)
         prompt = PLAN_GENERATION_PROMPT.format(

@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import get_llm_client
@@ -13,6 +14,14 @@ from app.services.bid_plan_service import BidPlanService
 from app.services.project_service import ProjectService
 
 router = APIRouter()
+
+
+def _orm_to_dict(obj: object) -> dict:
+    """Convert a SQLAlchemy ORM object to a plain dict (columns only, no relationships)."""
+    return {
+        c.key: getattr(obj, c.key)
+        for c in sa_inspect(type(obj)).mapper.column_attrs
+    }
 
 
 @router.get("/{project_id}/plan")
@@ -121,4 +130,7 @@ async def generate_plan(
     llm_client = get_llm_client()
     plan_svc = BidPlanService(db)
     plan, tasks = await plan_svc.generate_ai_plan(project_id, llm_client)
-    return {"plan": plan, "tasks": tasks}
+    return {
+        "plan": _orm_to_dict(plan),
+        "tasks": [_orm_to_dict(t) for t in tasks],
+    }
