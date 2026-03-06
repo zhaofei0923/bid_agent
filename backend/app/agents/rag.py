@@ -90,7 +90,7 @@ async def build_analysis_context(
     project_id: str,
     dimension: str,
     db: AsyncSession,
-    institution: str = "adb",
+    institution: str | None = "adb",
 ) -> tuple[str, str]:
     """Build analysis context for a specific dimension.
 

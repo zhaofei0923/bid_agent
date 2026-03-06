@@ -26,6 +26,7 @@ export default function ProjectsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDesc, setNewDesc] = useState("")
+  const [newInstitution, setNewInstitution] = useState<"adb" | "wb" | "other">("adb")
 
   const { data, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -34,12 +35,13 @@ export default function ProjectsPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      projectService.create({ name: newName, description: newDesc || undefined }),
+      projectService.create({ name: newName, description: newDesc || undefined, institution: newInstitution }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] })
       setShowCreate(false)
       setNewName("")
       setNewDesc("")
+      setNewInstitution("adb")
     },
   })
 
@@ -73,6 +75,25 @@ export default function ProjectsPage() {
                 placeholder={t("description")}
                 rows={3}
               />
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">{t("institution")}</label>
+                <div className="flex gap-2">
+                  {(["adb", "wb", "other"] as const).map((inst) => (
+                    <button
+                      key={inst}
+                      type="button"
+                      onClick={() => setNewInstitution(inst)}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        newInstitution === inst
+                          ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                          : "border-slate-200 text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {t(inst === "adb" ? "institutionAdb" : inst === "wb" ? "institutionWb" : "institutionOther")}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={() => createMutation.mutate()}

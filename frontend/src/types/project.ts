@@ -27,6 +27,7 @@ export interface ProjectCreate {
   name: string
   description?: string
   opportunity_id?: string
+  institution?: "adb" | "wb" | "other"
 }
 
 export interface ProjectUpdate {

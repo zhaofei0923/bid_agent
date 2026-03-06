@@ -24,6 +24,7 @@ from app.agents.skills.evaluate_methodology import EvaluateMethodology
 from app.agents.skills.extract_dates import ExtractDates
 from app.agents.skills.extract_submission import ExtractSubmission
 from app.models.bid_analysis import BidAnalysis
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,13 @@ async def run_bid_analysis_pipeline(
     results: dict[str, Any] = {}
     total_tokens = 0
 
+    # Fetch project institution for knowledge base filtering
+    proj_result = await db.execute(select(Project).where(Project.id == project_id))
+    project = proj_result.scalar_one_or_none()
+    institution = project.institution if project and project.institution else "adb"
+    # Map "other" to "adb" as fallback (no dedicated KB)
+    kb_institution: str | None = institution if institution in ("adb", "wb") else None
+
     # Load existing analysis (cache)
     analysis = await _get_cached_analysis(db, project_id)
 
@@ -144,6 +152,7 @@ async def run_bid_analysis_pipeline(
                 project_id=project_id,
                 dimension=dimension,
                 db=db,
+                institution=kb_institution,
             )
         except Exception:
             logger.warning("Context retrieval failed for step '%s'", step, exc_info=True)
@@ -202,6 +211,7 @@ async def run_bid_analysis_pipeline(
                 project_id=project_id,
                 dimension=dimension,
                 db=db,
+                institution=kb_institution,
             )
         except Exception:
             logger.warning("Context retrieval failed for step 'risk_assessment'", exc_info=True)
