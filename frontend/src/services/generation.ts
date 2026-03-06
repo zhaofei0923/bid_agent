@@ -5,7 +5,7 @@ export const generationService = {
   ask: async (projectId: string, message: string) => {
     const { data } = await apiClient.post<GuidanceResponse>(
       `/projects/${projectId}/guidance`,
-      { question: message }
+      { message }
     )
     return data
   },
@@ -29,7 +29,7 @@ export const generationService = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ question: message }),
+          body: JSON.stringify({ message }),
           signal: controller.signal,
         }
       )
