@@ -7,6 +7,7 @@ export function useBidAnalysis(projectId: string) {
     queryFn: () => bidAnalysisService.getByProject(projectId),
     enabled: !!projectId,
     staleTime: 60_000,
+    retry: false, // 404 = no analysis yet, don't retry
   })
 }
 

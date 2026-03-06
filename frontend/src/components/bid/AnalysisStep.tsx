@@ -9,6 +9,17 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTranslations } from "next-intl"
 
+function _extractErrorMessage(error: unknown): string {
+  if (!error) return "未知错误"
+  const axiosErr = error as { response?: { data?: { message?: string; detail?: string }; status?: number } }
+  if (axiosErr.response?.status === 402) return "积分不足，无法执行分析（需要 20 积分）"
+  const msg = axiosErr.response?.data?.message ?? axiosErr.response?.data?.detail
+  if (msg) return msg
+  const baseErr = error as { message?: string }
+  if (baseErr.message?.includes("timeout")) return "分析超时，请稍后重试"
+  return baseErr.message ?? "请求失败，请稍后重试"
+}
+
 const ANALYSIS_DIMENSIONS = [
   { key: "qualification", icon: "📋" },
   { key: "evaluation", icon: "📊" },
@@ -65,14 +76,21 @@ export const AnalysisStep = memo(function AnalysisStep({
             {t("analysis.subtitle")}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRunAnalysis}
-          disabled={triggerMutation.isPending}
-        >
-          {triggerMutation.isPending ? t("analysis.analyzing") : t("analysis.reanalyze")}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRunAnalysis}
+            disabled={triggerMutation.isPending}
+          >
+            {triggerMutation.isPending ? t("analysis.analyzing") : t("analysis.reanalyze")}
+          </Button>
+          {triggerMutation.isError && (
+            <p className="text-xs text-red-500">
+              ❌ {_extractErrorMessage(triggerMutation.error)}
+            </p>
+          )}
+        </div>
       </div>
 
       {!analysis ? (
@@ -82,6 +100,16 @@ export const AnalysisStep = memo(function AnalysisStep({
             <Button onClick={handleRunAnalysis} disabled={triggerMutation.isPending}>
               {triggerMutation.isPending ? t("analysis.analyzing") : t("analysis.startAnalysis")}
             </Button>
+            {triggerMutation.isPending && (
+              <p className="mt-3 text-xs text-muted-foreground animate-pulse">
+                ⏳ {t("analysis.analyzingHint")}
+              </p>
+            )}
+            {triggerMutation.isError && (
+              <p className="mt-3 text-xs text-red-500">
+                ❌ {_extractErrorMessage(triggerMutation.error)}
+              </p>
+            )}
           </CardContent>
         </Card>
       ) : (
