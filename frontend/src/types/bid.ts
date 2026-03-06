@@ -43,6 +43,8 @@ export interface BidPlanTask {
   title: string
   description: string | null
   status: "pending" | "in_progress" | "completed"
+  category: "compliance" | "technical" | "commercial" | "administrative" | null
+  priority: "high" | "medium" | "low" | null
   assigned_to: string | null
   due_date: string | null
   sort_order: number

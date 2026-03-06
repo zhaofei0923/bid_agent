@@ -949,6 +949,8 @@
       "statusInProgress": "进行中",
       "statusCompleted": "已完成",
       "addButton": "添加",
+      "generateBtn": "AI 一键生成",
+      "generating": "生成中...",
       "nextStep": "下一步：AI编制指导 →"
     },
     "qa": {

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.llm_client import get_llm_client
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.user import User
@@ -105,3 +106,19 @@ async def delete_task(
     plan_svc = BidPlanService(db)
     await plan_svc.delete_task(task_id)
     return {"message": "Task deleted"}
+
+
+@router.post("/{project_id}/plan/generate")
+async def generate_plan(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate an AI bid preparation task plan from analysis results."""
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    llm_client = get_llm_client()
+    plan_svc = BidPlanService(db)
+    plan, tasks = await plan_svc.generate_ai_plan(project_id, llm_client)
+    return {"plan": plan, "tasks": tasks}

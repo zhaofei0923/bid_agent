@@ -948,6 +948,9 @@
       "statusPending": "Pending",
       "statusInProgress": "In Progress",
       "statusCompleted": "Completed",
+      "addButton": "Add",
+      "generateBtn": "AI Generate",
+      "generating": "Generating...",
       "nextStep": "Next: AI Writing Guide →"
     },
     "qa": {

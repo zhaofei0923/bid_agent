@@ -51,4 +51,11 @@ export const bidPlanService = {
   deleteTask: async (projectId: string, taskId: string) => {
     await apiClient.delete(`/projects/${projectId}/plan/tasks/${taskId}`)
   },
+
+  generatePlan: async (projectId: string) => {
+    const { data } = await apiClient.post<{ plan: BidPlan; tasks: BidPlanTask[] }>(
+      `/projects/${projectId}/plan/generate`
+    )
+    return data
+  },
 }
