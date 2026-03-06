@@ -62,18 +62,19 @@ class PaymentService:
                 available=int(current),
             )
 
+        balance_before = int(current)
         user.credits_balance = int(current - amount)
         user.updated_at = datetime.now(UTC)
 
         # Record transaction
         txn = PaymentTransaction(
             user_id=user_id,
-            transaction_type="deduction",
+            type="deduction",
             amount=-amount,
+            balance_before=balance_before,
             balance_after=user.credits_balance,
-            description=description,
-            reference_type=reference_type,
-            reference_id=reference_id,
+            description=description or None,
+            related_type=reference_type or None,
         )
         self.db.add(txn)
         await self.db.commit()
@@ -100,17 +101,18 @@ class PaymentService:
         if not user:
             raise NotFoundError("User", str(user_id))
 
-        user.credits_balance = (user.credits_balance or 0) + amount
+        balance_before = user.credits_balance or 0
+        user.credits_balance = balance_before + amount
         user.updated_at = datetime.now(UTC)
 
         txn = PaymentTransaction(
             user_id=user_id,
-            transaction_type="recharge",
+            type="recharge",
             amount=amount,
+            balance_before=balance_before,
             balance_after=user.credits_balance,
-            description=description,
-            reference_type=reference_type,
-            reference_id=reference_id,
+            description=description or None,
+            related_type=reference_type or None,
         )
         self.db.add(txn)
         await self.db.commit()
