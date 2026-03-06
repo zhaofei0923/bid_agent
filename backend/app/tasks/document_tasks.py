@@ -348,38 +348,43 @@ def _build_page_group_sections(
 
 
 async def _generate_ai_analysis(sample_text: str) -> tuple[str, str]:
-    """Call LLM to generate ai_overview and ai_reading_tips.
+    """Call LLM to generate a structured Markdown overview for a single document.
 
-    Returns (overview, reading_tips). Falls back to empty strings on failure.
+    Returns (overview_markdown, ""). Falls back to empty strings on failure.
     """
-    from app.agents.llm_client import LLMClient
+    from app.agents.llm_client import LLMClient, Message
 
     client = LLMClient()
     clipped = sample_text[:8000]
 
+    system_prompt = (
+        "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
+        "请仔细阅读提供的招标文件内容，生成结构化的文档解读报告。\n"
+        "严格按照以下五个章节输出，使用 Markdown 格式（## 作为章节标题），不要输出 JSON：\n\n"
+        "## 一、项目概览\n"
+        "（100-150字）项目名称、所在国家/地区、建设目标与背景。\n\n"
+        "## 二、核心技术要求\n"
+        "（150-200字）主要技术范围、核心系统/设备、交付要求与技术规范重点。\n\n"
+        "## 三、投标人资质要求\n"
+        "（100-150字）资质标准、关键人员要求、必要的业绩或认证要求。\n\n"
+        "## 四、关键时间节点\n"
+        "（100字以内）投标文件发布日期、截止日期、评标计划等关键时间点。\n\n"
+        "## 五、阅读重点与注意事项\n"
+        "（150-200字）文档阅读顺序建议、需特别关注的条款、常见误解与风险提示。\n\n"
+        "仅输出以上五个章节的 Markdown 内容，不要有任何额外说明或前言。"
+    )
+
     try:
-        result = await client.extract_json(
-            prompt=f"以下是招标文件的部分内容：\n\n{clipped}",
-            system_prompt=(
-                "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
-                "请仔细阅读提供的招标文件内容，生成以下JSON格式的输出：\n"
-                '{"overview": "文档概述", "reading_tips": "阅读建议"}\n\n'
-                "overview要求（300-500字中文）：项目名称、项目国家/地区、主要目标、"
-                "核心技术要求、投标人资质要求、关键时间节点。\n"
-                "reading_tips要求（150-250字中文）：针对投标人的阅读重点、"
-                "需特别注意的条款、常见误解和注意事项。\n"
-                "仅输出JSON，不要有任何其他内容。"
-            ),
+        response = await client.chat(
+            messages=[
+                Message("system", system_prompt),
+                Message("user", f"以下是招标文件的部分内容：\n\n{clipped}"),
+            ],
             temperature=0.3,
-            max_tokens=2000,
+            max_tokens=2500,
         )
-        data = result.data
-        if data.get("parse_error"):
-            logger.warning("LLM returned non-JSON for AI analysis")
-            return "", ""
-        overview = str(data.get("overview", ""))
-        reading_tips = str(data.get("reading_tips", ""))
-        return overview, reading_tips
+        overview = response.content.strip()
+        return overview, ""
     except Exception:
         logger.exception("AI analysis generation failed")
         return "", ""
@@ -668,38 +673,44 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
 
         combined_text = "\n\n---\n\n".join(parts)
 
-        from app.agents.llm_client import LLMClient
+        from app.agents.llm_client import LLMClient, Message
         client = LLMClient()
+
+        system_prompt = (
+            "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
+            "以下提供了同一项目的多个招标文件（可能分为不同卷册，如技术卷、商务卷、图纸卷等），"
+            "请将它们作为一个完整的招标项目综合分析，生成统一的解读报告，不要按文件分开描述。\n"
+            "严格按照以下五个章节输出，使用 Markdown 格式（## 作为章节标题），不要输出 JSON：\n\n"
+            "## 一、项目概览\n"
+            "（150-200字）项目名称、所在国家/地区、建设目标与背景、资金来源（如 ADB/WB/AfDB）。\n\n"
+            "## 二、核心技术要求\n"
+            "（200-250字）主要技术范围、核心系统/设备、交付要求与技术规范重点；如有多个卷册，说明各自技术侧重。\n\n"
+            "## 三、投标人资质要求\n"
+            "（150-200字）资质标准、关键人员与专家要求、必要的业绩或认证要求。\n\n"
+            "## 四、关键时间节点\n"
+            "（100字以内）投标文件发布日期、截止日期、评标计划、合同签署预期等关键时间点。\n\n"
+            "## 五、阅读重点与注意事项\n"
+            "（200-250字）各卷册间的关系与推荐阅读顺序、需特别关注的条款（如 BDS/SCC/EQC）、"
+            "常见误解与风险提示、投标人行动建议。\n\n"
+            "仅输出以上五个章节的 Markdown 内容，不要有任何额外说明或前言。"
+        )
+
         try:
-            result = await client.extract_json(
-                prompt=f"以下是同一招标项目的多个招标文件内容（可能为不同卷册）：\n\n{combined_text[:12000]}",
-                system_prompt=(
-                    "你是一名专业的多边开发银行（ADB/WB/AfDB）招标文件分析师。\n"
-                    "以下提供了同一项目的多个招标文件（可能分为不同卷册，如技术卷、商务卷、图纸卷等），"
-                    "请将它们作为一个完整的招标项目综合分析，生成统一的解读，不要按文件分开描述。\n"
-                    "输出JSON格式：\n"
-                    '{"overview": "项目综合概述", "reading_tips": "阅读建议"}\n\n'
-                    "overview要求（400-600字中文）：项目名称、所在国家/地区、建设目标、核心技术范围、"
-                    "投标人资质要求、合同类型、关键时间节点。\n"
-                    "reading_tips要求（200-300字中文）：各卷册间的关系与阅读顺序、需特别关注的条款、"
-                    "常见误解与注意事项。\n"
-                    "仅输出JSON，不要有任何其他内容。"
-                ),
+            response = await client.chat(
+                messages=[
+                    Message("system", system_prompt),
+                    Message("user", f"以下是同一招标项目的多个招标文件内容（可能为不同卷册）：\n\n{combined_text[:12000]}"),
+                ],
                 temperature=0.3,
-                max_tokens=2500,
+                max_tokens=3000,
             )
-            data = result.data
-            if data.get("parse_error"):
-                logger.warning("LLM returned non-JSON for combined analysis of project %s", project_id)
-                return {"status": "parse_error"}
-            overview = str(data.get("overview", ""))
-            reading_tips = str(data.get("reading_tips", ""))
+            overview = response.content.strip()
         except Exception:
             logger.exception("Combined AI analysis failed for project %s", project_id)
             return {"status": "error"}
 
         project.combined_ai_overview = overview or None
-        project.combined_ai_reading_tips = reading_tips or None
+        project.combined_ai_reading_tips = None
         await db.commit()
 
         logger.info("Combined AI analysis generated for project %s", project_id)
