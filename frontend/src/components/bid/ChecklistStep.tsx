@@ -161,13 +161,11 @@ export const ChecklistStep = memo(function ChecklistStep({
     goToStep("review")
   }
 
-  // ── Query: load cached checklist on mount ──
+  // ── Query: load cached checklist on mount (use cache, no force) ──
   const { data: cachedData, isLoading } = useQuery({
     queryKey: ["checklist", projectId],
     queryFn: () => checklistService.generate(projectId, false),
     retry: false,
-    // Don't throw on 404/empty — just return null
-    throwOnError: false,
   })
 
   // ── Mutation: (re)generate ──
@@ -214,9 +212,7 @@ export const ChecklistStep = memo(function ChecklistStep({
             </>
           )}
           <Button
-            onClick={() =>
-              generateMutation.mutate(!!checklist && !checklist.cached ? false : true)
-            }
+            onClick={() => generateMutation.mutate(true)}
             disabled={isGenerating}
             size="sm"
           >
