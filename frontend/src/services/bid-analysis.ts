@@ -44,7 +44,10 @@ export const checklistService = {
     forceRefresh = false
   ): Promise<import("@/types/bid").SubmissionChecklist> => {
     const { data } = await apiClient.post(
-      `/projects/${projectId}/checklist/generate?force_refresh=${forceRefresh}`
+      `/projects/${projectId}/checklist/generate?force_refresh=${forceRefresh}`,
+      undefined,
+      // LLM generation can take 60-120s; override global 30s timeout
+      { timeout: 180_000 }
     )
     return data
   },
