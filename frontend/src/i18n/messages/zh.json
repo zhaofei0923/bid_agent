@@ -991,6 +991,19 @@
       "stop": "停止",
       "nextStep": "下一步：质量审查 →"
     },
+    "checklist": {
+      "title": "投标文件目录",
+      "subtitle": "根据招标文件自动提取所有需提交的材料，含编写指导和原文出处",
+      "generate": "✨ AI生成清单",
+      "regenerate": "重新生成",
+      "generating": "AI正在提取...",
+      "empty": "点击右上角按钮，AI将自动解读招标文件并生成完整的投标文件目录",
+      "required": "必填",
+      "optional": "选填",
+      "guidance": "编写指导",
+      "source": "出处",
+      "nextStep": "下一步：质量审查 →"
+    },
     "quality": {
       "title": "质量审查",
       "subtitle": "AI 4 维度审查：完整性、合规性、一致性、风险识别",

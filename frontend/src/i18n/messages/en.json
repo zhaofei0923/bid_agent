@@ -991,6 +991,19 @@
       "stop": "Stop",
       "nextStep": "Next: Quality Review →"
     },
+    "checklist": {
+      "title": "Bid Document Checklist",
+      "subtitle": "Auto-extracted submission requirements from the tender document, with writing guidance and source citations",
+      "generate": "✨ Generate Checklist",
+      "regenerate": "Regenerate",
+      "generating": "AI extracting...",
+      "empty": "Click the button above — AI will parse the tender document and generate a complete submission checklist",
+      "required": "Required",
+      "optional": "Optional",
+      "guidance": "Writing Guidance",
+      "source": "Source",
+      "nextStep": "Next: Quality Review →"
+    },
     "quality": {
       "title": "Quality Review",
       "subtitle": "AI 4-dimension review: completeness, compliance, consistency, risk identification",

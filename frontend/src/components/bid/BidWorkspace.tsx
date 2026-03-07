@@ -6,7 +6,7 @@ import { UploadStep } from "./UploadStep"
 import { OverviewStep } from "./OverviewStep"
 import { AnalysisStep } from "./AnalysisStep"
 import { PlanStep } from "./PlanStep"
-import { QAStep } from "./QAStep"
+import { ChecklistStep } from "./ChecklistStep"
 import { QualityReviewPanel } from "./quality/QualityReviewPanel"
 import { TrackingStep } from "./TrackingStep"
 import { useTranslations } from "next-intl"
@@ -26,7 +26,7 @@ export const BidWorkspace = memo(function BidWorkspace({
     overview: <OverviewStep projectId={projectId} />,
     analysis: <AnalysisStep projectId={projectId} />,
     plan: <PlanStep projectId={projectId} />,
-    writing: <QAStep projectId={projectId} />,
+    writing: <ChecklistStep projectId={projectId} />,
     review: <QualityReviewPanel projectId={projectId} />,
     tracking: <TrackingStep projectId={projectId} />,
   }

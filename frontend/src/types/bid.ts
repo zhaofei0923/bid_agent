@@ -63,3 +63,37 @@ export interface GuidanceResponse {
   references: string[]
   credits_consumed: number
 }
+
+// ── Submission Checklist ──────────────────────────────────────────
+
+export interface ChecklistSource {
+  filename: string
+  page_number: number | null
+  section_title: string
+  excerpt: string
+}
+
+export interface ChecklistItem {
+  id: string
+  title: string
+  required: boolean
+  copies: number | null
+  format_hint: string | null
+  guidance: string
+  source: ChecklistSource
+}
+
+export interface ChecklistSection {
+  id: string
+  title: string
+  icon: string
+  items: ChecklistItem[]
+}
+
+export interface SubmissionChecklist {
+  project_id: string
+  institution: string
+  sections: ChecklistSection[]
+  generated_at: string
+  cached: boolean
+}

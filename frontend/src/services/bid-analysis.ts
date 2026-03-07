@@ -37,3 +37,15 @@ export const bidAnalysisService = {
     return data
   },
 }
+
+export const checklistService = {
+  generate: async (
+    projectId: string,
+    forceRefresh = false
+  ): Promise<import("@/types/bid").SubmissionChecklist> => {
+    const { data } = await apiClient.post(
+      `/projects/${projectId}/checklist/generate?force_refresh=${forceRefresh}`
+    )
+    return data
+  },
+}

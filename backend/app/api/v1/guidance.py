@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 from uuid import UUID
@@ -232,4 +233,190 @@ async def stream_guidance(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+# ── Submission Checklist ──────────────────────────────────────────────────────
+
+
+@router.post("/{project_id}/checklist/generate")
+async def generate_checklist(
+    project_id: UUID,
+    force_refresh: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate (or return cached) submission checklist by RAG-parsing the tender document.
+
+    The result is cached in BidAnalysis.submission_checklist to avoid repeated LLM calls.
+    """
+    from sqlalchemy import select
+
+    from app.agents.embedding_client import get_embedding_client
+    from app.agents.llm_client import Message as LLMMessage
+    from app.agents.llm_client import get_llm_client
+    from app.agents.mcp.bid_document_search import (
+        _extract_keywords,
+        bid_document_search,
+        keyword_search_chunks,
+    )
+    from app.agents.prompts.checklist import CHECKLIST_EXTRACT_PROMPT
+    from app.models.bid_analysis import BidAnalysis
+    from app.schemas.checklist import (
+        ChecklistItem,
+        ChecklistSection,
+        ChecklistSource,
+        SubmissionChecklistResponse,
+    )
+
+    # Authorise access
+    project_svc = ProjectService(db)
+    project = await project_svc.get_by_id(project_id, current_user.id)
+    institution: str = getattr(project, "institution", None) or "adb"
+
+    # ── 1. Check cache ──────────────────────────────────────────
+    result_row = await db.execute(
+        select(BidAnalysis).where(BidAnalysis.project_id == project_id)
+    )
+    analysis: BidAnalysis | None = result_row.scalar_one_or_none()
+
+    if (
+        not force_refresh
+        and analysis is not None
+        and analysis.submission_checklist
+        and isinstance(analysis.submission_checklist, dict)
+        and analysis.submission_checklist.get("sections")
+    ):
+        cached = analysis.submission_checklist
+        return SubmissionChecklistResponse(
+            project_id=project_id,
+            institution=institution,
+            sections=[ChecklistSection(**s) for s in cached["sections"]],
+            generated_at=cached.get("generated_at", datetime.now(UTC).isoformat()),
+            cached=True,
+        )
+
+    # ── 2. RAG retrieval ──────────────────────────────────────
+    emb_client = get_embedding_client()
+    seed_query = (
+        "documents required submission proposal contents technical financial administrative"
+    )
+    emb_result = await emb_client.embed_text(seed_query)
+
+    vector_results = await bid_document_search(
+        db=db,
+        project_id=str(project_id),
+        query_embedding=emb_result.embedding,
+        top_k=12,
+    )
+    keywords = [
+        *_extract_keywords(seed_query),
+        "Section 8",
+        "documents required",
+        "submission",
+        "proposal content",
+        "Technical Proposal",
+        "Financial Proposal",
+        "表格",
+        "格式要求",
+        "需提交",
+        "应提供",
+    ]
+    kw_results = await keyword_search_chunks(
+        db=db,
+        project_id=str(project_id),
+        keywords=keywords,
+        top_k=12,
+    )
+    seen_ids: set[str] = {r["id"] for r in vector_results}
+    merged = list(vector_results)
+    for r in kw_results:
+        if r["id"] not in seen_ids:
+            seen_ids.add(r["id"])
+            merged.append(r)
+
+    context_block = "\n\n".join(
+        "[参考 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
+            n=i + 1,
+            section=c.get("section_title") or c.get("section_type") or "未知章节",
+            filename=c.get("filename") or c.get("source_document") or "",
+            page=c.get("page_number") or "?",
+            content=c.get("content", ""),
+        )
+        for i, c in enumerate(merged)
+    )
+
+    # ── 3. LLM JSON extraction ────────────────────────────────
+    llm = get_llm_client()
+    prompt = CHECKLIST_EXTRACT_PROMPT.format(context=context_block)
+    messages = [LLMMessage(role="user", content=prompt)]
+
+    raw_json = ""
+    async for chunk in llm.chat_stream(messages):
+        raw_json += chunk
+
+    # Parse JSON — strip accidental markdown fences
+    raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip(), flags=re.MULTILINE)
+    raw_json = re.sub(r"\s*```$", "", raw_json.strip(), flags=re.MULTILINE)
+
+    try:
+        parsed = json.loads(raw_json)
+    except json.JSONDecodeError:
+        # Fall back to empty checklist rather than 500
+        parsed = {"sections": []}
+
+    sections_raw = parsed.get("sections", [])
+    sections = []
+    for sec in sections_raw:
+        items = []
+        for it in sec.get("items", []):
+            src_raw = it.get("source", {})
+            items.append(
+                ChecklistItem(
+                    id=it.get("id", ""),
+                    title=it.get("title", ""),
+                    required=bool(it.get("required", True)),
+                    copies=it.get("copies"),
+                    format_hint=it.get("format_hint"),
+                    guidance=it.get("guidance", ""),
+                    source=ChecklistSource(
+                        filename=src_raw.get("filename", ""),
+                        page_number=src_raw.get("page_number"),
+                        section_title=src_raw.get("section_title", ""),
+                        excerpt=src_raw.get("excerpt", ""),
+                    ),
+                )
+            )
+        sections.append(
+            ChecklistSection(
+                id=sec.get("id", ""),
+                title=sec.get("title", ""),
+                icon=sec.get("icon", "📄"),
+                items=items,
+            )
+        )
+
+    generated_at = datetime.now(UTC)
+
+    # ── 4. Upsert cache ───────────────────────────────────────
+    checklist_data = {
+        "sections": [s.model_dump() for s in sections],
+        "generated_at": generated_at.isoformat(),
+    }
+    if analysis is None:
+        new_analysis = BidAnalysis(
+            project_id=project_id,
+            submission_checklist=checklist_data,
+        )
+        db.add(new_analysis)
+    else:
+        analysis.submission_checklist = checklist_data
+    await db.commit()
+
+    return SubmissionChecklistResponse(
+        project_id=project_id,
+        institution=institution,
+        sections=sections,
+        generated_at=generated_at,
+        cached=False,
     )
