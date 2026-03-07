@@ -239,6 +239,16 @@ async def stream_guidance(
 # ── Submission Checklist ──────────────────────────────────────────────────────
 
 
+def _safe_int(value: object) -> int | None:
+    """Coerce LLM-returned value to int, returning None on failure."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @router.post("/{project_id}/checklist/generate")
 async def generate_checklist(
     project_id: UUID,
@@ -288,135 +298,167 @@ async def generate_checklist(
         and analysis.submission_checklist.get("sections")
     ):
         cached = analysis.submission_checklist
+        try:
+            cached_sections = [ChecklistSection(**s) for s in cached["sections"]]
+        except Exception:
+            logger.warning("Cached checklist data is malformed, regenerating")
+            cached_sections = None
+
+        if cached_sections is not None:
+            return SubmissionChecklistResponse(
+                project_id=project_id,
+                institution=institution,
+                sections=cached_sections,
+                generated_at=cached.get("generated_at", datetime.now(UTC).isoformat()),
+                cached=True,
+            )
+
+    try:
+        # ── 2. RAG retrieval ──────────────────────────────────────
+        emb_client = get_embedding_client()
+        seed_query = (
+            "documents required submission proposal contents technical financial administrative"
+        )
+        emb_result = await emb_client.embed_text(seed_query)
+
+        try:
+            vector_results = await bid_document_search(
+                db=db,
+                project_id=str(project_id),
+                query_embedding=emb_result.embedding,
+                top_k=12,
+            )
+        except Exception as exc:
+            logger.warning("bid_document_search failed, proceeding without vector results: %s", exc)
+            vector_results = []
+
+        keywords = [
+            *_extract_keywords(seed_query),
+            "Section 8",
+            "documents required",
+            "submission",
+            "proposal content",
+            "Technical Proposal",
+            "Financial Proposal",
+            "表格",
+            "格式要求",
+            "需提交",
+            "应提供",
+        ]
+        kw_results = await keyword_search_chunks(
+            db=db,
+            project_id=str(project_id),
+            keywords=keywords,
+            top_k=12,
+        )
+        seen_ids: set[str] = {r["id"] for r in vector_results}
+        merged = list(vector_results)
+        for r in kw_results:
+            if r["id"] not in seen_ids:
+                seen_ids.add(r["id"])
+                merged.append(r)
+
+        if not merged:
+            logger.warning("No bid document chunks found for project %s", project_id)
+
+        context_block = "\n\n".join(
+            "[参考 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
+                n=i + 1,
+                section=c.get("section_title") or c.get("section_type") or "未知章节",
+                filename=c.get("filename") or c.get("source_document") or "",
+                page=c.get("page_number") or "?",
+                content=c.get("content", ""),
+            )
+            for i, c in enumerate(merged)
+        )
+
+        # ── 3. LLM JSON extraction ────────────────────────────────
+        llm = get_llm_client()
+        prompt = CHECKLIST_EXTRACT_PROMPT.format(context=context_block)
+        messages = [LLMMessage(role="user", content=prompt)]
+
+        raw_json = ""
+        async for chunk in llm.chat_stream(messages, max_tokens=4000):
+            raw_json += chunk
+
+        # Parse JSON — strip accidental markdown fences
+        raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip(), flags=re.MULTILINE)
+        raw_json = re.sub(r"\s*```$", "", raw_json.strip(), flags=re.MULTILINE)
+
+        try:
+            parsed = json.loads(raw_json)
+        except json.JSONDecodeError:
+            logger.warning("Checklist LLM response is not valid JSON, using empty list. raw=%r", raw_json[:200])
+            parsed = {"sections": []}
+
+        sections_raw = parsed.get("sections", [])
+        sections = []
+        for sec in sections_raw:
+            items = []
+            for it in sec.get("items", []):
+                src_raw = it.get("source") or {}
+                if not isinstance(src_raw, dict):
+                    src_raw = {}
+                try:
+                    items.append(
+                        ChecklistItem(
+                            id=str(it.get("id") or ""),
+                            title=str(it.get("title") or ""),
+                            required=bool(it.get("required", True)),
+                            copies=_safe_int(it.get("copies")),
+                            format_hint=str(it["format_hint"]) if it.get("format_hint") else None,
+                            guidance=str(it.get("guidance") or ""),
+                            source=ChecklistSource(
+                                filename=str(src_raw.get("filename") or ""),
+                                page_number=_safe_int(src_raw.get("page_number")),
+                                section_title=str(src_raw.get("section_title") or ""),
+                                excerpt=str(src_raw.get("excerpt") or ""),
+                            ),
+                        )
+                    )
+                except Exception as exc:
+                    logger.warning("Skipping malformed checklist item %r: %s", it, exc)
+            try:
+                sections.append(
+                    ChecklistSection(
+                        id=str(sec.get("id") or ""),
+                        title=str(sec.get("title") or ""),
+                        icon=str(sec.get("icon") or "📄"),
+                        items=items,
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Skipping malformed checklist section %r: %s", sec, exc)
+
+        generated_at = datetime.now(UTC)
+
+        # ── 4. Upsert cache ───────────────────────────────────────
+        checklist_data = {
+            "sections": [s.model_dump() for s in sections],
+            "generated_at": generated_at.isoformat(),
+        }
+        try:
+            if analysis is None:
+                new_analysis = BidAnalysis(
+                    project_id=project_id,
+                    submission_checklist=checklist_data,
+                )
+                db.add(new_analysis)
+            else:
+                analysis.submission_checklist = checklist_data
+            await db.commit()
+        except Exception as exc:
+            logger.error("Failed to persist checklist for project %s: %s", project_id, exc)
+            await db.rollback()
+
         return SubmissionChecklistResponse(
             project_id=project_id,
             institution=institution,
-            sections=[ChecklistSection(**s) for s in cached["sections"]],
-            generated_at=cached.get("generated_at", datetime.now(UTC).isoformat()),
-            cached=True,
+            sections=sections,
+            generated_at=generated_at,
+            cached=False,
         )
 
-    # ── 2. RAG retrieval ──────────────────────────────────────
-    emb_client = get_embedding_client()
-    seed_query = (
-        "documents required submission proposal contents technical financial administrative"
-    )
-    emb_result = await emb_client.embed_text(seed_query)
-
-    vector_results = await bid_document_search(
-        db=db,
-        project_id=str(project_id),
-        query_embedding=emb_result.embedding,
-        top_k=12,
-    )
-    keywords = [
-        *_extract_keywords(seed_query),
-        "Section 8",
-        "documents required",
-        "submission",
-        "proposal content",
-        "Technical Proposal",
-        "Financial Proposal",
-        "表格",
-        "格式要求",
-        "需提交",
-        "应提供",
-    ]
-    kw_results = await keyword_search_chunks(
-        db=db,
-        project_id=str(project_id),
-        keywords=keywords,
-        top_k=12,
-    )
-    seen_ids: set[str] = {r["id"] for r in vector_results}
-    merged = list(vector_results)
-    for r in kw_results:
-        if r["id"] not in seen_ids:
-            seen_ids.add(r["id"])
-            merged.append(r)
-
-    context_block = "\n\n".join(
-        "[参考 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
-            n=i + 1,
-            section=c.get("section_title") or c.get("section_type") or "未知章节",
-            filename=c.get("filename") or c.get("source_document") or "",
-            page=c.get("page_number") or "?",
-            content=c.get("content", ""),
-        )
-        for i, c in enumerate(merged)
-    )
-
-    # ── 3. LLM JSON extraction ────────────────────────────────
-    llm = get_llm_client()
-    prompt = CHECKLIST_EXTRACT_PROMPT.format(context=context_block)
-    messages = [LLMMessage(role="user", content=prompt)]
-
-    raw_json = ""
-    async for chunk in llm.chat_stream(messages):
-        raw_json += chunk
-
-    # Parse JSON — strip accidental markdown fences
-    raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip(), flags=re.MULTILINE)
-    raw_json = re.sub(r"\s*```$", "", raw_json.strip(), flags=re.MULTILINE)
-
-    try:
-        parsed = json.loads(raw_json)
-    except json.JSONDecodeError:
-        # Fall back to empty checklist rather than 500
-        parsed = {"sections": []}
-
-    sections_raw = parsed.get("sections", [])
-    sections = []
-    for sec in sections_raw:
-        items = []
-        for it in sec.get("items", []):
-            src_raw = it.get("source", {})
-            items.append(
-                ChecklistItem(
-                    id=it.get("id", ""),
-                    title=it.get("title", ""),
-                    required=bool(it.get("required", True)),
-                    copies=it.get("copies"),
-                    format_hint=it.get("format_hint"),
-                    guidance=it.get("guidance", ""),
-                    source=ChecklistSource(
-                        filename=src_raw.get("filename", ""),
-                        page_number=src_raw.get("page_number"),
-                        section_title=src_raw.get("section_title", ""),
-                        excerpt=src_raw.get("excerpt", ""),
-                    ),
-                )
-            )
-        sections.append(
-            ChecklistSection(
-                id=sec.get("id", ""),
-                title=sec.get("title", ""),
-                icon=sec.get("icon", "📄"),
-                items=items,
-            )
-        )
-
-    generated_at = datetime.now(UTC)
-
-    # ── 4. Upsert cache ───────────────────────────────────────
-    checklist_data = {
-        "sections": [s.model_dump() for s in sections],
-        "generated_at": generated_at.isoformat(),
-    }
-    if analysis is None:
-        new_analysis = BidAnalysis(
-            project_id=project_id,
-            submission_checklist=checklist_data,
-        )
-        db.add(new_analysis)
-    else:
-        analysis.submission_checklist = checklist_data
-    await db.commit()
-
-    return SubmissionChecklistResponse(
-        project_id=project_id,
-        institution=institution,
-        sections=sections,
-        generated_at=generated_at,
-        cached=False,
-    )
+    except Exception as exc:
+        logger.exception("generate_checklist failed for project %s: %s", project_id, exc)
+        raise
