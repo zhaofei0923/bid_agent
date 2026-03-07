@@ -99,9 +99,9 @@ async def stream_guidance(
             from app.agents.llm_client import Message as LLMMessage
             from app.agents.llm_client import get_llm_client
             from app.agents.mcp.bid_document_search import (
+                _extract_keywords,
                 bid_document_search,
                 keyword_search_chunks,
-                _extract_keywords,
             )
             from app.agents.mcp.knowledge_search import knowledge_search
 

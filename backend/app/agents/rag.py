@@ -212,7 +212,10 @@ async def answer_question(
         }
 
     # 2. Search bid documents — 向量检索 + 关键词全量检索合并
-    from app.agents.mcp.bid_document_search import keyword_search_chunks, _extract_keywords
+    from app.agents.mcp.bid_document_search import (
+        _extract_keywords,
+        keyword_search_chunks,
+    )
 
     vector_results = await bid_document_search(
         db=db,
