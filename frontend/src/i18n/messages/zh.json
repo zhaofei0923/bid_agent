@@ -162,9 +162,9 @@
       "stop": "停止",
       "greeting": "👋 您好！我是 AI 投标助手",
       "greetingHint": "可以问我关于招标文件、资质要求、评分标准等问题",
-      "modeDocuments": "投标文件",
+      "modeDocuments": "招标文件",
       "modeKnowledge": "知识库",
-      "modeDocHint": "向投标文件提问，快速定位关键条款",
+      "modeDocHint": "向招标文件提问，快速定位关键条款",
       "modeKbHint": "查询行业知识库，获取标书编制指导",
       "skills": {
         "extractDates": "提取关键日期",
@@ -983,7 +983,7 @@
         "如何提高技术评分标准得分？",
         "格式和装订有哪些标准要求？"
       ],
-      "modeDocuments": "投标文件",
+      "modeDocuments": "招标文件",
       "modeKnowledge": "知识库",
       "modeDocHint": "根据招标文件条款提问，精准定位需求",
       "modeKbHint": "查询编制指南，获取专业建议",

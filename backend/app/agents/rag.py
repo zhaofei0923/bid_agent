@@ -166,14 +166,15 @@ async def build_analysis_context(
 
 # ── RAG Question Answering ──
 
-RAG_SYSTEM_PROMPT = """你是一位专业的投标文件分析助手。请基于提供的上下文回答用户的问题。
+RAG_SYSTEM_PROMPT = """你是一位专业的招标文件分析助手，负责帮助用户深入理解招标文件内容。
+招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。
 
 规则：
 1. 仅基于提供的上下文内容回答，不编造信息
-2. 如果上下文中找不到答案，明确告知用户
-3. 引用关键信息时标注来源编号
-4. 使用清晰简洁的中文回答
-5. 如有数字、日期、金额等，确保准确引用原文"""
+2. 如参考资料中有相关内容，必须直接引用原文并标注[来源N]
+3. 引用金额、日期、条款编号时确保准确，抄录原文数字
+4. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找
+5. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"""
 
 
 async def answer_question(
@@ -210,13 +211,28 @@ async def answer_question(
             "tokens_consumed": 0,
         }
 
-    # 2. Search bid documents
-    doc_results = await bid_document_search(
+    # 2. Search bid documents — 向量检索 + 关键词全量检索合并
+    from app.agents.mcp.bid_document_search import keyword_search_chunks, _extract_keywords
+
+    vector_results = await bid_document_search(
         db=db,
         project_id=project_id,
         query_embedding=query_embedding,
         top_k=top_k,
     )
+    kw_results = await keyword_search_chunks(
+        db=db,
+        project_id=project_id,
+        keywords=_extract_keywords(question),
+        top_k=top_k,
+    )
+    seen_ids: set[str] = {r["id"] for r in vector_results}
+    merged_doc: list[dict] = list(vector_results)
+    for r in kw_results:
+        if r["id"] not in seen_ids:
+            seen_ids.add(r["id"])
+            merged_doc.append(r)
+    doc_results = merged_doc
 
     # 3. Optionally search knowledge base
     kb_results: list[dict] = []

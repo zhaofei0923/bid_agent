@@ -162,9 +162,9 @@
       "stop": "Stop",
       "greeting": "👋 Hello! I'm your AI Bid Assistant",
       "greetingHint": "Ask me about tender documents, qualification requirements, evaluation criteria, and more",
-      "modeDocuments": "Bid Documents",
+      "modeDocuments": "Tender Documents",
       "modeKnowledge": "Knowledge Base",
-      "modeDocHint": "Ask about bid document clauses and key terms",
+      "modeDocHint": "Ask about tender document clauses and key terms",
       "modeKbHint": "Query knowledge base for proposal writing guidance",
       "skills": {
         "extractDates": "Extract Key Dates",
@@ -983,9 +983,9 @@
         "How to maximize technical evaluation scores?",
         "What are the standard format and binding requirements?"
       ],
-      "modeDocuments": "Bid Documents",
+      "modeDocuments": "Tender Documents",
       "modeKnowledge": "Knowledge Base",
-      "modeDocHint": "Ask about specific bid document clauses and requirements",
+      "modeDocHint": "Ask about specific tender document clauses and requirements",
       "modeKbHint": "Query procurement guides for expert writing advice",
       "send": "Send",
       "stop": "Stop",

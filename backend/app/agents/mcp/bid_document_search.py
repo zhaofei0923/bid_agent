@@ -1,7 +1,126 @@
 """bid_document_search — semantic search within project bid documents."""
 
+import re
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# ── 中英双语投标术语映射 ────────────────────────────────────────────
+# 当用户用中文提问时，将关键术语扩展为英文，提升对英文招标文件的检索效果
+TERM_MAP: dict[str, list[str]] = {
+    "投标保函": ["bid security", "bid bond", "bid guarantee"],
+    "投标保证金": ["bid security", "bid bond"],
+    "履约保函": ["performance security", "performance bond", "performance guarantee"],
+    "预付款保函": ["advance payment security", "advance payment guarantee"],
+    "银行保函": ["bank guarantee", "bank bond"],
+    "保函金额": ["bid security amount", "security amount", "guarantee amount"],
+    "评分标准": ["evaluation criteria", "evaluation methodology", "scoring criteria"],
+    "资质要求": ["qualification criteria", "eligibility criteria", "minimum requirements"],
+    "截止日期": ["submission deadline", "closing date", "bid deadline"],
+    "投标有效期": ["bid validity", "validity period"],
+    "技术方案": ["technical proposal", "technical approach", "methodology"],
+    "报价": ["financial proposal", "price", "cost"],
+    "联合体": ["joint venture", "consortium"],
+    "关键人员": ["key personnel", "key experts", "key staff"],
+    "合同条款": ["contract terms", "general conditions", "special conditions"],
+}
+
+
+def _extract_keywords(text_input: str) -> list[str]:
+    """从用户问题中提取关键词，并扩展中英文同义词。"""
+    keywords: list[str] = []
+    # 提取所有中文词组（2字以上）和英文单词
+    chinese_words = re.findall(r"[\u4e00-\u9fff]{2,}", text_input)
+    english_words = re.findall(r"[a-zA-Z]{3,}", text_input)
+    keywords.extend(chinese_words)
+    keywords.extend(english_words)
+
+    # 映射扩展
+    for zh_term, en_terms in TERM_MAP.items():
+        if zh_term in text_input:
+            keywords.extend(en_terms)
+
+    # 去重，过滤极短词
+    seen: set[str] = set()
+    result: list[str] = []
+    for kw in keywords:
+        kw_lower = kw.lower()
+        if kw_lower not in seen and len(kw) >= 2:
+            seen.add(kw_lower)
+            result.append(kw)
+    return result
+
+
+async def keyword_search_chunks(
+    db: AsyncSession,
+    project_id: str,
+    keywords: list[str],
+    top_k: int = 10,
+) -> list[dict]:
+    """全文关键词检索招标文件 chunks（ILIKE 模糊匹配），用于补充向量检索的盲区。
+
+    对英文招标文件内容做大小写不敏感匹配，特别适合精确术语（金额、条款号、专有名词）。
+
+    Args:
+        db: Database session.
+        project_id: Restrict to this project's documents.
+        keywords: 关键词列表（中文或英文）。
+        top_k: 最多返回结果数。
+
+    Returns:
+        List of dicts compatible with bid_document_search output.
+    """
+    if not keywords:
+        return []
+
+    # 为每个关键词构造 ILIKE 条件
+    conditions = " OR ".join(
+        f"ch.content ILIKE :kw_{i}" for i in range(len(keywords))
+    )
+    params: dict = {
+        "project_id": project_id,
+        "top_k": top_k,
+    }
+    for i, kw in enumerate(keywords):
+        params[f"kw_{i}"] = f"%{kw}%"
+
+    sql = text(f"""
+        SELECT ch.content, ch.page_number,
+               0.0 AS similarity,
+               ch.section_type,
+               COALESCE(s.section_title, '') AS section_title,
+               ch.clause_reference,
+               d.filename AS filename,
+               ch.id::text AS chunk_id
+        FROM bid_document_chunks ch
+        JOIN bid_documents d ON ch.bid_document_id = d.id
+        LEFT JOIN bid_document_sections s ON ch.section_id = s.id
+        WHERE d.project_id = :project_id
+          AND d.status = 'processed'
+          AND ({conditions})
+        LIMIT :top_k
+    """)
+
+    try:
+        result = await db.execute(sql, params)
+        rows = result.fetchall()
+    except Exception:
+        return []
+
+    return [
+        {
+            "id": row.chunk_id,
+            "content": row.content,
+            "page_number": row.page_number,
+            "score": 0.0,  # 关键词匹配无相似度分数
+            "section_type": row.section_type,
+            "section_title": row.section_title,
+            "clause_reference": row.clause_reference,
+            "filename": row.filename,
+            "match_type": "keyword",
+        }
+        for row in rows
+    ]
 
 
 async def bid_document_search(
