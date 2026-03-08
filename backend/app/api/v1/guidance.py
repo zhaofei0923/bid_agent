@@ -100,6 +100,7 @@ async def stream_guidance(
             from datetime import UTC, datetime
 
             from sqlalchemy import select as _sql_sel
+            from sqlalchemy import text as _sql_text
 
             from app.agents.embedding_client import (
                 get_embedding_client,
@@ -248,7 +249,42 @@ async def stream_guidance(
                 )
                 results = merged[:15]
 
-                # 2b-5. 结构化分析数据注入（最高可信度来源）
+                # 2b-5. 邻居 chunk 上下文扩展（修复分块边界截断问题）
+                # PDF 表格中的数字可能在分块时被截断（如 "US$ 850,000" → "US$ 8" | "50,000"）
+                # 对每个检索到的 chunk 获取前一个 chunk 尾部 300 字符并拼接，恢复完整上下文
+                if results:
+                    _cid_params = {}
+                    _cast_exprs = []
+                    for _idx, _r in enumerate(results):
+                        _pname = f"cid_{_idx}"
+                        _cid_params[_pname] = _r["id"]
+                        _cast_exprs.append(f"cast(:{_pname} as uuid)")
+                    _neighbor_sql = _sql_text(
+                        "SELECT c1.id::text AS chunk_id, "
+                        "RIGHT(c2.content, 300) AS prev_tail "
+                        "FROM bid_document_chunks c1 "
+                        "JOIN bid_document_chunks c2 "
+                        "ON c2.bid_document_id = c1.bid_document_id "
+                        "AND c2.section_id IS NOT DISTINCT FROM c1.section_id "
+                        "AND c2.chunk_index = c1.chunk_index - 1 "
+                        f"WHERE c1.id IN ({', '.join(_cast_exprs)})"
+                    )
+                    try:
+                        _nb_rows = await db.execute(_neighbor_sql, _cid_params)
+                        _prev_tails = {
+                            str(row[0]): row[1] for row in _nb_rows
+                        }
+                        for _r in results:
+                            _tail = _prev_tails.get(_r["id"])
+                            if _tail:
+                                _r["content"] = (
+                                    f"[...前文续] {_tail.strip()}\n"
+                                    + _r["content"]
+                                )
+                    except Exception:
+                        logger.warning("邻居 chunk 扩展失败，跳过", exc_info=True)
+
+                # 2b-6. 结构化分析数据注入（最高可信度来源）
                 # BidAnalysis 表已通过专用 Skill 做过精确提取，直接复用结果
                 _intent_field_map = {
                     "dates": "key_dates",

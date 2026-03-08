@@ -108,6 +108,27 @@ class DocumentChunker:
         return result
 
 
+# ── PDF Text Cleaning ──────────────────────────────────
+
+
+_RE_SPLIT_NUMBER = re.compile(r'(\d)\s*\n\s*(\d{1,3}(?:,\d{3})+)')
+_RE_SPLIT_HYPHEN = re.compile(r'(\w)-\s*\n\s*(\w)')
+
+
+def _clean_pdf_text(text: str) -> str:
+    """Clean common PDF extraction artifacts.
+
+    Fixes:
+    - Numbers split across lines by narrow table columns:
+      e.g. "US$ 8\n50,000" → "US$ 850,000"
+    - Hyphenated words split across lines:
+      e.g. "non-\nresponsive" → "nonresponsive"
+    """
+    text = _RE_SPLIT_NUMBER.sub(r'\1\2', text)
+    text = _RE_SPLIT_HYPHEN.sub(r'\1\2', text)
+    return text
+
+
 # ── Async Processing ───────────────────────────────────
 
 
@@ -128,6 +149,7 @@ async def _parse_pdf(file_path: str) -> list[dict]:
         with pdfplumber.open(file_path) as pdf:
             for i, page in enumerate(pdf.pages):
                 text = page.extract_text() or ""
+                text = _clean_pdf_text(text)
                 pages.append({"page_number": i + 1, "text": text})
     except Exception:
         logger.exception("Failed to parse PDF: %s", file_path)
