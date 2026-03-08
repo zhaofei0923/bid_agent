@@ -1,6 +1,8 @@
 "use client"
 
 import { memo, useState, useRef, useEffect } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useGuidanceStream } from "@/hooks/use-generation"
 import { Button } from "@/components/ui/button"
@@ -146,7 +148,13 @@ export const BidChatPanel = memo(function BidChatPanel({
                   : "bg-stone-100 text-stone-700"
               }`}
             >
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              {msg.role === "user" ? (
+                <div className="whitespace-pre-wrap">{msg.content}</div>
+              ) : (
+                <div className="prose prose-sm prose-stone max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -154,7 +162,9 @@ export const BidChatPanel = memo(function BidChatPanel({
         {isStreaming && streamingContent && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-[22px] bg-stone-100 px-3 py-2 text-sm text-stone-700">
-              <div className="whitespace-pre-wrap">{streamingContent}</div>
+              <div className="prose prose-sm prose-stone max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+              </div>
               <span className="animate-pulse">▌</span>
             </div>
           </div>

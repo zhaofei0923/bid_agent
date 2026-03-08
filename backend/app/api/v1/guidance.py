@@ -237,9 +237,18 @@ async def stream_guidance(
                             seen_ids.add(c["id"])
                             merged.append(c)
 
-                results = merged
+                # 2b-4. BDS 优先排序 + 截取
+                # BDS 是对 ITB 的项目特定修改，冲突时以 BDS 为准，故排在前面
+                _section_priority = {"section_2_bds": 0, "section_1_itb": 1}
+                merged.sort(
+                    key=lambda c: (
+                        _section_priority.get(c.get("section_type", ""), 9),
+                        -(c.get("score") or 0),
+                    )
+                )
+                results = merged[:15]
 
-                # 2b-4. 结构化分析数据注入（最高可信度来源）
+                # 2b-5. 结构化分析数据注入（最高可信度来源）
                 # BidAnalysis 表已通过专用 Skill 做过精确提取，直接复用结果
                 _intent_field_map = {
                     "dates": "key_dates",
@@ -288,13 +297,16 @@ async def stream_guidance(
                 system_prompt = (
                     "你是一位专业的招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
                     "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
+                    "重要原则：BDS（Bid Data Sheet，投标资料表）是对ITB（Instructions to Bidders）"
+                    "的项目特定修改，当BDS与ITB内容冲突时，必须以BDS为准。\n"
                     "规则：\n"
                     "1. 优先引用[高可信度]标注的结构化数据，这些是已精确提取的可靠信息\n"
                     "2. 仅基于提供的参考资料回答，不编造信息\n"
-                    "3. 如参考资料中有相关内容，必须直接引用原文并标注[来源N]\n"
-                    "4. 引用金额、日期、条款编号时确保准确，抄录原文数字\n"
-                    "5. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
-                    "6. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
+                    "3. 引用时必须标注来源的章节和页码，格式：[来源N, 章节名, 第X页]\n"
+                    "4. 引用金额、日期、条款编号时确保准确，直接抄录原文数字，不做换算\n"
+                    "5. BDS中的具体数值优先于ITB中的通用描述\n"
+                    "6. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
+                    "7. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
                 )
                 sources_payload = [
                     {
