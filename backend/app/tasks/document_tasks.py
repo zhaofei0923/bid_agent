@@ -586,6 +586,36 @@ async def _process_document(document_id: str) -> dict:
         doc.processed_at = datetime.now(UTC)
         await db.commit()
 
+        # Update project progress based on processed documents
+        from sqlalchemy import func as sa_func
+
+        from app.models.project import Project
+        proj_result = await db.execute(select(Project).where(Project.id == doc.project_id))
+        project = proj_result.scalar_one_or_none()
+        if project:
+            # Count total and processed docs for this project
+            total_result = await db.execute(
+                select(sa_func.count()).select_from(
+                    select(BidDocument.id).where(BidDocument.project_id == doc.project_id).subquery()
+                )
+            )
+            total_docs = total_result.scalar_one() or 1
+            processed_result = await db.execute(
+                select(sa_func.count()).select_from(
+                    select(BidDocument.id).where(
+                        BidDocument.project_id == doc.project_id,
+                        BidDocument.status.in_(["processed", "completed"]),
+                    ).subquery()
+                )
+            )
+            processed_docs = processed_result.scalar_one() or 0
+            # Progress: 10% base + up to 50% from document processing (10~60 range)
+            doc_progress = int(processed_docs / total_docs * 50)
+            project.progress = min(60, 10 + doc_progress)
+            if project.status == "draft":
+                project.status = "created"
+            await db.commit()
+
     return {
         "document_id": document_id,
         "pages": len(pages) if pages else 0,

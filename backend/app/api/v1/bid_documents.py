@@ -29,7 +29,7 @@ async def upload_bid_document(
     from app.services.project_service import ProjectService
 
     project_svc = ProjectService(db)
-    await project_svc.get_by_id(project_id, current_user.id)
+    project = await project_svc.get_by_id(project_id, current_user.id)
 
     doc_svc = BidDocumentService(db)
     content = await file.read()
@@ -39,6 +39,12 @@ async def upload_bid_document(
         content=content,
         content_type=file.content_type or "",
     )
+
+    # Promote project from 'draft' to 'created' on first successful upload
+    if project.status == "draft":
+        project.status = "created"
+        project.progress = 10
+        await db.commit()
 
     # Dispatch async processing task (PDF parse → chunk → vectorize)
     try:

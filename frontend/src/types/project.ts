@@ -1,4 +1,5 @@
 export type ProjectStatus =
+  | "draft"
   | "created"
   | "analyzing"
   | "analyzed"

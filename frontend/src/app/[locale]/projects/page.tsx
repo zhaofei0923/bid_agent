@@ -16,6 +16,27 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { FolderOpen } from "lucide-react"
+import type { ProjectStatus } from "@/types/project"
+
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  draft: "草稿",
+  created: "进行中",
+  analyzing: "分析中",
+  analyzed: "已分析",
+  guiding: "指导中",
+  completed: "已完成",
+  archived: "已归档",
+}
+
+const STATUS_VARIANT: Record<ProjectStatus, "secondary" | "outline" | "default" | "destructive"> = {
+  draft: "outline",
+  created: "secondary",
+  analyzing: "secondary",
+  analyzed: "default",
+  guiding: "default",
+  completed: "default",
+  archived: "outline",
+}
 
 export default function ProjectsPage() {
   const t = useTranslations("projects")
@@ -124,7 +145,9 @@ export default function ProjectsPage() {
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-xl">{project.name}</CardTitle>
-                      <Badge variant="secondary">{project.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[project.status as ProjectStatus] ?? "secondary"}>
+                        {STATUS_LABEL[project.status as ProjectStatus] ?? project.status}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -134,7 +157,7 @@ export default function ProjectsPage() {
                       </p>
                     )}
                     <div className="mt-5 flex items-center justify-between text-sm text-stone-500">
-                      <span>{t("progress")}</span>
+                      <span>{t("progress")} {project.progress}%</span>
                       <span>{formatRelative(project.created_at)}</span>
                     </div>
                     <div className="app-progress-track mt-3">
