@@ -96,9 +96,15 @@ async def stream_guidance(
 
     async def event_generator():
         try:
-            import contextlib
+            import json as _json
+            from datetime import UTC, datetime
 
-            from app.agents.embedding_client import get_embedding_client, get_translator
+            from sqlalchemy import select as _sql_sel
+
+            from app.agents.embedding_client import (
+                get_embedding_client,
+                get_query_analyzer,
+            )
             from app.agents.llm_client import Message as LLMMessage
             from app.agents.llm_client import get_llm_client
             from app.agents.mcp.bid_document_search import (
@@ -107,28 +113,39 @@ async def stream_guidance(
                 keyword_search_chunks,
             )
             from app.agents.mcp.knowledge_search import knowledge_search
-            from app.agents.rag import _is_chinese
+            from app.models.bid_analysis import BidAnalysis as BidAnalysisCls
 
             llm = get_llm_client()
             emb_client = get_embedding_client()
+            analyzer = get_query_analyzer()
 
-            # 若问题为中文，先翻译为英文再生成 embedding（中英向量空间不同，翻译可显著提升相关性）
-            retrieval_query = request.message
-            if _is_chinese(request.message):
-                with contextlib.suppress(Exception):
-                    retrieval_query = await get_translator().translate_zh_to_en(request.message)
+            # ── Step 1: 混元 Lite 意图分析 + 翻译 + 检索 query 生成 ────────────
+            # 对中英文问题统一处理：生成优化的向量检索 query、ILIKE 关键词、意图分类
+            query_info = await analyzer.analyze(request.message)
+            intent = query_info["intent"]
+            search_queries = query_info["search_queries"]   # 2-3条英文优化 query
+            en_keywords = query_info["keywords"]            # 英文 ILIKE 关键词
 
-            # Generate embedding for the question
-            emb_result = await emb_client.embed_text(retrieval_query)
-
+            # ── Step 2a: 知识库路径 ────────────────────────────────────────────
             if use_kb:
-                # Retrieve context from knowledge base
-                results = await knowledge_search(
-                    db=db,
-                    query_embedding=emb_result.embedding,
-                    institution=institution,
-                    top_k=5,
-                )
+                # 多路向量检索：对每条 search_queries 分别 embed + search，合并去重
+                kb_seen: set[str] = set()
+                kb_merged: list[dict] = []
+                for q in search_queries:
+                    emb = await emb_client.embed_text(q)
+                    chunks = await knowledge_search(
+                        db=db,
+                        query_embedding=emb.embedding,
+                        institution=institution,
+                        top_k=5,
+                    )
+                    for c in chunks:
+                        cid = c.get("id") or c.get("source_document", "") + str(c.get("page_number"))
+                        if cid not in kb_seen:
+                            kb_seen.add(cid)
+                            kb_merged.append(c)
+
+                results = kb_merged[:10]
                 system_prompt = (
                     "你是一位专业的投标编制顾问，熟悉ADB/WB/AfDB采购指南和标准招标文件。"
                     "基于提供的知识库文档，为用户提供具体、可操作的标书编制建议。"
@@ -144,69 +161,140 @@ async def stream_guidance(
                     }
                     for s in results
                 ]
-            else:
-                # ── 招标文件检索：向量检索 + 关键词全量检索，合并去重 ──────────
-                # 1. 向量语义检索（top_k=10，捕获语义相关段落）
-                vector_results = await bid_document_search(
-                    db=db,
-                    project_id=str(project_id),
-                    query_embedding=emb_result.embedding,
-                    top_k=10,
-                )
-                # 2. 关键词全量检索（ILIKE，合并中英文关键词，捕获精确术语如金额、条款号）
-                kw_combined = (
-                    request.message
-                    if retrieval_query == request.message
-                    else f"{request.message} {retrieval_query}"
-                )
-                keywords = _extract_keywords(kw_combined)
-                kw_results = await keyword_search_chunks(
-                    db=db,
-                    project_id=str(project_id),
-                    keywords=keywords,
-                    top_k=10,
-                )
-                # 3. 合并去重（向量结果优先，关键词结果补充）
-                seen_ids: set[str] = {r["id"] for r in vector_results}
-                merged = list(vector_results)
-                for r in kw_results:
-                    if r["id"] not in seen_ids:
-                        seen_ids.add(r["id"])
-                        merged.append(r)
+                analysis_prefix = ""
 
-                # 4. 日期类问题额外追加 BDS 章节定向检索
-                #    BDS (Bid Data Sheet) 是 ADB 标书中专门列所有关键日期的章节
-                _date_signals = {"日期", "截止", "开标", "有效期", "时间节点", "关键日期", "何时", "什么时候"}
-                if any(s in request.message for s in _date_signals):
-                    for date_query in [
-                        "submission deadline bid closing date opening of bids",
-                        "bid validity period clarification deadline",
-                    ]:
-                        date_emb = await emb_client.embed_text(date_query)
-                        date_chunks = await bid_document_search(
+            # ── Step 2b: 招标文件路径 ──────────────────────────────────────────
+            else:
+                # 2b-1. 多路向量检索（每条 search_query 独立 embed + search，合并去重）
+                seen_ids: set[str] = set()
+                merged: list[dict] = []
+                for q in search_queries:
+                    emb = await emb_client.embed_text(q)
+                    chunks = await bid_document_search(
+                        db=db,
+                        project_id=str(project_id),
+                        query_embedding=emb.embedding,
+                        top_k=8,
+                    )
+                    for c in chunks:
+                        if c["id"] not in seen_ids:
+                            seen_ids.add(c["id"])
+                            merged.append(c)
+
+                # 2b-2. 关键词 ILIKE 检索（合并混元生成的英文词 + 本地中文扩展词）
+                local_kws = _extract_keywords(request.message)
+                all_keywords = list({*en_keywords, *local_kws})
+                if all_keywords:
+                    kw_results = await keyword_search_chunks(
+                        db=db,
+                        project_id=str(project_id),
+                        keywords=all_keywords,
+                        top_k=10,
+                    )
+                    for c in kw_results:
+                        if c["id"] not in seen_ids:
+                            seen_ids.add(c["id"])
+                            merged.append(c)
+
+                # 2b-3. Intent 驱动章节定向检索 + 年份关键词（精准命中表格行）
+                _intent_section_map: dict[str, list[str]] = {
+                    "dates": ["section_2_bds", "section_1_itb"],
+                    "qualification": ["section_3", "section_2_bds", "section_1_itb"],
+                    "evaluation": ["section_3", "section_2_bds"],
+                    "submission": ["section_2_bds", "section_1_itb", "section_4_forms"],
+                    "bds": ["section_2_bds", "section_1_itb"],
+                    "commercial": ["section_2_bds", "part_3_contract"],
+                }
+                if intent in _intent_section_map:
+                    section_types = _intent_section_map[intent]
+                    for q in search_queries:
+                        emb = await emb_client.embed_text(q)
+                        directed = await bid_document_search(
                             db=db,
                             project_id=str(project_id),
-                            query_embedding=date_emb.embedding,
-                            section_types=["section_2_bds", "section_1_itb"],
+                            query_embedding=emb.embedding,
+                            section_types=section_types,
                             top_k=8,
                             score_threshold=0.2,
                         )
-                        for c in date_chunks:
+                        for c in directed:
                             if c["id"] not in seen_ids:
                                 seen_ids.add(c["id"])
                                 merged.append(c)
 
+                # 日期 intent 额外追加年份关键词搜索（直接命中含具体日期的表格行）
+                if intent == "dates":
+                    _now = datetime.now(UTC)
+                    year_kws = [str(_now.year), str(_now.year + 1), str(_now.year - 1)]
+                    year_chunks = await keyword_search_chunks(
+                        db=db,
+                        project_id=str(project_id),
+                        keywords=year_kws,
+                        top_k=10,
+                    )
+                    for c in year_chunks:
+                        if c["id"] not in seen_ids:
+                            seen_ids.add(c["id"])
+                            merged.append(c)
+
                 results = merged
+
+                # 2b-4. 结构化分析数据注入（最高可信度来源）
+                # BidAnalysis 表已通过专用 Skill 做过精确提取，直接复用结果
+                _intent_field_map = {
+                    "dates": "key_dates",
+                    "qualification": "qualification_requirements",
+                    "evaluation": "evaluation_criteria",
+                    "submission": "submission_checklist",
+                    "bds": "bds_modifications",
+                    "commercial": "commercial_terms",
+                }
+                analysis_prefix = ""
+                if intent in _intent_field_map:
+                    _field = _intent_field_map[intent]
+                    _ana_row = await db.execute(
+                        _sql_sel(getattr(BidAnalysisCls, _field)).where(
+                            BidAnalysisCls.project_id == project_id
+                        )
+                    )
+                    _field_data = _ana_row.scalar_one_or_none()
+                    if _field_data and isinstance(_field_data, dict):
+                        if intent == "dates" and _field_data.get("key_dates"):
+                            _lines = [
+                                "[高可信度] 招标文件关键日期（已完成结构化提取，可直接引用）:"
+                            ]
+                            for _kd in _field_data["key_dates"]:
+                                _ref = (
+                                    f" [{_kd['source_reference']}]"
+                                    if _kd.get("source_reference")
+                                    else ""
+                                )
+                                _lines.append(
+                                    f"  • {_kd.get('event', '?')}: "
+                                    f"{_kd.get('date', '?')}{_ref}"
+                                )
+                            if _field_data.get("warnings"):
+                                _lines.append("  注意事项:")
+                                for _w in _field_data["warnings"]:
+                                    _lines.append(f"    ⚠ {_w}")
+                            analysis_prefix = "\n".join(_lines) + "\n\n"
+                        else:
+                            analysis_prefix = (
+                                "[高可信度] 招标文件结构化分析数据（已完成提取，可直接引用）:\n"
+                                + _json.dumps(_field_data, ensure_ascii=False, indent=2)[:2000]
+                                + "\n\n"
+                            )
 
                 system_prompt = (
                     "你是一位专业的招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
                     "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
                     "规则：\n"
-                    "1. 仅基于提供的参考资料回答，不编造信息\n"
-                    "2. 如参考资料中有相关内容，必须直接引用原文并标注[来源N]\n"
-                    "3. 引用金额、日期、条款编号时确保准确，抄录原文数字\n"
-                    "4. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
-                    "5. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
+                    "1. 优先引用[高可信度]标注的结构化数据，这些是已精确提取的可靠信息\n"
+                    "2. 仅基于提供的参考资料回答，不编造信息\n"
+                    "3. 如参考资料中有相关内容，必须直接引用原文并标注[来源N]\n"
+                    "4. 引用金额、日期、条款编号时确保准确，抄录原文数字\n"
+                    "5. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
+                    "6. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
                 )
                 sources_payload = [
                     {
@@ -219,7 +307,7 @@ async def stream_guidance(
                     for s in results
                 ]
 
-            # Build context with metadata so LLM can cite sources precisely
+            # ── Step 3: 构建 LLM 上下文 ───────────────────────────────────────
             context_block = "\n\n".join(
                 "[来源 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
                     n=i + 1,
@@ -230,7 +318,8 @@ async def stream_guidance(
                 )
                 for i, c in enumerate(results)
             )
-            user_msg = f"参考资料:\n{context_block}\n\n用户问题: {request.message}"
+            # analysis_prefix 放前面（LLM 上下文前部权重更高）
+            user_msg = f"参考资料:\n{analysis_prefix}{context_block}\n\n用户问题: {request.message}"
 
             messages = [
                 LLMMessage(role="system", content=system_prompt),

@@ -287,6 +287,108 @@ class HunyuanTranslator:
         return translated if translated else text
 
 
+class HunyuanQueryAnalyzer:
+    """使用混元 Lite 对用户问题做结构化分析：意图分类 + 翻译 + 检索 query 生成。
+
+    替代脆弱的关键词信号检测，统一处理中英文任意语言的问题。
+    知识库和招标文件两条检索路径均通过此类获得优化的检索策略。
+    """
+
+    _INTENT_LABELS = (
+        "dates|qualification|evaluation|submission|bds|commercial|general"
+    )
+    _SYSTEM_PROMPT = (
+        "You are an expert procurement document assistant for multilateral development banks "
+        "(ADB, World Bank, AfDB). Your task is to analyze a user question and return a JSON "
+        "object (no markdown, no extra text) with exactly these fields:\n"
+        '{\n'
+        '  "intent": "<one of: dates|qualification|evaluation|submission|bds|commercial|general>",\n'
+        '  "en_translation": "<precise English translation of the question>",\n'
+        '  "search_queries": ["<optimized vector search query 1>", "<query 2>", "<query 3>"],\n'
+        '  "keywords": ["<ILIKE keyword 1>", "<keyword 2>"]\n'
+        '}\n\n'
+        'Rules:\n'
+        '- intent: choose the single best category\n'
+        '  dates = bid deadlines, submission dates, opening dates, validity period\n'
+        '  qualification = bidder eligibility, experience, financial capacity, key personnel\n'
+        '  evaluation = scoring criteria, technical/financial weights, methodology\n'
+        '  submission = document format, copies, bid security amount/format\n'
+        '  bds = Bid Data Sheet modifications, ITB references\n'
+        '  commercial = payment terms, warranty, performance security, contract conditions\n'
+        '  general = anything else\n'
+        '- en_translation: if the question is already in English, copy it verbatim\n'
+        '- search_queries: 2-3 English phrases optimized for semantic vector search, covering different angles\n'
+        '- keywords: 2-5 short English terms suitable for ILIKE substring matching (e.g., "February 2026", "bid security")\n'
+        '- Return ONLY the JSON object, no markdown code blocks'
+    )
+
+    def __init__(self) -> None:
+        self.secret_id = settings.HUNYUAN_SECRET_ID
+        self.secret_key = settings.HUNYUAN_SECRET_KEY
+
+    def _get_client(self):
+        from tencentcloud.common import credential
+        from tencentcloud.hunyuan.v20230901 import hunyuan_client
+        cred = credential.Credential(self.secret_id, self.secret_key)
+        return hunyuan_client.HunyuanClient(cred, "")
+
+    async def analyze(self, question: str) -> dict:
+        """分析用户问题，返回结构化检索策略。失败时降级返回安全默认值。"""
+        import json as _json
+
+        try:
+            from tencentcloud.hunyuan.v20230901 import models as hunyuan_models
+            client = self._get_client()
+            loop = asyncio.get_event_loop()
+
+            req = hunyuan_models.ChatCompletionsRequest()
+            req.Model = "hunyuan-lite"
+            req.Stream = False
+
+            msg_system = hunyuan_models.Message()
+            msg_system.Role = "system"
+            msg_system.Content = self._SYSTEM_PROMPT
+
+            msg_user = hunyuan_models.Message()
+            msg_user.Role = "user"
+            msg_user.Content = f"User question: {question}"
+
+            req.Messages = [msg_system, msg_user]
+
+            resp = await loop.run_in_executor(None, client.ChatCompletions, req)
+            raw = resp.Choices[0].Message.Content.strip()
+
+            # 清理可能的 markdown 代码块包裹
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.strip()
+
+            parsed = _json.loads(raw)
+
+            # 字段校验与补全
+            intent = parsed.get("intent", "general")
+            if intent not in self._INTENT_LABELS:
+                intent = "general"
+
+            return {
+                "intent": intent,
+                "en_translation": parsed.get("en_translation") or question,
+                "search_queries": parsed.get("search_queries") or [question],
+                "keywords": parsed.get("keywords") or [],
+            }
+
+        except Exception:
+            logger.warning("HunyuanQueryAnalyzer failed, using fallback", exc_info=True)
+            return {
+                "intent": "general",
+                "en_translation": question,
+                "search_queries": [question],
+                "keywords": [],
+            }
+
+
 @lru_cache(maxsize=1)
 def get_embedding_client() -> ResilientEmbeddingClient:
     """Singleton factory for the embedding client."""
@@ -297,3 +399,9 @@ def get_embedding_client() -> ResilientEmbeddingClient:
 def get_translator() -> HunyuanTranslator:
     """Singleton factory for the Hunyuan translator."""
     return HunyuanTranslator()
+
+
+@lru_cache(maxsize=1)
+def get_query_analyzer() -> HunyuanQueryAnalyzer:
+    """Singleton factory for the Hunyuan query analyzer."""
+    return HunyuanQueryAnalyzer()
