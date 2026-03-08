@@ -247,7 +247,53 @@ class ResilientEmbeddingClient:
                     raise
 
 
+class HunyuanTranslator:
+    """使用腾讯混元 Chat API 将中文查询翻译为英文，用于提升英文文档的向量检索准确率。"""
+
+    def __init__(self) -> None:
+        self.secret_id = settings.HUNYUAN_SECRET_ID
+        self.secret_key = settings.HUNYUAN_SECRET_KEY
+
+    def _get_client(self):
+        from tencentcloud.common import credential
+        from tencentcloud.hunyuan.v20230901 import hunyuan_client
+        cred = credential.Credential(self.secret_id, self.secret_key)
+        return hunyuan_client.HunyuanClient(cred, "")
+
+    async def translate_zh_to_en(self, text: str) -> str:
+        """将中文招标相关查询翻译为英文。失败时静默返回原文。"""
+        from tencentcloud.hunyuan.v20230901 import models as hunyuan_models
+        client = self._get_client()
+        loop = asyncio.get_event_loop()
+
+        req = hunyuan_models.ChatCompletionsRequest()
+        req.Model = "hunyuan-lite"
+        req.Stream = False
+        msg_system = hunyuan_models.Message()
+        msg_system.Role = "system"
+        msg_system.Content = (
+            "You are a professional translator specializing in procurement and "
+            "bidding documents. Translate the following Chinese text to English "
+            "concisely, preserving technical terms accurately. Output only the "
+            "English translation, nothing else."
+        )
+        msg_user = hunyuan_models.Message()
+        msg_user.Role = "user"
+        msg_user.Content = text
+        req.Messages = [msg_system, msg_user]
+
+        resp = await loop.run_in_executor(None, client.ChatCompletions, req)
+        translated: str = resp.Choices[0].Message.Content.strip()
+        return translated if translated else text
+
+
 @lru_cache(maxsize=1)
 def get_embedding_client() -> ResilientEmbeddingClient:
     """Singleton factory for the embedding client."""
     return ResilientEmbeddingClient()
+
+
+@lru_cache(maxsize=1)
+def get_translator() -> HunyuanTranslator:
+    """Singleton factory for the Hunyuan translator."""
+    return HunyuanTranslator()

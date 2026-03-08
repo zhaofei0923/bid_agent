@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.embedding_client import get_embedding_client
+from app.agents.embedding_client import get_embedding_client, get_translator
 from app.agents.llm_client import get_llm_client
 from app.agents.mcp.bid_document_search import bid_document_search
 from app.agents.mcp.knowledge_search import knowledge_search
@@ -177,6 +177,12 @@ RAG_SYSTEM_PROMPT = """你是一位专业的招标文件分析助手，负责帮
 5. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"""
 
 
+def _is_chinese(text: str) -> bool:
+    """检测文本是否主要为中文（CJK 字符占比 > 20%）。"""
+    cjk_count = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
+    return cjk_count / max(len(text), 1) > 0.2
+
+
 async def answer_question(
     project_id: str,
     question: str,
@@ -199,9 +205,19 @@ async def answer_question(
     llm_client = get_llm_client()
     embedding_client = get_embedding_client()
 
+    # 0. 若问题为中文，先翻译为英文用于向量检索（中英文向量空间不同，翻译可显著提升相关性）
+    retrieval_query = question  # fallback: 原问题
+    if _is_chinese(question):
+        try:
+            translator = get_translator()
+            retrieval_query = await translator.translate_zh_to_en(question)
+            logger.debug("Query translated: %r → %r", question, retrieval_query)
+        except Exception:
+            logger.warning("Translation failed, using original Chinese query for retrieval", exc_info=True)
+
     # 1. Generate embedding for the question
     try:
-        emb_result = await embedding_client.embed_text(question)
+        emb_result = await embedding_client.embed_text(retrieval_query)
         query_embedding = emb_result.embedding
     except Exception:
         logger.error("Failed to embed question", exc_info=True)
@@ -223,10 +239,12 @@ async def answer_question(
         query_embedding=query_embedding,
         top_k=top_k,
     )
+    # 关键词检索：合并中文原问题 + 英文翻译（去重后提取），扩大召回范围
+    kw_combined = question if retrieval_query == question else f"{question} {retrieval_query}"
     kw_results = await keyword_search_chunks(
         db=db,
         project_id=project_id,
-        keywords=_extract_keywords(question),
+        keywords=_extract_keywords(kw_combined),
         top_k=top_k,
     )
     seen_ids: set[str] = {r["id"] for r in vector_results}
