@@ -150,50 +150,49 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data?.items.map((project) => (
-              <Link
-                key={project.id}
-                href={`/${locale}/projects/${project.id}`}
-                className="block"
-              >
-                <Card className="app-card-interactive h-full">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <CardTitle className="text-xl">{project.name}</CardTitle>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+              <div key={project.id} className="relative">
+                <Link
+                  href={`/${locale}/projects/${project.id}`}
+                  className="block"
+                >
+                  <Card className="app-card-interactive h-full">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4 pr-8">
+                        <CardTitle className="text-xl">{project.name}</CardTitle>
                         <Badge variant={STATUS_VARIANT[project.status as ProjectStatus] ?? "secondary"}>
                           {STATUS_LABEL[project.status as ProjectStatus] ?? project.status}
                         </Badge>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDelete(e, project.id, project.name)}
-                          disabled={deleteMutation.isPending}
-                          className="rounded p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                          title="删除项目"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {project.description && (
-                      <p className="line-clamp-2 text-sm leading-7 text-stone-600">
-                        {project.description}
-                      </p>
-                    )}
-                    <div className="mt-5 flex items-center justify-between text-sm text-stone-500">
-                      <span>{t("progress")} {project.progress}%</span>
-                      <span>{formatRelative(project.created_at)}</span>
-                    </div>
-                    <div className="app-progress-track mt-3">
-                      <div
-                        className="app-progress-fill"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    </CardHeader>
+                    <CardContent>
+                      {project.description && (
+                        <p className="line-clamp-2 text-sm leading-7 text-stone-600">
+                          {project.description}
+                        </p>
+                      )}
+                      <div className="mt-5 flex items-center justify-between text-sm text-stone-500">
+                        <span>{t("progress")} {project.progress}%</span>
+                        <span>{formatRelative(project.created_at)}</span>
+                      </div>
+                      <div className="app-progress-track mt-3">
+                        <div
+                          className="app-progress-fill"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(e, project.id, project.name)}
+                  disabled={deleteMutation.isPending}
+                  className="absolute right-3 top-3 z-10 rounded p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  title="删除项目"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             ))}
             {data?.items.length === 0 && (
               <div className="col-span-full">
