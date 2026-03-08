@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { FolderOpen } from "lucide-react"
+import { FolderOpen, Trash2 } from "lucide-react"
 import type { ProjectStatus } from "@/types/project"
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -65,6 +65,20 @@ export default function ProjectsPage() {
       setNewInstitution("adb")
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => projectService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    },
+  })
+
+  const handleDelete = (e: React.MouseEvent, projectId: string, projectName: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm(`确定要删除项目「${projectName}」吗？此操作不可撤销。`)) return
+    deleteMutation.mutate(projectId)
+  }
 
   return (
     <MainLayout>
@@ -145,9 +159,20 @@ export default function ProjectsPage() {
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-xl">{project.name}</CardTitle>
-                      <Badge variant={STATUS_VARIANT[project.status as ProjectStatus] ?? "secondary"}>
-                        {STATUS_LABEL[project.status as ProjectStatus] ?? project.status}
-                      </Badge>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge variant={STATUS_VARIANT[project.status as ProjectStatus] ?? "secondary"}>
+                          {STATUS_LABEL[project.status as ProjectStatus] ?? project.status}
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(e, project.id, project.name)}
+                          disabled={deleteMutation.isPending}
+                          className="rounded p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                          title="删除项目"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
