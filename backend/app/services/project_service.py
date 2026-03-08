@@ -3,6 +3,7 @@
 import math
 from uuid import UUID
 
+from sqlalchemy import delete as sql_delete
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,6 +79,15 @@ class ProjectService:
         return project
 
     async def delete(self, project_id: UUID, user_id: UUID) -> None:
+        """Delete a project via raw SQL to avoid ORM session conflicts
+        caused by lazy='selectin' pre-loading related objects.
+        DB ON DELETE CASCADE handles child rows automatically.
+        """
+        # Verify ownership first
         project = await self.get_by_id(project_id, user_id)
-        await self.db.delete(project)
+        # Expunge from session before raw SQL to avoid stale-state conflicts
+        self.db.expunge(project)
+        await self.db.execute(
+            sql_delete(Project).where(Project.id == project_id)
+        )
         await self.db.commit()

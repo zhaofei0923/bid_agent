@@ -71,6 +71,12 @@ export default function ProjectsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] })
     },
+    onError: () => {
+      alert("删除失败，请重试")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    },
   })
 
   const handleDelete = (e: React.MouseEvent, projectId: string, projectName: string) => {
