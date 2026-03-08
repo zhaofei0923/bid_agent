@@ -106,11 +106,22 @@ async def stream_guidance(
             )
             from app.agents.mcp.knowledge_search import knowledge_search
 
+            from app.agents.embedding_client import get_translator
+            from app.agents.rag import _is_chinese
+
             llm = get_llm_client()
             emb_client = get_embedding_client()
 
+            # 若问题为中文，先翻译为英文再生成 embedding（中英向量空间不同，翻译可显著提升相关性）
+            retrieval_query = request.message
+            if _is_chinese(request.message):
+                try:
+                    retrieval_query = await get_translator().translate_zh_to_en(request.message)
+                except Exception:
+                    pass  # 静默 fallback 到原中文
+
             # Generate embedding for the question
-            emb_result = await emb_client.embed_text(request.message)
+            emb_result = await emb_client.embed_text(retrieval_query)
 
             if use_kb:
                 # Retrieve context from knowledge base
@@ -144,8 +155,13 @@ async def stream_guidance(
                     query_embedding=emb_result.embedding,
                     top_k=10,
                 )
-                # 2. 关键词全量检索（ILIKE，捕获精确术语如金额、条款号、英文专有名词）
-                keywords = _extract_keywords(request.message)
+                # 2. 关键词全量检索（ILIKE，合并中英文关键词，捕获精确术语如金额、条款号）
+                kw_combined = (
+                    request.message
+                    if retrieval_query == request.message
+                    else f"{request.message} {retrieval_query}"
+                )
+                keywords = _extract_keywords(kw_combined)
                 kw_results = await keyword_search_chunks(
                     db=db,
                     project_id=str(project_id),
@@ -159,6 +175,29 @@ async def stream_guidance(
                     if r["id"] not in seen_ids:
                         seen_ids.add(r["id"])
                         merged.append(r)
+
+                # 4. 日期类问题额外追加 BDS 章节定向检索
+                #    BDS (Bid Data Sheet) 是 ADB 标书中专门列所有关键日期的章节
+                _DATE_SIGNALS = {"日期", "截止", "开标", "有效期", "时间节点", "关键日期", "何时", "什么时候"}
+                if any(s in request.message for s in _DATE_SIGNALS):
+                    for date_query in [
+                        "submission deadline bid closing date opening of bids",
+                        "bid validity period clarification deadline",
+                    ]:
+                        date_emb = await emb_client.embed_text(date_query)
+                        date_chunks = await bid_document_search(
+                            db=db,
+                            project_id=str(project_id),
+                            query_embedding=date_emb.embedding,
+                            section_types=["section_2_bds", "section_1_itb"],
+                            top_k=8,
+                            score_threshold=0.2,
+                        )
+                        for c in date_chunks:
+                            if c["id"] not in seen_ids:
+                                seen_ids.add(c["id"])
+                                merged.append(c)
+
                 results = merged
 
                 system_prompt = (
