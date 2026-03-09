@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { BidPlanTask, TaskCategory } from "@/types/bid"
+import { normalizeCategory } from "@/types/bid"
 
 const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
   { value: "documents",  label: "文件资料" },
@@ -64,7 +65,7 @@ export function TaskDetailDialog({
     if (task) {
       setTitle(task.title ?? "")
       setDescription(task.description ?? "")
-      setCategory(task.category ?? "")
+      setCategory(normalizeCategory(task.category) ?? "")
       setPriority(task.priority ?? "")
       setDueDate(task.due_date ?? "")
       setAssignee(task.assigned_to ?? "")

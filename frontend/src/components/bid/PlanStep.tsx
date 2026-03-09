@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTranslations } from "next-intl"
 import type { BidPlan, BidPlanTask } from "@/types/bid"
+import { normalizeCategory } from "@/types/bid"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { GanttView } from "./GanttView"
 import { TaskDetailDialog } from "./TaskDetailDialog"
 
@@ -51,7 +58,7 @@ function exportCsv(tasks: BidPlanTask[], filename = "bid_tasks.csv") {
   const header = ["任务名称", "分类", "优先级", "截止日期", "状态", "负责人", "描述"]
   const rows = tasks.map((t) => [
     t.title,
-    CATEGORY_CN[t.category ?? ""] ?? t.category ?? "",
+    CATEGORY_CN[normalizeCategory(t.category) ?? ""] ?? t.category ?? "",
     PRIORITY_CN[t.priority ?? ""] ?? t.priority ?? "",
     t.due_date ?? "",
     STATUS_CN[t.status] ?? t.status,
@@ -95,7 +102,9 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [ganttFullscreen, setGanttFullscreen] = useState(false)
   const ganttRef = useRef<HTMLDivElement>(null)
+  const ganttFullRef = useRef<HTMLDivElement>(null)
 
   const { data: plan, isLoading: planLoading } = useQuery({
     queryKey: ["bid-plan", projectId],
@@ -345,11 +354,22 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
 
       {/* ── 甘特图视图 ── */}
       {viewMode === "gantt" && (
-        <GanttView
-          ref={ganttRef}
-          tasks={taskList}
-          onTaskClick={handleTaskClick}
-        />
+        <>
+          <div className="flex justify-end -mt-2 mb-1">
+            <button
+              onClick={() => setGanttFullscreen(true)}
+              className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 transition-colors"
+              title="全屏查看甘特图"
+            >
+              <span className="text-sm">⛶</span> 全屏
+            </button>
+          </div>
+          <GanttView
+            ref={ganttRef}
+            tasks={taskList}
+            onTaskClick={handleTaskClick}
+          />
+        </>
       )}
 
       {/* ── 列表视图 ── */}
@@ -362,7 +382,7 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
             {taskList.length > 0 ? (
               <div className="space-y-2">
                 {taskList.map((task, idx) => {
-                  const catStyle = CATEGORY_STYLES[task.category ?? ""] ?? null
+                  const catStyle = CATEGORY_STYLES[normalizeCategory(task.category) ?? ""] ?? { label: "其他", cls: "bg-gray-100 text-gray-500" }
                   const priStyle = PRIORITY_STYLES[task.priority ?? ""] ?? null
                   return (
                     <div
@@ -409,11 +429,9 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
                             </p>
                           )}
                           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            {catStyle && (
-                              <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${catStyle.cls}`}>
-                                {catStyle.label}
-                              </span>
-                            )}
+                            <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${catStyle.cls}`}>
+                              {catStyle.label}
+                            </span>
                             {priStyle && (
                               <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${priStyle.cls}`}>
                                 {priStyle.label}优先
@@ -485,6 +503,20 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         onSave={handleSaveTask}
         isPending={updateTaskMutation.isPending || updateFieldsMutation.isPending}
       />
+
+      {/* ── 甘特图全屏弹窗 ── */}
+      <Dialog open={ganttFullscreen} onOpenChange={setGanttFullscreen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>投标计划 — 甘特图</DialogTitle>
+          </DialogHeader>
+          <GanttView
+            ref={ganttFullRef}
+            tasks={taskList}
+            onTaskClick={handleTaskClick}
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-end">
         <Button onClick={handleNext}>{t("plan.nextStep")}</Button>

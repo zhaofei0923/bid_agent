@@ -69,6 +69,24 @@ export interface BidPlanTask {
   reference_page: number | null
 }
 
+// ── 旧分类 → 新分类映射 ─────────────────────────────────────────
+const LEGACY_CATEGORY_MAP: Record<string, TaskCategory> = {
+  commercial: "financial",
+  administrative: "documents",
+}
+
+const VALID_CATEGORIES = new Set<string>([
+  "documents", "team", "technical", "experience",
+  "financial", "compliance", "submission", "review",
+])
+
+/** Normalize legacy 4-category values to the new 8-category system. */
+export function normalizeCategory(raw: string | null | undefined): TaskCategory | null {
+  if (!raw) return null
+  if (VALID_CATEGORIES.has(raw)) return raw as TaskCategory
+  return (LEGACY_CATEGORY_MAP[raw] as TaskCategory) ?? null
+}
+
 export interface GuidanceRequest {
   project_id: string
   section_key: string

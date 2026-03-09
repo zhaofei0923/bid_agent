@@ -2,6 +2,7 @@
 
 import { forwardRef, useMemo } from "react"
 import type { BidPlanTask } from "@/types/bid"
+import { normalizeCategory } from "@/types/bid"
 
 // ── 分类配色（8 类，与 PlanStep 保持一致） ──────────────────────────
 const CATEGORY_BAR: Record<string, { bar: string; bg: string; label: string }> = {
@@ -156,7 +157,7 @@ export const GanttView = forwardRef<HTMLDivElement, GanttViewProps>(
 
         {/* ── 任务行 ── */}
         {derived.map((task) => {
-          const style = CATEGORY_BAR[task.category ?? ""] ?? DEFAULT_BAR
+          const style = CATEGORY_BAR[normalizeCategory(task.category) ?? ""] ?? DEFAULT_BAR
           const { left, width } = barPosition(task._start, task._end, axisStart, totalDays)
           const isDone = task.status === "completed"
           const isProgress = task.status === "in_progress"
