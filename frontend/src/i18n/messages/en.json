@@ -659,15 +659,14 @@
     "nav": {
       "platform": "Value",
       "workflow": "How It Works",
-      "pricing": "Pricing",
       "signIn": "Sign In",
-      "start": "Free Trial"
+      "start": "Request Access"
     },
     "hero": {
       "eyebrow": "Designed for international bidding teams",
       "title": "Make international bidding feel clearer, calmer, and easier to try",
       "subtitle": "BidAgent helps teams move from opportunity review to final submission with clearer requirements, steadier execution, and a more confident final check across ADB and World Bank projects.",
-      "primaryCta": "Free Trial",
+      "primaryCta": "Request Access",
       "secondaryCta": "Browse Bids",
       "trustNotes": [
         "Built for ADB and World Bank bidding scenarios",
@@ -860,7 +859,7 @@
     "cta": {
       "title": "Start with one lighter, simpler trial",
       "subtitle": "No complicated setup is required to experience a clearer path from opportunity review to final check.",
-      "primary": "Free Trial",
+      "primary": "Request Access",
       "secondary": "Browse Public Bids"
     },
     "footer": {

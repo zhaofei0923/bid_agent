@@ -9,7 +9,6 @@ import { LatestOpportunitiesSection } from "@/components/landing-v2/LatestOpport
 import { LandingV2Footer } from "@/components/landing-v2/LandingV2Footer"
 import { LandingV2Nav } from "@/components/landing-v2/LandingV2Nav"
 import { ManagerOutcomesSection } from "@/components/landing-v2/ManagerOutcomesSection"
-import { PricingV2Section } from "@/components/landing-v2/PricingV2Section"
 import { RoleValidationSection } from "@/components/landing-v2/RoleValidationSection"
 import { WorkflowCommandSection } from "@/components/landing-v2/WorkflowCommandSection"
 
@@ -71,7 +70,6 @@ export default async function LandingPage({
           <WorkflowCommandSection />
           <CapabilitiesSection />
           <RoleValidationSection />
-          <PricingV2Section locale={locale} />
         </main>
         <LandingV2Footer locale={locale} />
       </div>

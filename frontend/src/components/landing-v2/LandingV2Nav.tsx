@@ -18,7 +18,6 @@ export const LandingV2Nav = memo(function LandingV2Nav({
   const links = [
     { href: "#value", label: t("nav.platform") },
     { href: "#workflow", label: t("nav.workflow") },
-    { href: "#pricing", label: t("nav.pricing") },
   ]
 
   useEffect(() => {

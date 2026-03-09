@@ -659,15 +659,14 @@
     "nav": {
       "platform": "产品价值",
       "workflow": "如何使用",
-      "pricing": "定价",
       "signIn": "登录",
-      "start": "免费试用"
+      "start": "申请试用"
     },
     "hero": {
       "eyebrow": "为国际投标团队而设计",
       "title": "让国际投标更轻松，也更值得尝试",
       "subtitle": "BidAgent 用清晰的流程、准确的要求提炼和提交前审查，帮助团队更稳妥地推进 ADB、World Bank 项目。从判断机会到完成提交，都更省心。",
-      "primaryCta": "免费试用",
+      "primaryCta": "申请试用",
       "secondaryCta": "查看招标",
       "trustNotes": [
         "支持 ADB / World Bank 公开招标场景",
@@ -860,7 +859,7 @@
     "cta": {
       "title": "先从一次更轻松的试用开始",
       "subtitle": "不需要复杂准备，就能快速体验从机会判断到提交前检查的完整思路。",
-      "primary": "免费试用",
+      "primary": "申请试用",
       "secondary": "查看公开招标"
     },
     "footer": {

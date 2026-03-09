@@ -27,7 +27,6 @@ export const LandingV2Footer = memo(function LandingV2Footer({
       title: t("footer.supportTitle"),
       items: [
         { label: t("footer.supportHelp"), href: `/${locale}/help` },
-        { label: t("footer.supportPricing"), href: "#pricing" },
       ],
     },
     {
