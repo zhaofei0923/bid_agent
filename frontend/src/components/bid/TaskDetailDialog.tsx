@@ -22,17 +22,6 @@ const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
   { value: "review",     label: "评审检查" },
 ]
 
-const CATEGORY_CLS: Record<string, string> = {
-  documents:  "bg-slate-100 text-slate-600",
-  team:       "bg-violet-100 text-violet-700",
-  technical:  "bg-blue-100 text-blue-700",
-  experience: "bg-cyan-100 text-cyan-700",
-  financial:  "bg-amber-100 text-amber-700",
-  compliance: "bg-red-100 text-red-700",
-  submission: "bg-emerald-100 text-emerald-700",
-  review:     "bg-rose-100 text-rose-700",
-}
-
 const PRIORITY_OPTIONS = [
   { value: "high",   label: "高优先" },
   { value: "medium", label: "中优先" },
@@ -84,8 +73,6 @@ export function TaskDetailDialog({
   }, [task])
 
   if (!task) return null
-
-  const catCls = CATEGORY_CLS[task.category ?? ""] ?? "bg-gray-100 text-gray-600"
 
   const handleSave = () => {
     if (!onSave) return

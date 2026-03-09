@@ -143,13 +143,13 @@ class BidPlanService:
         if not task:
             raise NotFoundError("BidPlanTask", str(task_id))
 
-        ALLOWED = {
+        allowed = {
             "title", "description", "category", "priority",
             "due_date", "assignee", "notes", "sort_order", "status",
             "related_document", "reference_page",
         }
         for key, value in fields.items():
-            if key in ALLOWED and value is not None:
+            if key in allowed and value is not None:
                 setattr(task, key, value)
 
         task.updated_at = datetime.now(UTC)

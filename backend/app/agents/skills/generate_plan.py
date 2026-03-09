@@ -38,10 +38,7 @@ class GeneratePlan(Skill):
         risk_assessment = ctx.parameters.get("risk_assessment") or "暂无"
 
         # Pick institution-specific template
-        if institution == "wb":
-            inst_template = WB_PLAN_TEMPLATE
-        else:
-            inst_template = ADB_PLAN_TEMPLATE
+        inst_template = WB_PLAN_TEMPLATE if institution == "wb" else ADB_PLAN_TEMPLATE
 
         institution_label = _INSTITUTION_LABELS.get(institution, institution)
         prompt = PLAN_GENERATION_PROMPT.format(
