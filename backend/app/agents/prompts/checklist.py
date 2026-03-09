@@ -1,10 +1,16 @@
 """Checklist extraction prompt — used to generate submission checklists from tender docs."""
 
 CHECKLIST_EXTRACT_PROMPT = """\
-你是一位专业的国际招标文件分析师，熟悉ADB、世界银行、AfDB的采购规程和标准招标文件格式。
+你是一位专业的国际招标文件分析师，熟悉ADB、世界银行的采购规程和标准招标文件格式。
 
 ## 任务
 请仔细阅读下方提供的招标文件参考段落，**完整提取**所有需要提交的文件和材料，按照投标书结构分类整理。
+同时参考下方提供的**机构标准文件结构模板**，将实际要求与标准表格体系对应起来。
+
+## 机构标准文件结构参考
+以下模板仅供结构参考，**以招标文件实际要求为准**：
+
+{institution_template}
 
 ## 输出要求
 以 JSON 格式输出，结构如下：
@@ -21,6 +27,7 @@ CHECKLIST_EXTRACT_PROMPT = """\
           "required": true,
           "copies": 3,
           "format_hint": "不超过50页，A4纸，12号字体",
+          "form_reference": "Form TECH-3",
           "guidance": "详细说明项目实施方法、时间计划、团队安排，必须覆盖招标文件Section 4中列明的所有评分点，突出团队过往类似项目经验",
           "source": {{
             "filename": "RFP_Section8.pdf",
@@ -46,9 +53,10 @@ CHECKLIST_EXTRACT_PROMPT = """\
 2. `required` 字段：从原文判断是否为强制要求（"shall", "must" → true；"may", "if applicable" → false）
 3. `copies` 字段：从原文提取所需份数（如无要求则为 null）
 4. `format_hint` 字段：提取页数限制、字体、格式等要求（如无则为 null）
-5. `guidance` 字段：**用中文**给出50-100字的编写指导，说明应包含什么内容、注意什么，**不要替用户写内容**
-6. `source.excerpt` 字段：引用招标文件原文（英文或中文均可），控制在150字以内
-7. 如果参考资料不足以提取完整清单，在能提取的范围内尽量完整
+5. `form_reference` 字段：对应机构标准表格编号（如 "Form TECH-6", "ELI-1" 等），从招标文件或上方模板中对应匹配，如无法确定则为 null
+6. `guidance` 字段：**用中文**给出50-100字的编写指导，说明应包含什么内容、注意什么，**不要替用户写内容**
+7. `source.excerpt` 字段：引用招标文件原文（英文或中文均可），控制在150字以内
+8. 如果参考资料不足以提取完整清单，在能提取的范围内尽量完整
 
 ## 招标文件参考资料
 {context}

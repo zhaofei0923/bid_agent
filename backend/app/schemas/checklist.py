@@ -23,6 +23,7 @@ class ChecklistItem(BaseModel):
     required: bool = True
     copies: int | None = None
     format_hint: str | None = None
+    form_reference: str | None = None
     guidance: str = Field(
         default="",
         description="Chinese writing guidance (~100 chars), tells user what to include",

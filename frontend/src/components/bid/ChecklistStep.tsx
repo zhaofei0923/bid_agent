@@ -49,6 +49,11 @@ function ItemRow({
               选填
             </Badge>
           )}
+          {item.form_reference && (
+            <Badge className="h-4 shrink-0 bg-indigo-100 px-1.5 text-[10px] text-indigo-700 hover:bg-indigo-100">
+              {item.form_reference}
+            </Badge>
+          )}
           {item.copies != null && (
             <span className="text-[11px] text-stone-400">{item.copies} 份</span>
           )}

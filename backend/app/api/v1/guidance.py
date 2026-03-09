@@ -147,11 +147,20 @@ async def stream_guidance(
                             kb_merged.append(c)
 
                 results = kb_merged[:10]
-                system_prompt = (
-                    "你是一位专业的投标编制顾问，熟悉ADB/WB/AfDB采购指南和标准招标文件。"
-                    "基于提供的知识库文档，为用户提供具体、可操作的标书编制建议。"
-                    "引用关键指南时标注来源编号。"
-                )
+                if institution == "wb":
+                    system_prompt = (
+                        "你是一位专业的投标编制顾问，精通世界银行（WB）采购规程和标准采购文件（SPD）。"
+                        "基于提供的知识库文档，为用户提供具体、可操作的标书编制建议。"
+                        "重点关注：WB SPD Section I-VI 结构、PPSD 选择方式（QCBS/CQS/FBS/LCS/SSS）、"
+                        "ESF（环境与社会框架）合规要求。引用关键指南时标注来源编号。"
+                    )
+                else:
+                    system_prompt = (
+                        "你是一位专业的投标编制顾问，精通亚洲开发银行（ADB）采购规程和标准招标文件（SBD）。"
+                        "基于提供的知识库文档，为用户提供具体、可操作的标书编制建议。"
+                        "重点关注：ADB SBD Section 4 标准表格体系（TECH/FIN/ELI 系列）、"
+                        "BDS 对 ITB 的项目特定修改、QCBS/CQS 评审方法。引用关键指南时标注来源编号。"
+                    )
                 sources_payload = [
                     {
                         "content": s.get("content", "")[:200],
@@ -330,20 +339,41 @@ async def stream_guidance(
                                 + "\n\n"
                             )
 
-                system_prompt = (
-                    "你是一位专业的招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
-                    "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
-                    "重要原则：BDS（Bid Data Sheet，投标资料表）是对ITB（Instructions to Bidders）"
-                    "的项目特定修改，当BDS与ITB内容冲突时，必须以BDS为准。\n"
-                    "规则：\n"
-                    "1. 优先引用[高可信度]标注的结构化数据，这些是已精确提取的可靠信息\n"
-                    "2. 仅基于提供的参考资料回答，不编造信息\n"
-                    "3. 引用时必须标注来源的章节和页码，格式：[来源N, 章节名, 第X页]\n"
-                    "4. 引用金额、日期、条款编号时确保准确，直接抄录原文数字，不做换算\n"
-                    "5. BDS中的具体数值优先于ITB中的通用描述\n"
-                    "6. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
-                    "7. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
-                )
+                if institution == "wb":
+                    system_prompt = (
+                        "你是一位专业的世界银行（WB）招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
+                        "你精通 WB 标准采购文件（SPD）结构，包括 Section I-VI、Data Sheet、\n"
+                        "Form TECH/FIN 系列表格，以及 PPSD、ESF 合规要求。\n"
+                        "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
+                        "重要原则：Data Sheet（投标资料表）是对标准条款的项目特定修改，\n"
+                        "当 Data Sheet 与标准条款内容冲突时，必须以 Data Sheet 为准。\n"
+                        "规则：\n"
+                        "1. 优先引用[高可信度]标注的结构化数据，这些是已精确提取的可靠信息\n"
+                        "2. 仅基于提供的参考资料回答，不编造信息\n"
+                        "3. 引用时必须标注来源的章节和页码，格式：[来源N, 章节名, 第X页]\n"
+                        "4. 引用金额、日期、条款编号时确保准确，直接抄录原文数字，不做换算\n"
+                        "5. Data Sheet 中的具体数值优先于标准条款中的通用描述\n"
+                        "6. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
+                        "7. 使用简洁的中文回答，专业术语保留英文原文并附中文说明\n"
+                        "8. WB 项目特别关注 ESF 合规、劳工管理、环境社会承诺等要求"
+                    )
+                else:
+                    system_prompt = (
+                        "你是一位专业的亚洲开发银行（ADB）招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
+                        "你精通 ADB 标准招标文件（SBD）结构，包括 Section 1-5、BDS、\n"
+                        "Section 4 标准表格（TECH-1~6, FIN-1~4, ELI-1/2）以及 Section 3 评审标准。\n"
+                        "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
+                        "重要原则：BDS（Bid Data Sheet，投标资料表）是对ITB（Instructions to Bidders）\n"
+                        "的项目特定修改，当BDS与ITB内容冲突时，必须以BDS为准。\n"
+                        "规则：\n"
+                        "1. 优先引用[高可信度]标注的结构化数据，这些是已精确提取的可靠信息\n"
+                        "2. 仅基于提供的参考资料回答，不编造信息\n"
+                        "3. 引用时必须标注来源的章节和页码，格式：[来源N, 章节名, 第X页]\n"
+                        "4. 引用金额、日期、条款编号时确保准确，直接抄录原文数字，不做换算\n"
+                        "5. BDS中的具体数值优先于ITB中的通用描述\n"
+                        "6. 如确实找不到答案，明确告知用户，并说明可能在哪个章节查找\n"
+                        "7. 使用简洁的中文回答，专业术语保留英文原文并附中文说明"
+                    )
                 sources_payload = [
                     {
                         "content": s.get("content", "")[:200],
@@ -445,6 +475,7 @@ async def generate_checklist(
         keyword_search_chunks,
     )
     from app.agents.prompts.checklist import CHECKLIST_EXTRACT_PROMPT
+    from app.agents.prompts.checklist_templates import get_institution_template
     from app.models.bid_analysis import BidAnalysis
     from app.schemas.checklist import (
         ChecklistItem,
@@ -488,11 +519,34 @@ async def generate_checklist(
             )
 
     try:
-        # ── 2. RAG retrieval ──────────────────────────────────────
+        # ── 2. RAG retrieval (institution-specific) ──────────────────
         emb_client = get_embedding_client()
-        seed_query = (
-            "documents required submission proposal contents technical financial administrative"
-        )
+
+        # Institution-specific seed queries & keywords
+        if institution == "wb":
+            seed_query = (
+                "documents required submission proposal contents technical financial "
+                "SPD qualification forms Section III IV environmental social framework"
+            )
+            extra_keywords = [
+                "Form TECH", "Form FIN", "SPD", "Data Sheet",
+                "Section III", "Section IV", "qualification",
+                "ESF", "Labor Management", "PPSD",
+            ]
+            directed_section_types = ["part_2_requirements", "section_5_tos", "section_4_forms"]
+        else:
+            # ADB (default)
+            seed_query = (
+                "documents required submission proposal contents technical financial "
+                "ELI FIN TECH standard forms Section 4 Section 3 BDS"
+            )
+            extra_keywords = [
+                "TECH-1", "TECH-2", "TECH-3", "TECH-4", "TECH-5", "TECH-6",
+                "FIN-1", "FIN-2", "FIN-3", "ELI-1", "ELI-2",
+                "Section 4", "Section 3", "BDS",
+            ]
+            directed_section_types = ["section_4_forms", "section_3", "section_2_bds"]
+
         emb_result = await emb_client.embed_text(seed_query)
 
         try:
@@ -508,7 +562,7 @@ async def generate_checklist(
 
         keywords = [
             *_extract_keywords(seed_query),
-            "Section 8",
+            *extra_keywords,
             "documents required",
             "submission",
             "proposal content",
@@ -532,6 +586,22 @@ async def generate_checklist(
                 seen_ids.add(r["id"])
                 merged.append(r)
 
+        # Section-type directed search for institution-specific form sections
+        for sq in [seed_query]:
+            directed_emb = await emb_client.embed_text(sq)
+            directed_results = await bid_document_search(
+                db=db,
+                project_id=str(project_id),
+                query_embedding=directed_emb.embedding,
+                section_types=directed_section_types,
+                top_k=10,
+                score_threshold=0.2,
+            )
+            for r in directed_results:
+                if r["id"] not in seen_ids:
+                    seen_ids.add(r["id"])
+                    merged.append(r)
+
         if not merged:
             logger.warning("No bid document chunks found for project %s", project_id)
 
@@ -548,7 +618,11 @@ async def generate_checklist(
 
         # ── 3. LLM JSON extraction ────────────────────────────────
         llm = get_llm_client()
-        prompt = CHECKLIST_EXTRACT_PROMPT.format(context=context_block)
+        institution_template = get_institution_template(institution)
+        prompt = CHECKLIST_EXTRACT_PROMPT.format(
+            context=context_block,
+            institution_template=institution_template,
+        )
         messages = [LLMMessage(role="user", content=prompt)]
 
         raw_json = ""
@@ -581,6 +655,7 @@ async def generate_checklist(
                             required=bool(it.get("required", True)),
                             copies=_safe_int(it.get("copies")),
                             format_hint=str(it["format_hint"]) if it.get("format_hint") else None,
+                            form_reference=str(it["form_reference"]) if it.get("form_reference") else None,
                             guidance=str(it.get("guidance") or ""),
                             source=ChecklistSource(
                                 filename=str(src_raw.get("filename") or ""),

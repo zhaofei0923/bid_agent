@@ -117,6 +117,7 @@ export interface ChecklistItem {
   required: boolean
   copies: number | null
   format_hint: string | null
+  form_reference: string | null
   guidance: string
   source: ChecklistSource
 }
