@@ -62,6 +62,7 @@ export interface BidPlanTask {
   category: TaskCategory | null
   priority: "high" | "medium" | "low" | null
   assigned_to: string | null
+  start_date: string | null
   due_date: string | null
   sort_order: number
   notes: string | null

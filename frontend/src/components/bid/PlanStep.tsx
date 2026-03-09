@@ -50,11 +50,12 @@ function exportCsv(tasks: BidPlanTask[], filename = "bid_tasks.csv") {
   const STATUS_CN: Record<string, string> = {
     pending: "待处理", in_progress: "进行中", completed: "已完成",
   }
-  const header = ["任务名称", "分类", "优先级", "截止日期", "状态", "负责人", "描述"]
+  const header = ["任务名称", "分类", "优先级", "开始日期", "截止日期", "状态", "负责人", "描述"]
   const rows = tasks.map((t) => [
     t.title,
     CATEGORY_CN[normalizeCategory(t.category) ?? ""] ?? t.category ?? "",
     PRIORITY_CN[t.priority ?? ""] ?? t.priority ?? "",
+    t.start_date ?? "",
     t.due_date ?? "",
     STATUS_CN[t.status] ?? t.status,
     t.assigned_to ?? "",
@@ -451,9 +452,13 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
                                 {priStyle.label}优先
                               </span>
                             )}
-                            {task.due_date && (
+                            {(task.start_date || task.due_date) && (
                               <span className="text-[11px] text-slate-400">
-                                截止 {task.due_date}
+                                {task.start_date && task.due_date
+                                  ? `${task.start_date} ~ ${task.due_date}`
+                                  : task.due_date
+                                    ? `截止 ${task.due_date}`
+                                    : `开始 ${task.start_date}`}
                               </span>
                             )}
                           </div>

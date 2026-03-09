@@ -36,6 +36,7 @@ class TaskUpdateBody(BaseModel):
     description: str | None = None
     category: str | None = None
     priority: str | None = None
+    start_date: date | None = None
     due_date: date | None = None
     assignee: str | None = None
     notes: str | None = None

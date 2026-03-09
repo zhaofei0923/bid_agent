@@ -56,6 +56,7 @@ export function TaskDetailDialog({
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<string>("")
   const [priority, setPriority] = useState<string>("")
+  const [startDate, setStartDate] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [assignee, setAssignee] = useState("")
   const [notes, setNotes] = useState("")
@@ -67,6 +68,7 @@ export function TaskDetailDialog({
       setDescription(task.description ?? "")
       setCategory(normalizeCategory(task.category) ?? "")
       setPriority(task.priority ?? "")
+      setStartDate(task.start_date ?? "")
       setDueDate(task.due_date ?? "")
       setAssignee(task.assigned_to ?? "")
       setNotes(task.notes ?? "")
@@ -82,6 +84,7 @@ export function TaskDetailDialog({
       description: description || null,
       category: category || null,
       priority: priority || null,
+      start_date: startDate || null,
       due_date: dueDate || null,
       assigned_to: assignee || null,
       notes: notes || null,
@@ -144,16 +147,22 @@ export function TaskDetailDialog({
             </div>
           </div>
 
-          {/* 截止日期 & 负责人 */}
+          {/* 开始日期 & 截止日期 */}
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">开始日期</label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-500">截止日期</label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">负责人</label>
-              <Input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="输入负责人" />
-            </div>
+          </div>
+
+          {/* 负责人 */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">负责人</label>
+            <Input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="输入负责人" />
           </div>
 
           {/* 备注 */}

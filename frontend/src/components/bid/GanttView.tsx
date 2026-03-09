@@ -50,16 +50,22 @@ function deriveTaskDates(
   today: Date,
 ): Array<BidPlanTask & { _start: Date; _end: Date; _derived: boolean }> {
   return tasks.map((t) => {
+    const start = parseDate(t.start_date)
     const due = parseDate(t.due_date)
-    if (due) {
-      const start = addDays(due, -7)
+    if (start && due) {
       return { ...t, _start: start, _end: due, _derived: false }
+    }
+    if (due) {
+      return { ...t, _start: start ?? addDays(due, -7), _end: due, _derived: !start }
+    }
+    if (start) {
+      return { ...t, _start: start, _end: addDays(start, 7), _derived: true }
     }
     // 无日期：用 sort_order 推算
     const base = t.sort_order ?? 0
-    const start = addDays(today, base * 7)
-    const end = addDays(start, 7)
-    return { ...t, _start: start, _end: end, _derived: true }
+    const s = addDays(today, base * 7)
+    const e = addDays(s, 7)
+    return { ...t, _start: s, _end: e, _derived: true }
   })
 }
 
@@ -184,6 +190,11 @@ export const GanttView = forwardRef<HTMLDivElement, GanttViewProps>(
                 </div>
                 <div className="mt-0.5 pl-3.5 text-[11px] text-slate-400">
                   {style.label}
+                  {!task._derived && (
+                    <span className="ml-1">
+                      {formatMMDD(task._start)}–{formatMMDD(task._end)}
+                    </span>
+                  )}
                   {task._derived && (
                     <span className="ml-1 text-slate-300">（推算）</span>
                   )}

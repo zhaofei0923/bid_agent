@@ -88,6 +88,7 @@ class BidPlanTask(Base):
         String(20), nullable=False, server_default="medium"
     )
     assignee: Mapped[str | None] = mapped_column(String(200))
+    start_date: Mapped[date | None] = mapped_column(Date)
     due_date: Mapped[date | None] = mapped_column(Date, index=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     related_document: Mapped[str | None] = mapped_column(String(500))

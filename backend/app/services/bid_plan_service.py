@@ -145,7 +145,7 @@ class BidPlanService:
 
         allowed = {
             "title", "description", "category", "priority",
-            "due_date", "assignee", "notes", "sort_order", "status",
+            "start_date", "due_date", "assignee", "notes", "sort_order", "status",
             "related_document", "reference_page",
         }
         for key, value in fields.items():
@@ -265,6 +265,15 @@ class BidPlanService:
                 except (ValueError, TypeError):
                     due_date = None
 
+            start_date_raw = task_data.get("start_date")
+            start_date = None
+            if start_date_raw and start_date_raw != "null":
+                try:
+                    from datetime import date as _date_cls
+                    start_date = _date_cls.fromisoformat(str(start_date_raw))
+                except (ValueError, TypeError):
+                    start_date = None
+
             task = BidPlanTask(
                 plan_id=plan.id,
                 title=task_data.get("title", f"任务 {i + 1}"),
@@ -273,6 +282,7 @@ class BidPlanService:
                 priority=task_data.get("priority", "medium"),
                 sort_order=task_data.get("sort_order", i + 1),
                 status="pending",
+                start_date=start_date,
                 due_date=due_date,
                 related_document=task_data.get("related_document"),
                 reference_page=task_data.get("reference_page"),
