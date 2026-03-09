@@ -86,6 +86,7 @@ export function TaskDetailDialog({
       assigned_to: assignee || null,
       notes: notes || null,
     })
+    onOpenChange?.(false)
   }
 
   return (
