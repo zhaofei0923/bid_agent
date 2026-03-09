@@ -23,13 +23,13 @@ class DocumentChunker:
 
     def __init__(
         self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
+        chunk_size: int = 1200,
+        chunk_overlap: int = 250,
         separators: list[str] | None = None,
     ) -> None:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.separators = separators or ["\n\n", "\n", ". ", " "]
+        self.separators = separators or ["\n\n", "\n", "\n|", ". ", " "]
 
     def chunk_text(
         self,
@@ -113,19 +113,33 @@ class DocumentChunker:
 
 _RE_SPLIT_NUMBER = re.compile(r'(\d)\s*\n\s*(\d{1,3}(?:,\d{3})+)')
 _RE_SPLIT_HYPHEN = re.compile(r'(\w)-\s*\n\s*(\w)')
+_RE_REPEATED_HEADER = re.compile(
+    r'^(?:(?:Section|Part|Volume|Page|Draft|Confidential)\b.{0,60})$',
+    re.MULTILINE | re.IGNORECASE,
+)
+_RE_EXCESSIVE_BLANK = re.compile(r'\n{4,}')
+# Unicode ligatures and special chars common in PDF extraction
+_LIGATURE_MAP = str.maketrans({
+    '\ufb01': 'fi', '\ufb02': 'fl', '\ufb03': 'ffi', '\ufb04': 'ffl',
+    '\u2018': "'", '\u2019': "'", '\u201c': '"', '\u201d': '"',
+    '\u2013': '-', '\u2014': '-', '\u00a0': ' ',
+})
 
 
 def _clean_pdf_text(text: str) -> str:
     """Clean common PDF extraction artifacts.
 
     Fixes:
-    - Numbers split across lines by narrow table columns:
-      e.g. "US$ 8\n50,000" → "US$ 850,000"
-    - Hyphenated words split across lines:
-      e.g. "non-\nresponsive" → "nonresponsive"
+    - Numbers split across lines by narrow table columns
+    - Hyphenated words split across lines
+    - Unicode ligatures (fi, fl, ffi, ffl) and smart quotes
+    - Excessive blank lines (4+ → 2)
+    - Non-breaking spaces
     """
+    text = text.translate(_LIGATURE_MAP)
     text = _RE_SPLIT_NUMBER.sub(r'\1\2', text)
     text = _RE_SPLIT_HYPHEN.sub(r'\1\2', text)
+    text = _RE_EXCESSIVE_BLANK.sub('\n\n\n', text)
     return text
 
 
@@ -133,11 +147,34 @@ def _clean_pdf_text(text: str) -> str:
 
 
 async def _parse_pdf(file_path: str) -> list[dict]:
-    """Parse PDF using pdfplumber, returning pages with text.
+    """Parse PDF using pymupdf4llm (Markdown output with table preservation).
+
+    Falls back to pdfplumber on failure.
 
     Returns:
         List of {page_number, text} dicts.
     """
+    # Primary engine: pymupdf4llm — outputs Markdown with tables/headings preserved
+    try:
+        import pymupdf4llm
+
+        md_pages = await asyncio.to_thread(
+            pymupdf4llm.to_markdown, file_path, page_chunks=True
+        )
+        pages = []
+        for chunk in md_pages:
+            page_num = chunk.get("metadata", {}).get("page", 0) + 1
+            text = chunk.get("text", "")
+            text = _clean_pdf_text(text)
+            pages.append({"page_number": page_num, "text": text})
+        if pages:
+            logger.info("pymupdf4llm parsed %d pages from %s", len(pages), file_path)
+            return pages
+        logger.warning("pymupdf4llm returned empty — falling back to pdfplumber")
+    except Exception:
+        logger.warning("pymupdf4llm failed for %s — falling back to pdfplumber", file_path, exc_info=True)
+
+    # Fallback: pdfplumber
     try:
         import pdfplumber
     except ImportError:
@@ -517,12 +554,51 @@ async def _process_document(document_id: str) -> dict:
                 await db.delete(section)
             await db.commit()
 
-            # 4. Create sections — try PDF TOC first, fallback to page groups
-            toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
-            if toc_items:
-                section_tuples = _build_sections_from_toc(toc_items, pages, doc.id)
+            # 4. Create sections — try semantic section identification first,
+            #    fallback to PDF TOC, then page groups
+            from app.services.document_processing.bid_document_parser import (
+                identify_sections,
+            )
+
+            full_text = "\n\n".join(p["text"] for p in pages if p["text"].strip())
+            page_texts = [p["text"] for p in pages]
+            semantic_sections = identify_sections(full_text, page_texts)
+
+            if len(semantic_sections) >= 3:
+                # ── Semantic section classification succeeded ──────────
+                logger.info(
+                    "Document %s: identified %d semantic sections",
+                    document_id, len(semantic_sections),
+                )
+                for sec in semantic_sections:
+                    start_p = sec["page_number"]
+                    end_p = sec.get("page_end", start_p)
+                    section_pages = [
+                        p for p in pages if start_p <= p["page_number"] <= end_p
+                    ]
+                    content = "\n\n".join(
+                        f"=== 第{p['page_number']}页 ===\n{p['text']}"
+                        for p in section_pages
+                        if p["text"].strip()
+                    )
+                    section_orm = BidDocumentSection(
+                        bid_document_id=doc.id,
+                        section_type=sec["section_type"],
+                        section_title=sec["title"],
+                        start_page=start_p,
+                        end_page=end_p,
+                        content_preview=content[:500],
+                        detected_by="regex",
+                    )
+                    section_tuples.append((section_orm, content))
             else:
-                section_tuples = _build_page_group_sections(pages, doc.id)
+                # ── Fallback: TOC bookmarks / text scan / page groups ─
+                toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
+                if toc_items:
+                    section_tuples = _build_sections_from_toc(toc_items, pages, doc.id)
+                else:
+                    section_tuples = _build_page_group_sections(pages, doc.id)
+
             for section, _content in section_tuples:
                 db.add(section)
 

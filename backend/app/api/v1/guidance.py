@@ -612,6 +612,23 @@ async def generate_checklist(
                 seen_ids.add(r["id"])
                 merged.append(r)
 
+        # ── Vector search #3: section_type directed (for new docs with section classification) ──
+        try:
+            s4_directed = await bid_document_search(
+                db=db,
+                project_id=str(project_id),
+                query_embedding=s4_emb.embedding,
+                section_types=["section_4_forms", "section_3_qualification", "section_2_bds"],
+                top_k=15,
+                score_threshold=0.2,
+            )
+            for r in s4_directed:
+                if r["id"] not in seen_ids:
+                    seen_ids.add(r["id"])
+                    merged.append(r)
+        except Exception as exc:
+            logger.warning("Section-type directed search failed: %s", exc)
+
         # ── Keyword search ────────────────────────────────────────
         keywords = [
             *_extract_keywords(seed_query),

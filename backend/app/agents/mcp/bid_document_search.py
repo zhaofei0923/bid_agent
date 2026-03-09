@@ -155,10 +155,71 @@ async def bid_document_search(
     params: dict = {
         "embedding": str(query_embedding),
         "project_id": project_id,
-        # Fetch more rows so we can filter in Python without losing results
-        "top_k": max(top_k * 4, 20) if section_types else top_k,
+        "top_k": top_k,
     }
 
+    # When section_types requested, first try SQL-level filtering
+    if section_types:
+        # Build SQL with section_type IN (...) filter
+        type_placeholders = ", ".join(f":st_{i}" for i in range(len(section_types)))
+        for i, st in enumerate(section_types):
+            params[f"st_{i}"] = st
+
+        sql_filtered = text(f"""
+            SELECT ch.content, ch.page_number,
+                   1 - (ch.embedding <=> cast(:embedding as vector)) AS similarity,
+                   ch.section_type,
+                   COALESCE(s.section_title, '') AS section_title,
+                   ch.clause_reference,
+                   d.filename AS filename,
+                   ch.id::text AS chunk_id
+            FROM bid_document_chunks ch
+            JOIN bid_documents d ON ch.bid_document_id = d.id
+            LEFT JOIN bid_document_sections s ON ch.section_id = s.id
+            WHERE d.project_id = :project_id
+              AND d.status = 'processed'
+              AND ch.embedding IS NOT NULL
+              AND ch.section_type IN ({type_placeholders})
+            ORDER BY ch.embedding <=> cast(:embedding as vector)
+            LIMIT :top_k
+        """)
+
+        result = await db.execute(sql_filtered, params)
+        rows = result.fetchall()
+
+        # If SQL filter returned enough results, use them
+        if len(rows) >= 3:
+            return [
+                {
+                    "id": row.chunk_id,
+                    "content": row.content,
+                    "page_number": row.page_number,
+                    "score": float(row.similarity),
+                    "section_type": row.section_type,
+                    "section_title": row.section_title,
+                    "clause_reference": row.clause_reference,
+                    "filename": row.filename,
+                }
+                for row in rows
+                if float(row.similarity) >= score_threshold
+            ] or [
+                {
+                    "id": row.chunk_id,
+                    "content": row.content,
+                    "page_number": row.page_number,
+                    "score": float(row.similarity),
+                    "section_type": row.section_type,
+                    "section_title": row.section_title,
+                    "clause_reference": row.clause_reference,
+                    "filename": row.filename,
+                }
+                for row in rows
+            ]
+
+        # Not enough section-typed results (e.g. old docs with "full_document"),
+        # fall through to unfiltered search below
+
+    # Unfiltered vector search (general fallback)
     sql = text("""
         SELECT ch.content, ch.page_number,
                1 - (ch.embedding <=> cast(:embedding as vector)) AS similarity,
@@ -196,15 +257,6 @@ async def bid_document_search(
         }
         for row in rows
     ]
-
-    # Apply section_types filter in Python (avoids asyncpg array-binding issues
-    # and transaction aborts; falls back to all results when no match)
-    if section_types:
-        filtered = [r for r in scored_rows if r["section_type"] in section_types]
-        scored_rows = filtered if filtered else scored_rows
-
-    # Trim back to top_k after optional section filter
-    scored_rows = scored_rows[:top_k]
 
     above_threshold = [r for r in scored_rows if r["score"] >= score_threshold]
     # If threshold filters out all results, fall back to returning top_k un-filtered
