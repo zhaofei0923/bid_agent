@@ -30,12 +30,15 @@ async def get_plan(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get the bid plan for a project."""
+    """Get the bid plan for a project. Returns null if no plan exists yet."""
     project_svc = ProjectService(db)
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    return await plan_svc.get_by_project(project_id)
+    try:
+        return await plan_svc.get_by_project(project_id)
+    except Exception:
+        return None
 
 
 @router.post("/{project_id}/plan")
@@ -59,12 +62,15 @@ async def list_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all tasks in a bid plan."""
+    """List all tasks in a bid plan. Returns [] if no plan exists yet."""
     project_svc = ProjectService(db)
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    plan = await plan_svc.get_by_project(project_id)
+    try:
+        plan = await plan_svc.get_by_project(project_id)
+    except Exception:
+        return []
     return await plan_svc.list_tasks(plan.id)
 
 

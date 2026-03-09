@@ -54,7 +54,9 @@ export const bidPlanService = {
 
   generatePlan: async (projectId: string) => {
     const { data } = await apiClient.post<{ plan: BidPlan; tasks: BidPlanTask[] }>(
-      `/projects/${projectId}/plan/generate`
+      `/projects/${projectId}/plan/generate`,
+      undefined,
+      { timeout: 150_000 } // LLM can take up to 120s; allow 150s
     )
     return data
   },

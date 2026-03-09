@@ -270,11 +270,20 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         </div>
       </div>
 
-      {generateMutation.isError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          AI 生成失败，请稍后重试
-        </div>
-      )}
+      {generateMutation.isError && (() => {
+        const err = generateMutation.error as { code?: string; response?: { status?: number } } | null
+        const isTimeout = err?.code === "ECONNABORTED"
+        const isAuth = err?.response?.status === 401
+        return (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {isAuth
+              ? "登录已过期，请重新登录后再试"
+              : isTimeout
+                ? "AI 生成超时（通常需要 30-60 秒），请稍后重试"
+                : "AI 生成失败，请稍后重试"}
+          </div>
+        )
+      })()}
 
       {/* ── 甘特图视图 ── */}
       {viewMode === "gantt" && (
