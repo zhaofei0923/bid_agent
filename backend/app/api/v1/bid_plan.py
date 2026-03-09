@@ -196,22 +196,24 @@ async def reorder_tasks(
 @router.post("/{project_id}/plan/generate")
 async def generate_plan(
     project_id: UUID,
+    force: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate an AI bid preparation task plan. Can only be called once per project."""
+    """Generate an AI bid preparation task plan. Use force=true to re-generate."""
     project_svc = ProjectService(db)
     await project_svc.get_by_id(project_id, current_user.id)
 
     # Check if AI plan already generated
-    result = await db.execute(
-        select(BidPlan).where(
-            BidPlan.project_id == project_id,
-            BidPlan.generated_by_ai.is_(True),
+    if not force:
+        result = await db.execute(
+            select(BidPlan).where(
+                BidPlan.project_id == project_id,
+                BidPlan.generated_by_ai.is_(True),
+            )
         )
-    )
-    if result.scalar_one_or_none():
-        raise ConflictError("投标计划已通过 AI 生成，不可重复生成。请手动编辑已有计划。")
+        if result.scalar_one_or_none():
+            raise ConflictError("投标计划已通过 AI 生成，不可重复生成。请手动编辑已有计划。")
 
     llm_client = get_llm_client()
     plan_svc = BidPlanService(db)

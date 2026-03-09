@@ -12,12 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useTranslations } from "next-intl"
 import type { BidPlan, BidPlanTask } from "@/types/bid"
 import { normalizeCategory } from "@/types/bid"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { createPortal } from "react-dom"
 import { GanttView } from "./GanttView"
 import { TaskDetailDialog } from "./TaskDetailDialog"
 
@@ -124,6 +119,14 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
 
   const generateMutation = useMutation({
     mutationFn: () => bidPlanService.generatePlan(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bid-plan", projectId] })
+      queryClient.invalidateQueries({ queryKey: ["bid-plan-tasks", projectId] })
+    },
+  })
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => bidPlanService.regeneratePlan(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bid-plan", projectId] })
       queryClient.invalidateQueries({ queryKey: ["bid-plan-tasks", projectId] })
@@ -306,11 +309,28 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
             )}
           </div>
 
-          {/* AI 生成 — 仅限一次 */}
+          {/* AI 生成 / 重新生成 */}
           {alreadyGenerated ? (
-            <span className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500">
-              ✅ 已由 AI 生成
-            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm("确定要重新生成投标计划？现有任务将被替换。")) {
+                  regenerateMutation.mutate()
+                }
+              }}
+              disabled={regenerateMutation.isPending}
+              className="shrink-0"
+            >
+              {regenerateMutation.isPending ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
+                  重新生成中…
+                </>
+              ) : (
+                "🔄 重新生成计划"
+              )}
+            </Button>
           ) : (
             <Button
               onClick={() => generateMutation.mutate()}
@@ -330,24 +350,18 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         </div>
       </div>
 
-      {generateMutation.isError && (() => {
-        const err = generateMutation.error as { code?: string; response?: { status?: number } } | null
+      {(generateMutation.isError || regenerateMutation.isError) && (() => {
+        const mutation = generateMutation.isError ? generateMutation : regenerateMutation
+        const err = mutation.error as { code?: string; response?: { status?: number } } | null
         const isTimeout = err?.code === "ECONNABORTED"
         const isAuth = err?.response?.status === 401
-        const isConflict = err?.response?.status === 409
         return (
-          <div className={`rounded-lg border px-4 py-3 text-sm ${
-            isConflict
-              ? "border-amber-200 bg-amber-50 text-amber-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}>
-            {isConflict
-              ? "投标计划已由 AI 生成，不可重复生成。请手动编辑已有计划。"
-              : isAuth
-                ? "登录已过期，请重新登录后再试"
-                : isTimeout
-                  ? "AI 生成超时（通常需要 30-60 秒），请稍后重试"
-                  : "AI 生成失败，请稍后重试"}
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {isAuth
+              ? "登录已过期，请重新登录后再试"
+              : isTimeout
+                ? "AI 生成超时（通常需要 30-60 秒），请稍后重试"
+                : "AI 生成失败，请稍后重试"}
           </div>
         )
       })()}
@@ -504,19 +518,34 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         isPending={updateTaskMutation.isPending || updateFieldsMutation.isPending}
       />
 
-      {/* ── 甘特图全屏弹窗 ── */}
-      <Dialog open={ganttFullscreen} onOpenChange={setGanttFullscreen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>投标计划 — 甘特图</DialogTitle>
-          </DialogHeader>
-          <GanttView
-            ref={ganttFullRef}
-            tasks={taskList}
-            onTaskClick={handleTaskClick}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* ── 甘特图全屏覆盖层 ── */}
+      {ganttFullscreen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex flex-col bg-white">
+            {/* 顶栏 */}
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-3 shrink-0">
+              <h2 className="text-lg font-semibold text-slate-800">投标计划 — 甘特图</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGanttFullscreen(false)}
+                className="gap-1.5"
+              >
+                ← 返回
+              </Button>
+            </div>
+            {/* 甘特图内容 */}
+            <div className="flex-1 overflow-auto p-6">
+              <GanttView
+                ref={ganttFullRef}
+                tasks={taskList}
+                onTaskClick={handleTaskClick}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <div className="flex justify-end">
         <Button onClick={handleNext}>{t("plan.nextStep")}</Button>
