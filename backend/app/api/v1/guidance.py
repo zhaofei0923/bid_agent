@@ -158,8 +158,11 @@ async def stream_guidance(
                     system_prompt = (
                         "你是一位专业的投标编制顾问，精通亚洲开发银行（ADB）采购规程和标准招标文件（SBD）。"
                         "基于提供的知识库文档，为用户提供具体、可操作的标书编制建议。"
-                        "重点关注：ADB SBD Section 4 标准表格体系（TECH/FIN/ELI 系列）、"
-                        "BDS 对 ITB 的项目特定修改、QCBS/CQS 评审方法。引用关键指南时标注来源编号。"
+                        "ADB SBD 有两种主要类型："
+                        "(1) 货物/工厂/工程采购：Section 4 含投标函、价格表、资格表格（ELI/CON/FIN/EXP）；"
+                        "(2) 咨询服务采购：Section 4 含 TECH-1~6、FIN-1~4、ELI-1/2 表格。"
+                        "请根据实际项目类型匹配对应的表格体系。"
+                        "重点关注：BDS 对 ITB 的项目特定修改、评审标准和方法。引用关键指南时标注来源编号。"
                     )
                 sources_payload = [
                     {
@@ -360,8 +363,12 @@ async def stream_guidance(
                 else:
                     system_prompt = (
                         "你是一位专业的亚洲开发银行（ADB）招标文件分析助手，负责帮助用户深入理解招标文件内容。\n"
-                        "你精通 ADB 标准招标文件（SBD）结构，包括 Section 1-5、BDS、\n"
-                        "Section 4 标准表格（TECH-1~6, FIN-1~4, ELI-1/2）以及 Section 3 评审标准。\n"
+                        "你精通 ADB 标准招标文件（SBD）结构，包括 Section 1-5、BDS 和 Section 3 评审标准。\n"
+                        "ADB SBD Section 4 有两种表格体系：\n"
+                        "- 货物/工厂/工程采购：投标函（Letter of Technical/Price Bid）、价格表（Price Schedules）、"
+                        "资格表格（ELI/CON/FIN/EXP）\n"
+                        "- 咨询服务采购：技术建议书（TECH-1~6）、财务建议书（FIN-1~4）、资格声明（ELI-1/2）\n"
+                        "请根据实际项目采购类型使用正确的表格体系。\n\n"
                         "招标文件通常为英文，请注意中英文术语对应关系，准确提取关键信息。\n"
                         "重要原则：BDS（Bid Data Sheet，投标资料表）是对ITB（Instructions to Bidders）\n"
                         "的项目特定修改，当BDS与ITB内容冲突时，必须以BDS为准。\n"
@@ -523,30 +530,55 @@ async def generate_checklist(
         emb_client = get_embedding_client()
 
         # Institution-specific seed queries & keywords
+        # Cover BOTH procurement types (Goods/Plant/Works + Consulting)
+        # since the LLM will determine the actual type from document content.
         if institution == "wb":
             seed_query = (
-                "documents required submission proposal contents technical financial "
-                "SPD qualification forms Section III IV environmental social framework"
+                "documents required submission bidding forms Section IV Section III "
+                "Letter of Bid Price Schedule qualification criteria ELI CON FIN EXP "
+                "Technical Proposal Financial Proposal TECH FIN forms SPD Data Sheet"
             )
             extra_keywords = [
+                # Goods/Works forms
+                "Letter of Bid", "Price Schedule", "Form ELI", "Form CON",
+                "Form FIN", "Form EXP", "Bid-Securing Declaration",
+                "Manufacturer's Authorization",
+                # Consulting forms
                 "Form TECH", "Form FIN", "SPD", "Data Sheet",
+                # Common
                 "Section III", "Section IV", "qualification",
-                "ESF", "Labor Management", "PPSD",
+                "ESF", "Labor Management", "ESMP",
             ]
-            directed_section_types = ["part_2_requirements", "section_5_tos", "section_4_forms"]
+            section4_query = (
+                "Section IV Bidding Forms Letter of Bid Price Schedule "
+                "qualification forms ELI CON FIN EXP TECH"
+            )
         else:
-            # ADB (default)
+            # ADB (default) — cover Goods/Plant/Works + Consulting
             seed_query = (
-                "documents required submission proposal contents technical financial "
-                "ELI FIN TECH standard forms Section 4 Section 3 BDS"
+                "documents required submission bidding forms standard forms "
+                "Section 4 Section 3 BDS ITB Letter of Bid Price Schedule "
+                "qualification criteria ELI CON FIN EXP "
+                "Technical Proposal Financial Proposal TECH FIN forms"
             )
             extra_keywords = [
+                # Goods/Plant/Works forms
+                "Letter of Technical Bid", "Letter of Price Bid", "Price Schedule",
+                "Form ELI", "Form CON", "Form FIN", "Form EXP",
+                "Manufacturer's Authorization", "Bid-Securing Declaration",
+                "qualification criteria", "bidding forms",
+                # Consulting forms
                 "TECH-1", "TECH-2", "TECH-3", "TECH-4", "TECH-5", "TECH-6",
-                "FIN-1", "FIN-2", "FIN-3", "ELI-1", "ELI-2",
-                "Section 4", "Section 3", "BDS",
+                "FIN-1", "FIN-2", "FIN-3", "FIN-4", "ELI-1", "ELI-2",
+                # Common
+                "Section 4", "Section 3", "BDS", "ITB",
             ]
-            directed_section_types = ["section_4_forms", "section_3", "section_2_bds"]
+            section4_query = (
+                "Section 4 Bidding Forms Letter of Bid Price Schedule "
+                "qualification forms ELI CON FIN EXP TECH"
+            )
 
+        # ── Vector search #1: broad seed query ────────────────────
         emb_result = await emb_client.embed_text(seed_query)
 
         try:
@@ -554,12 +586,33 @@ async def generate_checklist(
                 db=db,
                 project_id=str(project_id),
                 query_embedding=emb_result.embedding,
-                top_k=12,
+                top_k=24,
             )
         except Exception as exc:
             logger.warning("bid_document_search failed, proceeding without vector results: %s", exc)
             vector_results = []
 
+        # ── Vector search #2: Section 4 / forms focused ──────────
+        try:
+            s4_emb = await emb_client.embed_text(section4_query)
+            s4_results = await bid_document_search(
+                db=db,
+                project_id=str(project_id),
+                query_embedding=s4_emb.embedding,
+                top_k=20,
+            )
+        except Exception as exc:
+            logger.warning("Section 4 vector search failed: %s", exc)
+            s4_results = []
+
+        seen_ids: set[str] = {r["id"] for r in vector_results}
+        merged = list(vector_results)
+        for r in s4_results:
+            if r["id"] not in seen_ids:
+                seen_ids.add(r["id"])
+                merged.append(r)
+
+        # ── Keyword search ────────────────────────────────────────
         keywords = [
             *_extract_keywords(seed_query),
             *extra_keywords,
@@ -577,30 +630,12 @@ async def generate_checklist(
             db=db,
             project_id=str(project_id),
             keywords=keywords,
-            top_k=12,
+            top_k=24,
         )
-        seen_ids: set[str] = {r["id"] for r in vector_results}
-        merged = list(vector_results)
         for r in kw_results:
             if r["id"] not in seen_ids:
                 seen_ids.add(r["id"])
                 merged.append(r)
-
-        # Section-type directed search for institution-specific form sections
-        for sq in [seed_query]:
-            directed_emb = await emb_client.embed_text(sq)
-            directed_results = await bid_document_search(
-                db=db,
-                project_id=str(project_id),
-                query_embedding=directed_emb.embedding,
-                section_types=directed_section_types,
-                top_k=10,
-                score_threshold=0.2,
-            )
-            for r in directed_results:
-                if r["id"] not in seen_ids:
-                    seen_ids.add(r["id"])
-                    merged.append(r)
 
         if not merged:
             logger.warning("No bid document chunks found for project %s", project_id)
@@ -626,7 +661,7 @@ async def generate_checklist(
         messages = [LLMMessage(role="user", content=prompt)]
 
         raw_json = ""
-        async for chunk in llm.chat_stream(messages, max_tokens=4000):
+        async for chunk in llm.chat_stream(messages, max_tokens=6000):
             raw_json += chunk
 
         # Parse JSON — strip accidental markdown fences

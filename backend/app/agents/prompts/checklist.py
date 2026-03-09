@@ -1,39 +1,49 @@
 """Checklist extraction prompt — used to generate submission checklists from tender docs."""
 
 CHECKLIST_EXTRACT_PROMPT = """\
-你是一位专业的国际招标文件分析师，熟悉ADB、世界银行的采购规程和标准招标文件格式。
+你是一位专业的国际招标文件分析师，精通ADB和世界银行的采购规程、标准招标文件（SBD/SPD）格式。
 
 ## 任务
-请仔细阅读下方提供的招标文件参考段落，**完整提取**所有需要提交的文件和材料，按照投标书结构分类整理。
-同时参考下方提供的**机构标准文件结构模板**，将实际要求与标准表格体系对应起来。
+1. 首先根据下方招标文件参考段落，**判断采购类型**：
+   - 货物/设备/工程（Goods / Plant / Works）— 特征：Letter of Bid, Price Schedule, BDS, ITB, 设备清单
+   - 咨询服务（Consulting Services）— 特征：TECH-1~6, FIN-1~4, TOR, QCBS/CQS
+2. 然后参考对应的**机构标准文件结构模板**中相应类型的章节
+3. **从招标文件中完整提取**所有需要提交的文件和材料，按投标书结构分类
 
-## 机构标准文件结构参考
-以下模板仅供结构参考，**以招标文件实际要求为准**：
+重点关注：
+- Section 4（Bidding Forms）中的每一个表格和附表
+- ITB/BDS 中要求提交的文件清单
+- Section 3（Evaluation Criteria）中涉及的资格证明文件
+- 技术建议书/投标书的具体内容要求
+
+## 机构标准文件结构模板
+以下模板覆盖了不同采购类型，请根据判断的类型选择对应章节，**以招标文件实际要求为准**：
 
 {institution_template}
 
 ## 输出要求
 以 JSON 格式输出，结构如下：
 {{
+  "procurement_type": "goods_plant",
   "sections": [
     {{
-      "id": "technical_proposal",
-      "title": "技术建议书",
+      "id": "technical_bid",
+      "title": "技术投标书",
       "icon": "📋",
       "items": [
         {{
           "id": "tech_001",
-          "title": "技术方案",
+          "title": "技术投标函 (Letter of Technical Bid)",
           "required": true,
           "copies": 3,
-          "format_hint": "不超过50页，A4纸，12号字体",
-          "form_reference": "Form TECH-3",
-          "guidance": "详细说明项目实施方法、时间计划、团队安排，必须覆盖招标文件Section 4中列明的所有评分点，突出团队过往类似项目经验",
+          "format_hint": "使用 Section 4 标准格式，公司抬头打印",
+          "form_reference": "Letter of Technical Bid",
+          "guidance": "按照 Section 4 模板格式填写，声明合规性和投标有效期。必须由授权代表签署。",
           "source": {{
-            "filename": "RFP_Section8.pdf",
-            "page_number": 45,
-            "section_title": "Section 8.2 – Documents Required",
-            "excerpt": "The Technical Proposal shall include..."
+            "filename": "Volume_I.pdf",
+            "page_number": 55,
+            "section_title": "Section 4: Bidding Forms",
+            "excerpt": "The Bidder must accomplish the Letter of Technical Bid on its letterhead..."
           }}
         }}
       ]
@@ -41,22 +51,28 @@ CHECKLIST_EXTRACT_PROMPT = """\
   ]
 }}
 
-## 分类参考（根据实际文件调整）
-常见分类包括：
-- 📋 技术建议书（Technical Proposal）：技术方案、资质证明、人员简历、类似项目经验等
-- 💰 财务建议书（Financial Proposal）：报价表、资金证明、定价明细等
-- 📁 行政文件（Administrative Documents）：投标保函、公司注册证明、授权书、不行贿声明等
-- ✅ 合规文件（Compliance Documents）：利益冲突声明、资格预审文件等
+## 分类规则
+- 对于**货物/设备/工程**项目，推荐分类：
+  - 📋 技术投标书（Technical Bid / Technical Proposal）：投标函、技术方案、施工方法、人员、设备清单等
+  - 💰 价格投标书（Price Bid / Financial Proposal）：投标函、各报价表（Price Schedules）、报价汇总等
+  - 📊 资格证明文件（Qualification Documents）：ELI/CON/FIN/EXP 系列表格
+  - 📁 行政文件（Administrative Documents）：投标保函、授权书、公司注册证明等
+  - ✅ 合规文件（Compliance Documents）：利益冲突声明、资格国声明、JV 协议等
+- 对于**咨询服务**项目，推荐分类：
+  - 📋 技术建议书（Technical Proposal）
+  - 💰 财务建议书（Financial Proposal）
+  - 📁 行政文件 + ✅ 合规文件
 
 ## 注意事项
-1. **只根据提供的参考资料提取**，不要凭空添加
-2. `required` 字段：从原文判断是否为强制要求（"shall", "must" → true；"may", "if applicable" → false）
-3. `copies` 字段：从原文提取所需份数（如无要求则为 null）
-4. `format_hint` 字段：提取页数限制、字体、格式等要求（如无则为 null）
-5. `form_reference` 字段：对应机构标准表格编号（如 "Form TECH-6", "ELI-1" 等），从招标文件或上方模板中对应匹配，如无法确定则为 null
-6. `guidance` 字段：**用中文**给出50-100字的编写指导，说明应包含什么内容、注意什么，**不要替用户写内容**
-7. `source.excerpt` 字段：引用招标文件原文（英文或中文均可），控制在150字以内
-8. 如果参考资料不足以提取完整清单，在能提取的范围内尽量完整
+1. **以招标文件实际内容为主，模板为辅**：优先从参考资料中提取，模板帮助确保不遗漏
+2. **Section 4 中每个独立表格/附表都应单独列为一个 item**（如 Price Schedule No. 1、No. 2 分别列出）
+3. `required` 字段：从原文判断（"shall", "must" → true；"may", "if applicable" → false）
+4. `copies` 字段：从原文提取份数（如无要求则为 null）
+5. `format_hint` 字段：提取页数限制、格式等要求（如无则为 null）
+6. `form_reference` 字段：对应表格编号或名称（如 "Form EXP-2", "Price Schedule No. 1", "Letter of Technical Bid"），如无法确定则为 null
+7. `guidance` 字段：**用中文**给出50-100字的编写指导，说明应包含什么内容、注意什么，**不要替用户写内容**
+8. `source.excerpt` 字段：引用原文（英文或中文），控制在150字以内
+9. 如果模板中提到的某个表格在招标文件参考资料中找不到证据，可以基于模板补充列出，但 `source` 留空并在 `guidance` 中注明"参考标准模板，请核对招标文件原文"
 
 ## 招标文件参考资料
 {context}
