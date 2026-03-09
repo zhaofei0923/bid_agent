@@ -5,6 +5,7 @@ import { memo } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
@@ -67,63 +68,103 @@ export const HeroExecutiveSection = memo(function HeroExecutiveSection({
           <div className="landing-v2-panel relative overflow-hidden p-6 sm:p-8">
             <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(15,23,42,0.05),transparent_68%)]" />
 
+            {/* 顶部大卡：标书分析概览 */}
             <div className="landing-v2-card p-6 sm:p-7">
               <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-stone-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-stone-300" />
                 <span className="h-2.5 w-2.5 rounded-full bg-stone-200" />
-                <span className="h-2.5 w-2.5 rounded-full bg-stone-200" />
-                <span className="ml-auto h-8 w-24 rounded-full bg-stone-100" />
+                <span className="ml-auto flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  AI 分析中
+                </span>
               </div>
-              <div className="mt-8 h-4 w-24 rounded-full bg-stone-100" />
-              <div className="mt-4 h-6 w-4/5 rounded-full bg-stone-200" />
-              <div className="mt-3 h-4 w-3/5 rounded-full bg-stone-100" />
-              <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-3xl bg-stone-50 p-4">
-                  <div className="h-3 w-20 rounded-full bg-stone-200" />
-                  <div className="mt-3 h-5 w-16 rounded-full bg-stone-300" />
+
+              <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">
+                ADB · Loan 4231-IND
+              </p>
+              <p className="mt-2 text-base font-semibold text-slate-900">
+                供水基础设施改善项目顾问服务
+              </p>
+              <p className="mt-1.5 text-xs text-stone-500">Technical Assistance · India</p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-amber-50 px-4 py-4 ring-1 ring-amber-100">
+                  <p className="text-[11px] font-medium text-amber-700">资格匹配度</p>
+                  <p className="mt-2 text-2xl font-bold text-amber-600">86%</p>
+                  <p className="mt-0.5 text-[11px] text-amber-500">建议参与投标</p>
                 </div>
-                <div className="rounded-3xl bg-stone-50 p-4">
-                  <div className="h-3 w-24 rounded-full bg-stone-200" />
-                  <div className="mt-3 h-5 w-20 rounded-full bg-stone-300" />
+                <div className="rounded-2xl bg-stone-50 px-4 py-4 ring-1 ring-stone-100">
+                  <p className="text-[11px] font-medium text-stone-500">截止日期</p>
+                  <p className="mt-2 text-base font-semibold text-slate-800">2025·05·30</p>
+                  <p className="mt-0.5 text-[11px] text-stone-400">剩余 82 天</p>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-[0.92fr_1.08fr]">
+              {/* 左下卡：准备清单 */}
               <div className="landing-v2-card p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-100 text-slate-700">
-                  <ListChecks className="h-5 w-5" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-slate-700">
+                    <ListChecks className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700">准备清单</span>
                 </div>
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 space-y-3.5">
                   <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
-                    <span className="h-3 w-28 rounded-full bg-stone-200" />
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <Check className="h-3 w-3" />
+                    </span>
+                    <span className="text-xs text-slate-700">公司资质文件</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 rounded-full bg-stone-400" />
-                    <span className="h-3 w-20 rounded-full bg-stone-200" />
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    </span>
+                    <span className="text-xs text-slate-700">技术方案草稿</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 rounded-full bg-stone-300" />
-                    <span className="h-3 w-24 rounded-full bg-stone-200" />
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                      <span className="h-2 w-2 rounded-full bg-stone-300" />
+                    </span>
+                    <span className="text-xs text-stone-400">商务报价文件</span>
                   </div>
                 </div>
               </div>
 
+              {/* 右下卡：AI 要求提炼 */}
               <div className="rounded-[28px] border border-stone-200 bg-[rgba(248,244,238,0.9)] p-5 shadow-[0_24px_56px_-42px_rgba(15,23,42,0.12)]">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700">
-                  <ClipboardCheck className="h-5 w-5" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-700">
+                    <ClipboardCheck className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700">AI 要求提炼</span>
                 </div>
                 <div className="mt-5 space-y-3">
-                  <div className="rounded-3xl bg-white px-4 py-4">
-                    <div className="h-3 w-24 rounded-full bg-stone-200" />
-                    <div className="mt-3 h-3 w-full rounded-full bg-stone-100" />
-                    <div className="mt-2 h-3 w-5/6 rounded-full bg-stone-100" />
+                  <div className="rounded-2xl bg-white px-4 py-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-slate-700">关键资格要求</span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+                        3 项通过
+                      </span>
+                    </div>
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="h-2.5 w-full rounded-full bg-stone-100" />
+                      <div className="h-2.5 w-4/5 rounded-full bg-stone-100" />
+                    </div>
                   </div>
-                  <div className="rounded-3xl bg-white px-4 py-4">
-                    <div className="h-3 w-16 rounded-full bg-stone-200" />
-                    <div className="mt-3 h-3 w-4/5 rounded-full bg-stone-100" />
-                    <div className="mt-2 h-3 w-3/5 rounded-full bg-stone-100" />
+                  <div className="rounded-2xl bg-white px-4 py-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-slate-700">风险提示</span>
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-100">
+                        1 项待确认
+                      </span>
+                    </div>
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="h-2.5 w-5/6 rounded-full bg-stone-100" />
+                      <div className="h-2.5 w-3/5 rounded-full bg-stone-100" />
+                    </div>
                   </div>
                 </div>
               </div>
