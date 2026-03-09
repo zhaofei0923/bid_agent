@@ -1,14 +1,18 @@
 """Bid plan API routes — plan CRUD and task management."""
 
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import inspect as sa_inspect
+from pydantic import BaseModel
+from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import get_llm_client
+from app.core.exceptions import ConflictError
 from app.core.security import get_current_user
 from app.database import get_db
+from app.models.bid_plan import BidPlan
 from app.models.user import User
 from app.services.bid_plan_service import BidPlanService
 from app.services.project_service import ProjectService
@@ -24,6 +28,28 @@ def _orm_to_dict(obj: object) -> dict:
     }
 
 
+# ── Pydantic schemas for request bodies ──────────────────────────
+
+class TaskUpdateBody(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    category: str | None = None
+    priority: str | None = None
+    due_date: date | None = None
+    assignee: str | None = None
+    notes: str | None = None
+    sort_order: int | None = None
+    status: str | None = None
+    related_document: str | None = None
+    reference_page: int | None = None
+
+
+class ReorderBody(BaseModel):
+    task_ids: list[str]
+
+
+# ── Plan routes ──────────────────────────────────────────────────
+
 @router.get("/{project_id}/plan")
 async def get_plan(
     project_id: UUID,
@@ -36,7 +62,8 @@ async def get_plan(
 
     plan_svc = BidPlanService(db)
     try:
-        return await plan_svc.get_by_project(project_id)
+        plan = await plan_svc.get_by_project(project_id)
+        return _orm_to_dict(plan)
     except Exception:
         return None
 
@@ -56,6 +83,8 @@ async def create_or_update_plan(
     return await plan_svc.create_or_update(project_id, title=title)
 
 
+# ── Task routes ──────────────────────────────────────────────────
+
 @router.get("/{project_id}/plan/tasks")
 async def list_tasks(
     project_id: UUID,
@@ -71,7 +100,8 @@ async def list_tasks(
         plan = await plan_svc.get_by_project(project_id)
     except Exception:
         return []
-    return await plan_svc.list_tasks(plan.id)
+    tasks = await plan_svc.list_tasks(plan.id)
+    return [_orm_to_dict(t) for t in tasks]
 
 
 @router.post("/{project_id}/plan/tasks")
@@ -88,7 +118,26 @@ async def add_task(
 
     plan_svc = BidPlanService(db)
     plan = await plan_svc.get_by_project(project_id)
-    return await plan_svc.add_task(plan.id, title=title, description=description)
+    task = await plan_svc.add_task(plan.id, title=title, description=description)
+    return _orm_to_dict(task)
+
+
+@router.patch("/{project_id}/plan/tasks/{task_id}")
+async def update_task(
+    project_id: UUID,
+    task_id: UUID,
+    body: TaskUpdateBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update task fields (title, description, category, priority, due_date, etc.)."""
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    plan_svc = BidPlanService(db)
+    fields = body.model_dump(exclude_none=True)
+    task = await plan_svc.update_task(task_id, **fields)
+    return _orm_to_dict(task)
 
 
 @router.put("/{project_id}/plan/tasks/{task_id}/status")
@@ -104,7 +153,8 @@ async def update_task_status(
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    return await plan_svc.update_task_status(task_id, status)
+    task = await plan_svc.update_task_status(task_id, status)
+    return _orm_to_dict(task)
 
 
 @router.delete("/{project_id}/plan/tasks/{task_id}")
@@ -123,15 +173,44 @@ async def delete_task(
     return {"message": "Task deleted"}
 
 
+@router.post("/{project_id}/plan/reorder")
+async def reorder_tasks(
+    project_id: UUID,
+    body: ReorderBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reorder tasks by the given ID sequence."""
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    plan_svc = BidPlanService(db)
+    plan = await plan_svc.get_by_project(project_id)
+    await plan_svc.reorder_tasks(plan.id, [UUID(tid) for tid in body.task_ids])
+    return {"message": "Tasks reordered"}
+
+
+# ── AI generation (one-time only) ────────────────────────────────
+
 @router.post("/{project_id}/plan/generate")
 async def generate_plan(
     project_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate an AI bid preparation task plan from analysis results."""
+    """Generate an AI bid preparation task plan. Can only be called once per project."""
     project_svc = ProjectService(db)
     await project_svc.get_by_id(project_id, current_user.id)
+
+    # Check if AI plan already generated
+    result = await db.execute(
+        select(BidPlan).where(
+            BidPlan.project_id == project_id,
+            BidPlan.generated_by_ai.is_(True),
+        )
+    )
+    if result.scalar_one_or_none():
+        raise ConflictError("投标计划已通过 AI 生成，不可重复生成。请手动编辑已有计划。")
 
     llm_client = get_llm_client()
     plan_svc = BidPlanService(db)

@@ -4,14 +4,13 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import LLMClient
 from app.agents.skills.base import SkillContext
 from app.agents.skills.generate_plan import (
     GeneratePlan,
-    _build_analysis_summary,
     _extract_deadline,
 )
 from app.core.exceptions import NotFoundError
@@ -131,6 +130,46 @@ class BidPlanService:
         await self.db.delete(task)
         await self.db.commit()
 
+    async def update_task(
+        self,
+        task_id: UUID,
+        **fields: object,
+    ) -> BidPlanTask:
+        """Update arbitrary fields on a task."""
+        result = await self.db.execute(
+            select(BidPlanTask).where(BidPlanTask.id == task_id)
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            raise NotFoundError("BidPlanTask", str(task_id))
+
+        ALLOWED = {
+            "title", "description", "category", "priority",
+            "due_date", "assignee", "notes", "sort_order", "status",
+            "related_document", "reference_page",
+        }
+        for key, value in fields.items():
+            if key in ALLOWED and value is not None:
+                setattr(task, key, value)
+
+        task.updated_at = datetime.now(UTC)
+        if fields.get("status") == "completed":
+            task.completed_at = datetime.now(UTC)
+
+        await self.db.commit()
+        await self.db.refresh(task)
+        return task
+
+    async def reorder_tasks(self, plan_id: UUID, task_ids: list[UUID]) -> None:
+        """Reorder tasks by the given ID sequence."""
+        for idx, tid in enumerate(task_ids):
+            await self.db.execute(
+                update(BidPlanTask)
+                .where(BidPlanTask.id == tid, BidPlanTask.plan_id == plan_id)
+                .values(sort_order=idx + 1, updated_at=datetime.now(UTC))
+            )
+        await self.db.commit()
+
     async def generate_ai_plan(
         self,
         project_id: UUID,
@@ -138,8 +177,8 @@ class BidPlanService:
     ) -> tuple[BidPlan, list[BidPlanTask]]:
         """Generate an AI-powered task plan from existing bid analysis results.
 
-        Returns (plan, tasks).  Deletes previous AI-generated tasks before
-        inserting the freshly generated ones; manually added tasks are kept.
+        Returns (plan, tasks).  Deletes all previous tasks before
+        inserting the freshly generated ones.
         """
         # Fetch project to get institution
         proj_result = await self.db.execute(
@@ -155,20 +194,27 @@ class BidPlanService:
         )
         analysis = analysis_result.scalar_one_or_none()
 
-        analysis_summary = _build_analysis_summary(analysis) if analysis else ""
         deadline = _extract_deadline(analysis.key_dates if analysis else None) or "未知"
         institution = project.institution or "adb"
+
+        # Build structured context from analysis dimensions
+        params: dict = {
+            "deadline": deadline,
+            "institution": institution,
+            "key_dates": getattr(analysis, "key_dates", None),
+            "qualification_requirements": getattr(analysis, "qualification_requirements", None),
+            "evaluation_criteria": getattr(analysis, "evaluation_criteria", None),
+            "submission_checklist": getattr(analysis, "submission_checklist", None),
+            "commercial_terms": getattr(analysis, "commercial_terms", None),
+            "risk_assessment": getattr(analysis, "risk_assessment", None),
+        }
 
         # Call GeneratePlan Skill
         ctx = SkillContext(
             project_id=project_id,
             db=self.db,
             llm_client=llm_client,
-            parameters={
-                "analysis_summary": analysis_summary,
-                "deadline": deadline,
-                "institution": institution,
-            },
+            parameters=params,
         )
         skill = GeneratePlan()
         skill_result = await skill.execute(ctx)
@@ -223,11 +269,13 @@ class BidPlanService:
                 plan_id=plan.id,
                 title=task_data.get("title", f"任务 {i + 1}"),
                 description=task_data.get("description", ""),
-                category=task_data.get("category", "administrative"),
+                category=task_data.get("category", "documents"),
                 priority=task_data.get("priority", "medium"),
                 sort_order=task_data.get("sort_order", i + 1),
                 status="pending",
                 due_date=due_date,
+                related_document=task_data.get("related_document"),
+                reference_page=task_data.get("reference_page"),
             )
             self.db.add(task)
             new_tasks.append(task)

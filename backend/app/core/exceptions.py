@@ -89,3 +89,13 @@ class ExternalServiceError(BidAgentException):
 
     code = "EXTERNAL_SERVICE_ERROR"
     status_code = 502
+
+
+class ConflictError(BidAgentException):
+    """Resource conflict (409)."""
+
+    code = "CONFLICT"
+    status_code = 409
+
+    def __init__(self, message: str = "Resource conflict") -> None:
+        super().__init__(message)

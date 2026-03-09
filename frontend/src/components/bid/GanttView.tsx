@@ -3,12 +3,16 @@
 import { forwardRef, useMemo } from "react"
 import type { BidPlanTask } from "@/types/bid"
 
-// ── 分类配色（与 PlanStep 保持一致） ──────────────────────────────
+// ── 分类配色（8 类，与 PlanStep 保持一致） ──────────────────────────
 const CATEGORY_BAR: Record<string, { bar: string; bg: string; label: string }> = {
-  compliance:     { bar: "bg-red-400",    bg: "bg-red-50",    label: "合规" },
-  technical:      { bar: "bg-blue-400",   bg: "bg-blue-50",   label: "技术" },
-  commercial:     { bar: "bg-amber-400",  bg: "bg-amber-50",  label: "商务" },
-  administrative: { bar: "bg-slate-400",  bg: "bg-slate-50",  label: "行政" },
+  documents:  { bar: "bg-slate-400",   bg: "bg-slate-50",   label: "文件资料" },
+  team:       { bar: "bg-violet-400",  bg: "bg-violet-50",  label: "团队组建" },
+  technical:  { bar: "bg-blue-400",    bg: "bg-blue-50",    label: "技术方案" },
+  experience: { bar: "bg-cyan-400",    bg: "bg-cyan-50",    label: "业绩经验" },
+  financial:  { bar: "bg-amber-400",   bg: "bg-amber-50",   label: "财务报价" },
+  compliance: { bar: "bg-red-400",     bg: "bg-red-50",     label: "合规审查" },
+  submission: { bar: "bg-emerald-400", bg: "bg-emerald-50", label: "提交装订" },
+  review:     { bar: "bg-rose-400",    bg: "bg-rose-50",    label: "评审检查" },
 }
 
 const DEFAULT_BAR = { bar: "bg-gray-300", bg: "bg-gray-50", label: "其他" }

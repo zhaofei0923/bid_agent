@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useRef, useState } from "react"
+import { memo, useCallback, useRef, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { bidPlanService } from "@/services/bid-plan"
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTranslations } from "next-intl"
-import type { BidPlanTask } from "@/types/bid"
+import type { BidPlan, BidPlanTask } from "@/types/bid"
 import { GanttView } from "./GanttView"
 import { TaskDetailDialog } from "./TaskDetailDialog"
 
@@ -21,10 +21,14 @@ interface PlanStepProps {
 type ViewMode = "list" | "gantt"
 
 const CATEGORY_STYLES: Record<string, { label: string; cls: string }> = {
-  compliance: { label: "合规", cls: "bg-red-100 text-red-700" },
-  technical: { label: "技术", cls: "bg-blue-100 text-blue-700" },
-  commercial: { label: "商务", cls: "bg-amber-100 text-amber-700" },
-  administrative: { label: "行政", cls: "bg-slate-100 text-slate-600" },
+  documents:  { label: "文件资料", cls: "bg-slate-100 text-slate-600" },
+  team:       { label: "团队组建", cls: "bg-violet-100 text-violet-700" },
+  technical:  { label: "技术方案", cls: "bg-blue-100 text-blue-700" },
+  experience: { label: "业绩经验", cls: "bg-cyan-100 text-cyan-700" },
+  financial:  { label: "财务报价", cls: "bg-amber-100 text-amber-700" },
+  compliance: { label: "合规审查", cls: "bg-red-100 text-red-700" },
+  submission: { label: "提交装订", cls: "bg-emerald-100 text-emerald-700" },
+  review:     { label: "评审检查", cls: "bg-rose-100 text-rose-700" },
 }
 
 const PRIORITY_STYLES: Record<string, { label: string; cls: string }> = {
@@ -36,7 +40,9 @@ const PRIORITY_STYLES: Record<string, { label: string; cls: string }> = {
 // ── CSV 导出 ──────────────────────────────────────────────────────
 function exportCsv(tasks: BidPlanTask[], filename = "bid_tasks.csv") {
   const CATEGORY_CN: Record<string, string> = {
-    compliance: "合规", technical: "技术", commercial: "商务", administrative: "行政",
+    documents: "文件资料", team: "团队组建", technical: "技术方案",
+    experience: "业绩经验", financial: "财务报价", compliance: "合规审查",
+    submission: "提交装订", review: "评审检查",
   }
   const PRIORITY_CN: Record<string, string> = { high: "高", medium: "中", low: "低" }
   const STATUS_CN: Record<string, string> = {
@@ -88,9 +94,10 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
   const [selectedTask, setSelectedTask] = useState<BidPlanTask | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
   const ganttRef = useRef<HTMLDivElement>(null)
 
-  const { isLoading: planLoading } = useQuery({
+  const { data: plan, isLoading: planLoading } = useQuery({
     queryKey: ["bid-plan", projectId],
     queryFn: () => bidPlanService.getByProject(projectId),
     enabled: !!projectId,
@@ -103,6 +110,8 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
     enabled: !!projectId,
     retry: false,
   })
+
+  const alreadyGenerated = !!(plan as BidPlan | null)?.generated_by_ai
 
   const generateMutation = useMutation({
     mutationFn: () => bidPlanService.generatePlan(projectId),
@@ -134,6 +143,22 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
     },
   })
 
+  const updateFieldsMutation = useMutation({
+    mutationFn: ({ taskId, fields }: { taskId: string; fields: Record<string, unknown> }) =>
+      bidPlanService.updateTaskFields(projectId, taskId, fields),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bid-plan-tasks", projectId] })
+    },
+  })
+
+  const reorderMutation = useMutation({
+    mutationFn: (taskIds: string[]) =>
+      bidPlanService.reorderTasks(projectId, taskIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bid-plan-tasks", projectId] })
+    },
+  })
+
   const handleNext = () => {
     completeStep("plan")
     goToStep("writing")
@@ -146,8 +171,28 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
 
   const handleStatusChange = (taskId: string, status: string) => {
     updateTaskMutation.mutate({ taskId, status })
-    // 乐观更新 selectedTask 显示
     setSelectedTask((prev) => prev ? { ...prev, status: status as BidPlanTask["status"] } : prev)
+  }
+
+  const handleSaveTask = useCallback(
+    (taskId: string, fields: Record<string, unknown>) => {
+      updateFieldsMutation.mutate({ taskId, fields })
+      // optimistic update for the dialog
+      setSelectedTask((prev) => prev && prev.id === taskId ? { ...prev, ...fields } as BidPlanTask : prev)
+    },
+    [updateFieldsMutation],
+  )
+
+  // ── Drag & Drop (list view) ──
+  const handleDragStart = (idx: number) => setDragIdx(idx)
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault()
+  const handleDrop = (targetIdx: number) => {
+    if (dragIdx === null || dragIdx === targetIdx) return
+    const ordered = [...taskList]
+    const [moved] = ordered.splice(dragIdx, 1)
+    ordered.splice(targetIdx, 0, moved)
+    reorderMutation.mutate(ordered.map((t) => t.id))
+    setDragIdx(null)
   }
 
   const handleExportCsv = () => {
@@ -252,21 +297,27 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
             )}
           </div>
 
-          {/* AI 生成 */}
-          <Button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="shrink-0"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                {t("plan.generating")}
-              </>
-            ) : (
-              <>✨ {t("plan.generateBtn")}</>
-            )}
-          </Button>
+          {/* AI 生成 — 仅限一次 */}
+          {alreadyGenerated ? (
+            <span className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500">
+              ✅ 已由 AI 生成
+            </span>
+          ) : (
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="shrink-0"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  {t("plan.generating")}
+                </>
+              ) : (
+                <>✨ {t("plan.generateBtn")}</>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -274,13 +325,20 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         const err = generateMutation.error as { code?: string; response?: { status?: number } } | null
         const isTimeout = err?.code === "ECONNABORTED"
         const isAuth = err?.response?.status === 401
+        const isConflict = err?.response?.status === 409
         return (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {isAuth
-              ? "登录已过期，请重新登录后再试"
-              : isTimeout
-                ? "AI 生成超时（通常需要 30-60 秒），请稍后重试"
-                : "AI 生成失败，请稍后重试"}
+          <div className={`rounded-lg border px-4 py-3 text-sm ${
+            isConflict
+              ? "border-amber-200 bg-amber-50 text-amber-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}>
+            {isConflict
+              ? "投标计划已由 AI 生成，不可重复生成。请手动编辑已有计划。"
+              : isAuth
+                ? "登录已过期，请重新登录后再试"
+                : isTimeout
+                  ? "AI 生成超时（通常需要 30-60 秒），请稍后重试"
+                  : "AI 生成失败，请稍后重试"}
           </div>
         )
       })()}
@@ -303,13 +361,19 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
           <CardContent>
             {taskList.length > 0 ? (
               <div className="space-y-2">
-                {taskList.map((task) => {
+                {taskList.map((task, idx) => {
                   const catStyle = CATEGORY_STYLES[task.category ?? ""] ?? null
                   const priStyle = PRIORITY_STYLES[task.priority ?? ""] ?? null
                   return (
                     <div
                       key={task.id}
-                      className="flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 hover:border-slate-200 hover:bg-slate-100/50 transition-colors"
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(idx)}
+                      className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 hover:border-slate-200 hover:bg-slate-100/50 transition-colors ${
+                        dragIdx === idx ? "opacity-50" : ""
+                      }`}
                       onClick={() => handleTaskClick(task)}
                     >
                       <div className="flex min-w-0 items-start gap-3">
@@ -418,7 +482,8 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onStatusChange={handleStatusChange}
-        isPending={updateTaskMutation.isPending}
+        onSave={handleSaveTask}
+        isPending={updateTaskMutation.isPending || updateFieldsMutation.isPending}
       />
 
       <div className="flex justify-end">

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -7,33 +8,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import type { BidPlanTask } from "@/types/bid"
+import { Input } from "@/components/ui/input"
+import type { BidPlanTask, TaskCategory } from "@/types/bid"
 
-const CATEGORY_LABELS: Record<string, string> = {
-  compliance:     "合规",
-  technical:      "技术",
-  commercial:     "商务",
-  administrative: "行政",
-}
+const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
+  { value: "documents",  label: "文件资料" },
+  { value: "team",       label: "团队组建" },
+  { value: "technical",  label: "技术方案" },
+  { value: "experience", label: "业绩经验" },
+  { value: "financial",  label: "财务报价" },
+  { value: "compliance", label: "合规审查" },
+  { value: "submission", label: "提交装订" },
+  { value: "review",     label: "评审检查" },
+]
 
 const CATEGORY_CLS: Record<string, string> = {
-  compliance:     "bg-red-100 text-red-700",
-  technical:      "bg-blue-100 text-blue-700",
-  commercial:     "bg-amber-100 text-amber-700",
-  administrative: "bg-slate-100 text-slate-600",
+  documents:  "bg-slate-100 text-slate-600",
+  team:       "bg-violet-100 text-violet-700",
+  technical:  "bg-blue-100 text-blue-700",
+  experience: "bg-cyan-100 text-cyan-700",
+  financial:  "bg-amber-100 text-amber-700",
+  compliance: "bg-red-100 text-red-700",
+  submission: "bg-emerald-100 text-emerald-700",
+  review:     "bg-rose-100 text-rose-700",
 }
 
-const PRIORITY_LABELS: Record<string, string> = {
-  high:   "高优先",
-  medium: "中优先",
-  low:    "低优先",
-}
-
-const PRIORITY_CLS: Record<string, string> = {
-  high:   "bg-rose-50 text-rose-600 border border-rose-200",
-  medium: "bg-yellow-50 text-yellow-600 border border-yellow-200",
-  low:    "bg-green-50 text-green-600 border border-green-200",
-}
+const PRIORITY_OPTIONS = [
+  { value: "high",   label: "高优先" },
+  { value: "medium", label: "中优先" },
+  { value: "low",    label: "低优先" },
+]
 
 const STATUS_LIST = [
   { value: "pending",     label: "待处理",  cls: "border-yellow-300 text-yellow-700 hover:bg-yellow-50" },
@@ -46,6 +50,7 @@ interface TaskDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onStatusChange: (taskId: string, status: string) => void
+  onSave?: (taskId: string, fields: Record<string, unknown>) => void
   isPending?: boolean
 }
 
@@ -54,71 +59,136 @@ export function TaskDetailDialog({
   open,
   onOpenChange,
   onStatusChange,
+  onSave,
   isPending = false,
 }: TaskDetailDialogProps) {
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [category, setCategory] = useState<string>("")
+  const [priority, setPriority] = useState<string>("")
+  const [dueDate, setDueDate] = useState("")
+  const [assignee, setAssignee] = useState("")
+  const [notes, setNotes] = useState("")
+
+  // Sync form when task changes
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title ?? "")
+      setDescription(task.description ?? "")
+      setCategory(task.category ?? "")
+      setPriority(task.priority ?? "")
+      setDueDate(task.due_date ?? "")
+      setAssignee(task.assigned_to ?? "")
+      setNotes(task.notes ?? "")
+    }
+  }, [task])
+
   if (!task) return null
 
-  const catLabel = CATEGORY_LABELS[task.category ?? ""] ?? task.category ?? "—"
-  const catCls   = CATEGORY_CLS[task.category ?? ""] ?? "bg-gray-100 text-gray-600"
-  const priLabel = PRIORITY_LABELS[task.priority ?? ""] ?? task.priority ?? "—"
-  const priCls   = PRIORITY_CLS[task.priority ?? ""] ?? "bg-gray-50 text-gray-500 border border-gray-200"
+  const catCls = CATEGORY_CLS[task.category ?? ""] ?? "bg-gray-100 text-gray-600"
+
+  const handleSave = () => {
+    if (!onSave) return
+    onSave(task.id, {
+      title: title.trim() || task.title,
+      description: description || null,
+      category: category || null,
+      priority: priority || null,
+      due_date: dueDate || null,
+      assigned_to: assignee || null,
+      notes: notes || null,
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{task.title}</DialogTitle>
+          <DialogTitle>编辑任务</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 分类 & 优先级 */}
-          <div className="flex flex-wrap gap-2">
-            <span className={`rounded px-2 py-0.5 text-xs font-medium ${catCls}`}>
-              {catLabel}
-            </span>
-            <span className={`rounded px-2 py-0.5 text-xs font-medium ${priCls}`}>
-              {priLabel}
-            </span>
-            <span className={`ml-auto rounded px-2 py-0.5 text-xs font-medium ${
-              task.status === "completed"
-                ? "bg-green-100 text-green-700"
-                : task.status === "in_progress"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-yellow-100 text-yellow-700"
-            }`}>
-              {task.status === "completed" ? "已完成" : task.status === "in_progress" ? "进行中" : "待处理"}
-            </span>
+          {/* 任务名称 */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">任务名称</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
-          {/* 详细描述 */}
-          {task.description ? (
+          {/* 任务说明 */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">任务说明</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+          </div>
+
+          {/* 分类 & 优先级 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">分类</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              >
+                <option value="">未分类</option>
+                {CATEGORY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">优先级</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              >
+                <option value="">未设置</option>
+                {PRIORITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 截止日期 & 负责人 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">截止日期</label>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">负责人</label>
+              <Input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="输入负责人" />
+            </div>
+          </div>
+
+          {/* 备注 */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">备注</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              placeholder="补充备注信息"
+            />
+          </div>
+
+          {/* 关联文件信息（只读展示） */}
+          {(task.related_document || task.reference_page) && (
             <div className="rounded-lg bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs font-semibold text-slate-500">任务说明</p>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                {task.description}
+              <p className="mb-1 text-xs font-semibold text-slate-500">关联招标文件</p>
+              <p className="text-sm text-slate-700">
+                {task.related_document ?? "—"}
+                {task.reference_page ? ` (第 ${task.reference_page} 页)` : ""}
               </p>
             </div>
-          ) : (
-            <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-400">
-              暂无详细说明
-            </div>
           )}
-
-          {/* 元信息 */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            {task.due_date && (
-              <>
-                <span className="text-slate-500">截止日期</span>
-                <span className="font-medium text-slate-700">{task.due_date}</span>
-              </>
-            )}
-            {task.assigned_to && (
-              <>
-                <span className="text-slate-500">负责人</span>
-                <span className="font-medium text-slate-700">{task.assigned_to}</span>
-              </>
-            )}
-          </div>
 
           {/* 状态切换 */}
           <div>
@@ -142,10 +212,13 @@ export function TaskDetailDialog({
             </div>
           </div>
 
-          {/* 关闭按钮 */}
-          <div className="flex justify-end pt-1">
+          {/* 操作按钮 */}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              关闭
+              取消
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isPending}>
+              保存
             </Button>
           </div>
         </div>

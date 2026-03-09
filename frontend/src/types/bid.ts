@@ -31,11 +31,27 @@ export interface BidAnalysis {
 export interface BidPlan {
   id: string
   project_id: string
+  name: string | null
+  description: string | null
   outline: Record<string, unknown> | null
   strategy: Record<string, unknown> | null
+  generated_by_ai: boolean
+  total_tasks: number | null
+  completed_tasks: number | null
   tasks: BidPlanTask[]
   created_at: string
+  updated_at: string
 }
+
+export type TaskCategory =
+  | "documents"
+  | "team"
+  | "technical"
+  | "experience"
+  | "financial"
+  | "compliance"
+  | "submission"
+  | "review"
 
 export interface BidPlanTask {
   id: string
@@ -43,11 +59,14 @@ export interface BidPlanTask {
   title: string
   description: string | null
   status: "pending" | "in_progress" | "completed"
-  category: "compliance" | "technical" | "commercial" | "administrative" | null
+  category: TaskCategory | null
   priority: "high" | "medium" | "low" | null
   assigned_to: string | null
   due_date: string | null
   sort_order: number
+  notes: string | null
+  related_document: string | null
+  reference_page: number | null
 }
 
 export interface GuidanceRequest {
