@@ -22,6 +22,7 @@ interface BidWorkspaceState {
   isChatOpen: boolean
 
   setProject: (id: string, institution: string) => void
+  initSteps: (completed: BidStep[], current: BidStep) => void
   goToStep: (step: BidStep) => void
   completeStep: (step: BidStep) => void
   toggleChatPanel: () => void
@@ -52,6 +53,9 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
             completedSteps: [],
           }
     ),
+
+  initSteps: (completed, current) =>
+    set({ completedSteps: completed, currentStep: current }),
 
   goToStep: (step) =>
     set((s) => {
