@@ -146,20 +146,20 @@ function QualificationView({ data }: { data: Rec }) {
           <p className="mb-1 text-sm text-slate-800">{str(req.requirement)}</p>
           {/* Backward compat: old format used requirements array */}
           <BulletList items={arr(req.requirements) as string[]} />
-          {(arr(req.evidence_required) as string[]).length > 0 && (
+          {(arr(req.evidence_required) as string[]).length > 0 ? (
             <div className="mt-2 border-t border-slate-200 pt-2">
               <p className="mb-1 text-xs text-slate-400">所需证明文件</p>
               <BulletList items={arr(req.evidence_required) as string[]} />
             </div>
-          )}
-          {rec(req.self_check).question && (
+          ) : null}
+          {rec(req.self_check).question ? (
             <div className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-700">
               ☐ {str(rec(req.self_check).question)}
               {str(rec(req.self_check).guidance) && (
                 <span className="block mt-0.5 text-amber-600">{str(rec(req.self_check).guidance)}</span>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       ))}
       {implied.length > 0 && (
@@ -382,7 +382,7 @@ function KeyDatesView({ data }: { data: Rec }) {
           {summary.remaining_days_to_submission !== undefined && summary.remaining_days_to_submission !== null && (
             <div className="rounded bg-slate-50 p-2 text-center">
               <p className="text-2xl font-bold text-slate-800">
-                {summary.remaining_days_to_submission}
+                {num(summary.remaining_days_to_submission)}
               </p>
               <p className="text-xs text-slate-500">距截标剩余天数</p>
             </div>
@@ -830,16 +830,12 @@ const DECISION_STYLE: Record<
 function RiskView({ data }: { data: Rec }) {
   const recommend = rec(data.bid_recommendation)
   const decision = str(recommend.decision)
-  const confidence = num(recommend.confidence)
   const rationale = str(recommend.rationale)
   const strengths = arr(recommend.key_strengths) as string[]
   const weaknesses = arr(recommend.key_weaknesses) as string[]
   const conditions = arr(recommend.conditions) as string[]
   const dimensions = arr(data.risk_dimensions) as Rec[]
   const actionItems = arr(data.action_items) as Rec[]
-  const overallScore = num(data.overall_risk_score)
-  const winProb = rec(data.estimated_win_probability)
-
   const dStyle = DECISION_STYLE[decision] ?? {
     label: decision,
     cls: "text-slate-700",
@@ -1048,7 +1044,6 @@ function TechnicalView({ data }: { data: Rec }) {
   const scope = rec(data.project_scope)
   const deliverables = arr(data.deliverables) as Rec[]
   const standards = arr(data.technical_standards) as Rec[]
-  const sysReqs = arr(data.system_requirements) as Rec[]
   const personnel = arr(data.key_personnel) as Rec[]
   const risks = arr(data.risk_areas) as Rec[]
   const clarifications = arr(data.clarification_needed) as Rec[]
@@ -1181,7 +1176,6 @@ function TechnicalStrategyView({ data }: { data: Rec }) {
   const structure = arr(framework.recommended_structure) as Rec[]
   const scoring = arr(data.scoring_strategy) as Rec[]
   const differentiators = arr(data.differentiators) as Rec[]
-  const innovations = arr(data.innovation_opportunities) as Rec[]
   const riskPlan = arr(data.risk_mitigation_plan) as Rec[]
   const themes = arr(data.win_themes) as string[]
 
