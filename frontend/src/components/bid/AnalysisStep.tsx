@@ -310,11 +310,20 @@ export const AnalysisStep = memo(function AnalysisStep({
         </div>
       )}
 
-      {analysis && (
-        <div className="flex justify-end">
-          <Button onClick={handleNext}>{t("analysis.nextStep")}</Button>
-        </div>
-      )}
+      {analysis && (() => {
+        const dims = ANALYSIS_DIMENSIONS.map((d) => FIELD_MAP[d.key])
+        const completedCount = dims.filter(
+          (f) => {
+            const v = analysis[f] as Record<string, unknown> | null
+            return v && Object.keys(v).length > 0
+          }
+        ).length
+        return completedCount > 0 ? (
+          <div className="flex justify-end">
+            <Button onClick={handleNext}>{t("analysis.nextStep")}</Button>
+          </div>
+        ) : null
+      })()}
     </div>
   )
 })

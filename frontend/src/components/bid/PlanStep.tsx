@@ -552,9 +552,11 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
           document.body,
         )}
 
-      <div className="flex justify-end">
-        <Button onClick={handleNext}>{t("plan.nextStep")}</Button>
-      </div>
+      {tasks && tasks.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleNext}>{t("plan.nextStep")}</Button>
+        </div>
+      )}
     </div>
   )
 })

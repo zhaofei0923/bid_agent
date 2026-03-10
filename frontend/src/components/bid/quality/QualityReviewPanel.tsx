@@ -180,9 +180,11 @@ export const QualityReviewPanel = memo(function QualityReviewPanel({
         </>
       )}
 
-      <div className="flex justify-end">
-        <Button onClick={handleNext}>{t("quality.nextStep")}</Button>
-      </div>
+      {reviewResult && (
+        <div className="flex justify-end">
+          <Button onClick={handleNext}>{t("quality.nextStep")}</Button>
+        </div>
+      )}
     </div>
   )
 })

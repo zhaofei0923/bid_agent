@@ -145,11 +145,13 @@ export const OverviewStep = memo(function OverviewStep({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleNext} disabled={anyProcessing}>
-          {t("overview.nextStep")}
-        </Button>
-      </div>
+      {hasCombinedOverview && (
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleNext}>
+            {t("overview.nextStep")}
+          </Button>
+        </div>
+      )}
     </div>
   )
 })

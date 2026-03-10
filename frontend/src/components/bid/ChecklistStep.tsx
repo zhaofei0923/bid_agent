@@ -291,9 +291,11 @@ export const ChecklistStep = memo(function ChecklistStep({
       )}
 
       {/* ── Next step ── */}
-      <div className="flex justify-end">
-        <Button onClick={handleNext}>{t("checklist.nextStep")}</Button>
-      </div>
+      {checklist && checklist.sections.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleNext}>{t("checklist.nextStep")}</Button>
+        </div>
+      )}
     </div>
   )
 })

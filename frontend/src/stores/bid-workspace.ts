@@ -1,6 +1,16 @@
 import { create } from "zustand"
 import type { BidStep } from "@/types"
 
+const STEP_ORDER: BidStep[] = [
+  "upload",
+  "overview",
+  "analysis",
+  "plan",
+  "writing",
+  "review",
+  "tracking",
+]
+
 interface BidWorkspaceState {
   projectId: string | null
   institution: string | null
@@ -43,7 +53,16 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
           }
     ),
 
-  goToStep: (step) => set({ currentStep: step }),
+  goToStep: (step) =>
+    set((s) => {
+      const targetIdx = STEP_ORDER.indexOf(step)
+      const currentIdx = STEP_ORDER.indexOf(s.currentStep)
+      // Allow going back to completed/current steps, or forward only if previous step is completed
+      if (targetIdx <= currentIdx) return { currentStep: step }
+      const prevStep = STEP_ORDER[targetIdx - 1]
+      if (prevStep && s.completedSteps.includes(prevStep)) return { currentStep: step }
+      return {}
+    }),
 
   completeStep: (step) =>
     set((s) => ({
@@ -66,8 +85,16 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
       completedSteps: [],
     }),
 
-  // Legacy
-  setCurrentStep: (step) => set({ currentStep: step }),
+  // Legacy — same validation as goToStep
+  setCurrentStep: (step) =>
+    set((s) => {
+      const targetIdx = STEP_ORDER.indexOf(step)
+      const currentIdx = STEP_ORDER.indexOf(s.currentStep)
+      if (targetIdx <= currentIdx) return { currentStep: step }
+      const prevStep = STEP_ORDER[targetIdx - 1]
+      if (prevStep && s.completedSteps.includes(prevStep)) return { currentStep: step }
+      return {}
+    }),
   toggleChat: () =>
     set((s) => ({
       isChatOpen: !s.isChatOpen,
