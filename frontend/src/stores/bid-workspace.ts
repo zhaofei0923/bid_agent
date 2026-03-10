@@ -31,7 +31,17 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
   isChatPanelOpen: true,
   isChatOpen: true,
 
-  setProject: (id, institution) => set({ projectId: id, institution }),
+  setProject: (id, institution) =>
+    set((s) =>
+      s.projectId === id
+        ? { institution }
+        : {
+            projectId: id,
+            institution,
+            currentStep: "upload",
+            completedSteps: [],
+          }
+    ),
 
   goToStep: (step) => set({ currentStep: step }),
 
