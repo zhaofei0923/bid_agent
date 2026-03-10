@@ -735,9 +735,7 @@ def process_document(self, document_id: str) -> dict:
     """
     logger.info("Processing document %s", document_id)
     try:
-        result = asyncio.get_event_loop().run_until_complete(
-            _process_document(document_id)
-        )
+        result = asyncio.run(_process_document(document_id))
         logger.info("Document %s processed: %s", document_id, result)
         return result
     except Exception as exc:
@@ -756,7 +754,7 @@ def process_all_pending() -> list[str]:
             )
             return [str(row[0]) for row in result.all()]
 
-    pending_ids = asyncio.get_event_loop().run_until_complete(_find_pending())
+    pending_ids = asyncio.run(_find_pending())
     for doc_id in pending_ids:
         process_document.delay(doc_id)
 
@@ -850,9 +848,7 @@ def generate_combined_document_ai(self, project_id: str) -> dict:
     """Generate a unified AI overview across all processed documents of a project."""
     logger.info("Generating combined AI analysis for project %s", project_id)
     try:
-        result = asyncio.get_event_loop().run_until_complete(
-            _generate_combined_ai_analysis(project_id)
-        )
+        result = asyncio.run(_generate_combined_ai_analysis(project_id))
         logger.info("Combined AI analysis done for project %s: %s", project_id, result)
         return result
     except Exception as exc:
@@ -868,9 +864,7 @@ def generate_document_ai(self, document_id: str) -> dict:
     """
     logger.info("Generating AI analysis for document %s", document_id)
     try:
-        result = asyncio.get_event_loop().run_until_complete(
-            _analyze_document_from_db(document_id)
-        )
+        result = asyncio.run(_analyze_document_from_db(document_id))
         logger.info("AI analysis done for document %s: %s", document_id, result)
         return result
     except Exception as exc:
