@@ -5,38 +5,55 @@ from app.agents.skills.base import Skill, SkillContext, SkillResult
 SYSTEM_PROMPT = (
     "你是专业的多边发展银行投标分析师，精通 ADB Standard Bidding Documents。"
     "请逐条分析 BDS (Bid Data Sheet) 对 ITB (Instructions to Bidders) "
-    "标准条款的修改，判断每项修改的优先级和对投标人的影响。"
+    "标准条款的修改。对每一条 BDS 给出: ITB 原条款号 → 标准内容摘要 → "
+    "BDS 修改内容 → 修改影响分析 → 投标人行动项。"
 )
 
-ANALYSIS_PROMPT = """请分析以下 BDS (Bid Data Sheet) 的内容，逐条识别对标准条款的修改。
+ANALYSIS_PROMPT = """请逐条分析以下 BDS (Bid Data Sheet) 的内容，对每条 BDS 引用的 ITB 标准条款进行对照解读。
 
 === BDS 内容 ===
 {bid_context}
 
-=== 参考知识 (ADB 标准条款) ===
+=== ITB 标准条款参考 (知识库) ===
 {kb_context}
+
+分析要求:
+1. 对每一条 BDS 引用的 ITB 条款号，找出标准条款原文含义
+2. 分析 BDS 对该标准条款做了什么修改或补充
+3. 评估该修改对投标人的影响程度
+4. 给出投标人需要采取的具体行动
 
 请以 JSON 格式返回:
 {{
   "bds_modifications": [
     {{
-      "itb_clause": "ITB x.x",
       "bds_reference": "BDS x",
-      "standard_provision": "标准条款原文摘要",
-      "modification": "具体修改内容",
+      "itb_clause": "ITB x.x",
+      "itb_standard_content": "ITB 标准条款原文摘要（如知识库中有则引用，否则标注'标准条款待核实'）",
+      "bds_modification": "BDS 具体修改/补充内容",
+      "change_type": "override|supplement|specify|restrict|waive",
       "priority": "critical|high|medium|low",
-      "impact_on_bidder": "对投标人的影响说明",
-      "action_required": "投标人需要采取的行动"
+      "impact_analysis": "对投标人的影响详细说明",
+      "action_required": "投标人需要采取的具体行动",
+      "compliance_note": "合规注意事项"
     }}
   ],
-  "critical_changes_summary": "关键修改概述",
+  "critical_changes_summary": "关键修改概述（按重要程度排列的关键变化）",
   "compliance_checklist": [
     {{
       "item": "需满足的合规要求",
-      "bds_reference": "BDS x",
-      "status": "must_comply"
+      "bds_reference": "BDS x / ITB x.x",
+      "status": "must_comply",
+      "difficulty": "easy|moderate|challenging"
     }}
-  ]
+  ],
+  "statistics": {{
+    "total_bds_items": 0,
+    "critical_count": 0,
+    "high_count": 0,
+    "medium_count": 0,
+    "low_count": 0
+  }}
 }}
 """
 

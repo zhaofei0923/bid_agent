@@ -71,6 +71,41 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
         "section_types": ["section_2_bds", "part_3_contract"],
         "kb_queries": ["contract terms consulting services"],
     },
+    "executive": {
+        "doc_queries": [
+            "project name country funding source procurement method",
+            "invitation for bids contract overview",
+            "scope of work objective background",
+        ],
+        "section_types": ["section_1_itb", "section_2_bds"],
+        "kb_queries": [
+            "procurement method ICB NCB QCBS overview",
+        ],
+    },
+    "technical": {
+        "doc_queries": [
+            "technical specifications scope of work terms of reference",
+            "deliverables milestones implementation schedule",
+            "system requirements equipment standards",
+            "key personnel qualifications staffing",
+        ],
+        "section_types": ["part_2_requirements", "section_3", "section_2_bds"],
+        "kb_queries": [
+            "technical proposal requirements",
+            "terms of reference scope of services",
+        ],
+    },
+    "compliance": {
+        "doc_queries": [
+            "mandatory requirements must shall obligation",
+            "disqualification rejection grounds",
+            "eligibility criteria compliance",
+        ],
+        "section_types": ["section_1_itb", "section_2_bds", "section_3", "section_4_forms"],
+        "kb_queries": [
+            "bid compliance mandatory requirements",
+        ],
+    },
 }
 
 

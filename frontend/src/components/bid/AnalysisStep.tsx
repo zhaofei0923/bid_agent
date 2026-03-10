@@ -40,19 +40,31 @@ function _extractErrorMessage(error: unknown): string {
 
 // dim key → actual BidAnalysis field name
 const FIELD_MAP: Record<string, keyof BidAnalysis> = {
+  executive_summary: "executive_summary",
   qualification: "qualification_requirements",
   evaluation: "evaluation_criteria",
   key_dates: "key_dates",
-  bds_modification: "bds_modifications",
+  submission: "submission_checklist",
+  bds_analysis: "bds_modifications",
+  technical_requirements: "technical_requirements",
   methodology: "evaluation_methodology",
+  commercial: "commercial_terms",
+  technical_strategy: "technical_strategy",
+  compliance_matrix: "compliance_matrix",
 }
 
 const ANALYSIS_DIMENSIONS = [
+  { key: "executive_summary", icon: "🏢" },
+  { key: "key_dates", icon: "📅" },
   { key: "qualification", icon: "📋" },
   { key: "evaluation", icon: "📊" },
-  { key: "key_dates", icon: "📅" },
-  { key: "bds_modification", icon: "📝" },
+  { key: "submission", icon: "📦" },
+  { key: "bds_analysis", icon: "📝" },
+  { key: "technical_requirements", icon: "🔧" },
   { key: "methodology", icon: "🔬" },
+  { key: "commercial", icon: "💰" },
+  { key: "technical_strategy", icon: "🎯" },
+  { key: "compliance_matrix", icon: "✅" },
 ] as const
 
 // One-line summary shown in collapsed header
@@ -63,21 +75,32 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
   const n = (v: unknown) => (typeof v === "number" ? v : 0)
   const s = (v: unknown) => (typeof v === "string" ? v : "")
   switch (key) {
+    case "executive_summary": {
+      const scope = s(data.project_scope_summary)
+      const method = r(data.procurement_method)
+      return scope || s(method.type) || ""
+    }
     case "qualification":
       return `${a(data.qualification_requirements).length} 类资质要求`
     case "evaluation": {
-      const m = s(data.evaluation_method)
+      const em = r(data.evaluation_method)
       const tw = n(data.technical_weight)
+      const m = s(em.type) || s(data.evaluation_method)
       return m ? `${m} · 技术权重 ${tw}%` : tw > 0 ? `技术权重 ${tw}%` : ""
     }
     case "key_dates": {
       const d = a(data.key_dates)
-      const w = a(data.warnings)
-      return `${d.length} 个关键日期${w.length > 0 ? `，⚠️ ${w.length} 条预警` : ""}`
+      const urgency = r(data.urgency_assessment)
+      const level = s(urgency.level)
+      const urgencyLabel = level === "red" ? "🔴 紧急" : level === "yellow" ? "🟡 注意" : level === "green" ? "🟢 充裕" : ""
+      return `${d.length} 个关键日期${urgencyLabel ? ` · ${urgencyLabel}` : ""}`
     }
-    case "bds_modification": {
+    case "bds_analysis": {
       const mods = a(data.bds_modifications)
-      const hi = mods.filter(
+      const stats = r(data.statistics)
+      const critical = n(stats.critical_count)
+      const high = n(stats.high_count)
+      const hi = critical + high || mods.filter(
         (m) =>
           typeof m === "object" &&
           m !== null &&
@@ -85,10 +108,29 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
       ).length
       return `${mods.length} 条修改${hi > 0 ? `，${hi} 条高优先级` : ""}`
     }
+    case "technical_requirements": {
+      const deliverables = a(data.deliverables)
+      const personnel = a(data.key_personnel)
+      const parts = []
+      if (deliverables.length > 0) parts.push(`${deliverables.length} 项交付物`)
+      if (personnel.length > 0) parts.push(`${personnel.length} 个关键岗位`)
+      return parts.join(" · ") || ""
+    }
     case "methodology": {
       const em = r(data.evaluation_method)
       const sc = n(em.minimum_technical_score)
       return em.type ? `${s(em.type)} · 最低通过分 ${sc}` : ""
+    }
+    case "technical_strategy": {
+      const themes = a(data.win_themes)
+      return themes.length > 0 ? `${themes.length} 个核心中标主题` : ""
+    }
+    case "compliance_matrix": {
+      const summary = r(data.summary)
+      const mandatory = n(summary.total_mandatory)
+      const risk = s(summary.overall_compliance_risk)
+      const riskLabel = risk === "high" ? "🔴 高风险" : risk === "medium" ? "🟡 中风险" : risk === "low" ? "🟢 低风险" : ""
+      return mandatory > 0 ? `${mandatory} 项强制要求${riskLabel ? ` · ${riskLabel}` : ""}` : ""
     }
     default:
       return ""

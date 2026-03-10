@@ -1,10 +1,13 @@
-"""Bid Analysis Pipeline — 8-step incremental analysis.
+"""Bid Analysis Pipeline — 12-step incremental analysis.
 
-Runs analysis Skills in order, supports selective steps and caching.
-Independent steps (1-7) execute in parallel; risk_assessment runs last.
+Runs analysis Skills in three rounds, supports selective steps and caching.
+Round 1: independent base analyses (parallel)
+Round 2: analyses that depend on Round 1 partial results (parallel)
+Round 3: synthesis analyses that depend on earlier results (parallel/sequential)
 """
 
 import asyncio
+import json as _json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -17,49 +20,72 @@ from app.agents.rag import build_analysis_context
 from app.agents.skills.analyze_bds import AnalyzeBDS
 from app.agents.skills.analyze_commercial import AnalyzeCommercial
 from app.agents.skills.analyze_qualification import AnalyzeQualification
+from app.agents.skills.analyze_technical import AnalyzeTechnical
 from app.agents.skills.assess_risk import AssessRisk
 from app.agents.skills.base import Skill, SkillContext
+from app.agents.skills.compliance_matrix import BuildComplianceMatrix
 from app.agents.skills.evaluate_criteria import EvaluateCriteria
 from app.agents.skills.evaluate_methodology import EvaluateMethodology
+from app.agents.skills.executive_summary import ExecutiveSummary
 from app.agents.skills.extract_dates import ExtractDates
 from app.agents.skills.extract_submission import ExtractSubmission
+from app.agents.skills.technical_strategy import TechnicalStrategy
 from app.models.bid_analysis import BidAnalysis
 from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
 ALL_STEPS = [
+    # Round 1 — independent base analyses
+    "executive_summary",
+    "key_dates",
     "qualification",
     "evaluation",
-    "key_dates",
     "submission",
-    "bds_modification",
-    "methodology",
+    # Round 2 — depend on Round 1 partial results
+    "bds_analysis",
+    "technical_requirements",
     "commercial",
+    "methodology",
+    # Round 3 — synthesis / depends on earlier rounds
+    "technical_strategy",
+    "compliance_matrix",
     "risk_assessment",
 ]
 
+ROUND_1_STEPS = ["executive_summary", "key_dates", "qualification", "evaluation", "submission"]
+ROUND_2_STEPS = ["bds_analysis", "technical_requirements", "commercial", "methodology"]
+ROUND_3_STEPS = ["technical_strategy", "compliance_matrix", "risk_assessment"]
+
 # Maps step names → Skill classes (each dedicated Skill).
 STEP_SKILL_MAP: dict[str, type[Skill]] = {
+    "executive_summary": ExecutiveSummary,
     "qualification": AnalyzeQualification,
     "evaluation": EvaluateCriteria,
     "key_dates": ExtractDates,
     "submission": ExtractSubmission,
-    "bds_modification": AnalyzeBDS,
+    "bds_analysis": AnalyzeBDS,
+    "technical_requirements": AnalyzeTechnical,
     "methodology": EvaluateMethodology,
     "commercial": AnalyzeCommercial,
+    "technical_strategy": TechnicalStrategy,
+    "compliance_matrix": BuildComplianceMatrix,
     "risk_assessment": AssessRisk,
 }
 
 # Map step → RAG dimension (for build_analysis_context)
 STEP_DIMENSION_MAP: dict[str, str] = {
+    "executive_summary": "executive",
     "qualification": "qualification",
     "evaluation": "evaluation",
     "key_dates": "dates",
     "submission": "submission",
-    "bds_modification": "bds",
+    "bds_analysis": "bds",
+    "technical_requirements": "technical",
     "methodology": "evaluation",
     "commercial": "commercial",
+    "technical_strategy": "technical",
+    "compliance_matrix": "compliance",
     "risk_assessment": "qualification",  # uses prior results, not new retrieval
 }
 
@@ -78,13 +104,17 @@ async def _get_cached_analysis(
 def _step_field_name(step: str) -> str:
     """Map a step name to the BidAnalysis JSONB column."""
     mapping = {
+        "executive_summary": "executive_summary",
         "qualification": "qualification_requirements",
         "evaluation": "evaluation_criteria",
         "key_dates": "key_dates",
         "submission": "submission_checklist",
-        "bds_modification": "bds_modifications",
+        "bds_analysis": "bds_modifications",
+        "technical_requirements": "technical_requirements",
         "methodology": "evaluation_methodology",
         "commercial": "commercial_terms",
+        "technical_strategy": "technical_strategy",
+        "compliance_matrix": "compliance_matrix",
         "risk_assessment": "risk_assessment",
     }
     return mapping.get(step, step)
@@ -96,10 +126,11 @@ async def run_bid_analysis_pipeline(
     steps: list[str] | None = None,
     force_refresh: bool = False,
 ) -> dict[str, Any]:
-    """Execute the 8-step analysis pipeline.
+    """Execute the 12-step analysis pipeline in 3 rounds.
 
-    Independent steps (1-7) run in parallel to avoid HTTP timeouts.
-    risk_assessment runs last because it needs the other steps' results.
+    Round 1 (parallel): executive_summary, key_dates, qualification, evaluation, submission
+    Round 2 (parallel): bds_analysis, technical_requirements, commercial, methodology
+    Round 3 (parallel): technical_strategy, compliance_matrix, risk_assessment
 
     Args:
         project_id: Target project UUID.
@@ -128,7 +159,7 @@ async def run_bid_analysis_pipeline(
     analysis = await _get_cached_analysis(db, project_id)
 
     # Identify which steps actually need execution
-    pending_steps: list[str] = []
+    pending_steps: set[str] = set()
     for step in steps:
         field = _step_field_name(step)
         if not force_refresh and analysis is not None:
@@ -137,18 +168,19 @@ async def run_bid_analysis_pipeline(
                 results[step] = cached
                 logger.info("Step '%s' loaded from cache for project %s", step, project_id)
                 continue
-        pending_steps.append(step)
+        pending_steps.add(step)
 
-    # Separate risk_assessment (depends on all others) from independent steps
-    independent_steps = [s for s in pending_steps if s != "risk_assessment"]
-    run_risk = "risk_assessment" in pending_steps
+    def _summarise(data: Any, max_chars: int = 500) -> str:
+        if not data:
+            return "未分析"
+        s = _json.dumps(data, ensure_ascii=False) if isinstance(data, dict) else str(data)
+        return s[:max_chars]
 
-    # Phase 1: Fetch RAG contexts for independent steps sequentially (shares db session)
-    step_contexts: dict[str, tuple[str, str]] = {}
-    for step in independent_steps:
+    async def _fetch_context(step: str) -> tuple[str, str]:
+        """Fetch RAG context for a step."""
         dimension = STEP_DIMENSION_MAP.get(step, step)
         try:
-            bid_ctx, kb_ctx = await build_analysis_context(
+            return await build_analysis_context(
                 project_id=project_id,
                 dimension=dimension,
                 db=db,
@@ -156,26 +188,32 @@ async def run_bid_analysis_pipeline(
             )
         except Exception:
             logger.warning("Context retrieval failed for step '%s'", step, exc_info=True)
-            bid_ctx, kb_ctx = "", ""
-        step_contexts[step] = (bid_ctx, kb_ctx)
+            return "", ""
 
-    # Phase 2: Run LLM calls for independent steps in parallel
-    # Skills do not access ctx.db, so concurrent execution is safe.
-    async def _execute_step(step: str) -> tuple[str, dict | None, int]:
+    async def _execute_step(
+        step: str,
+        bid_ctx: str,
+        kb_ctx: str,
+        extra_params: dict[str, Any] | None = None,
+    ) -> tuple[str, dict | None, int]:
+        """Execute a single analysis step."""
         skill_cls = STEP_SKILL_MAP.get(step)
         if skill_cls is None:
             logger.warning("No Skill mapped for step '%s', skipping", step)
             return step, None, 0
 
-        bid_ctx, kb_ctx = step_contexts.get(step, ("", ""))
+        params: dict[str, Any] = {"bid_context": bid_ctx, "kb_context": kb_ctx}
+        if extra_params:
+            params.update(extra_params)
+
         ctx = SkillContext(
             project_id=project_id,
             db=db,
             llm_client=llm_client,
-            parameters={"bid_context": bid_ctx, "kb_context": kb_ctx},
+            parameters=params,
         )
         skill = skill_cls()
-        logger.info("Running step '%s' for project %s (parallel) …", step, project_id)
+        logger.info("Running step '%s' for project %s …", step, project_id)
         try:
             result = await skill.execute(ctx)
             if result.success:
@@ -186,71 +224,71 @@ async def run_bid_analysis_pipeline(
             logger.exception("Unhandled error in step '%s'", step)
             return step, {"error": "internal_error"}, 0
 
-    if independent_steps:
-        parallel_results = await asyncio.gather(
-            *[_execute_step(s) for s in independent_steps]
-        )
+    async def _run_round(
+        round_steps: list[str],
+        extra_params_fn: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        """Run a round of steps: fetch contexts sequentially, then execute LLM calls in parallel."""
+        nonlocal total_tokens
+
+        active_steps = [s for s in round_steps if s in pending_steps]
+        if not active_steps:
+            return
+
+        # Fetch RAG contexts sequentially (shares db session)
+        step_contexts: dict[str, tuple[str, str]] = {}
+        for step in active_steps:
+            step_contexts[step] = await _fetch_context(step)
+
+        # Execute LLM calls in parallel
+        tasks = []
+        for step in active_steps:
+            bid_ctx, kb_ctx = step_contexts[step]
+            extra = extra_params_fn.get(step) if extra_params_fn else None
+            tasks.append(_execute_step(step, bid_ctx, kb_ctx, extra))
+
+        parallel_results = await asyncio.gather(*tasks)
         for step, data, tokens in parallel_results:
             if data is not None:
                 results[step] = data
             total_tokens += tokens
 
-    # Phase 3: risk_assessment — runs after all others so it can summarise them
-    if run_risk:
-        import json as _json
+    # ── Round 1: Independent base analyses ──
+    await _run_round(ROUND_1_STEPS)
 
-        def _summarise(data: Any, max_chars: int = 500) -> str:
-            if not data:
-                return "未分析"
-            s = _json.dumps(data, ensure_ascii=False) if isinstance(data, dict) else str(data)
-            return s[:max_chars]
+    # ── Round 2: Depends on Round 1 partial results ──
+    await _run_round(ROUND_2_STEPS)
 
-        dimension = STEP_DIMENSION_MAP.get("risk_assessment", "risk_assessment")
-        try:
-            bid_ctx, kb_ctx = await build_analysis_context(
-                project_id=project_id,
-                dimension=dimension,
-                db=db,
-                institution=kb_institution,
-            )
-        except Exception:
-            logger.warning("Context retrieval failed for step 'risk_assessment'", exc_info=True)
-            bid_ctx, kb_ctx = "", ""
+    # ── Round 3: Synthesis analyses ──
+    round_3_extra: dict[str, dict[str, Any]] = {}
 
-        extra_params: dict[str, Any] = {
-            "qualification_summary": _summarise(results.get("qualification")),
-            "criteria_summary": _summarise(results.get("evaluation")),
-            "dates_summary": _summarise(results.get("key_dates")),
-            "submission_summary": _summarise(results.get("submission")),
-            "bds_summary": _summarise(results.get("bds_modification")),
-            "commercial_summary": _summarise(results.get("commercial")),
-            "kb_context": kb_ctx,
-        }
+    # technical_strategy needs technical_requirements + evaluation results
+    round_3_extra["technical_strategy"] = {
+        "technical_summary": _summarise(results.get("technical_requirements")),
+        "evaluation_summary": _summarise(results.get("evaluation")),
+    }
 
-        ctx = SkillContext(
-            project_id=project_id,
-            db=db,
-            llm_client=llm_client,
-            parameters={
-                **results,
-                "bid_context": bid_ctx,
-                "kb_context": kb_ctx,
-                **extra_params,
-            },
-        )
-        skill = AssessRisk()
-        logger.info("Running step 'risk_assessment' for project %s …", project_id)
-        try:
-            result = await skill.execute(ctx)
-            if result.success:
-                results["risk_assessment"] = result.data
-                total_tokens += result.tokens_consumed
-            else:
-                logger.error("Step 'risk_assessment' failed: %s", result.error)
-                results["risk_assessment"] = {"error": result.error}
-        except Exception:
-            logger.exception("Unhandled error in step 'risk_assessment'")
-            results["risk_assessment"] = {"error": "internal_error"}
+    # compliance_matrix needs qualification + submission + bds results
+    round_3_extra["compliance_matrix"] = {
+        "qualification_summary": _summarise(results.get("qualification")),
+        "submission_summary": _summarise(results.get("submission")),
+        "bds_summary": _summarise(results.get("bds_analysis")),
+        "technical_summary": _summarise(results.get("technical_requirements")),
+    }
+
+    # risk_assessment needs all prior results
+    round_3_extra["risk_assessment"] = {
+        "executive_summary": _summarise(results.get("executive_summary")),
+        "qualification_summary": _summarise(results.get("qualification")),
+        "criteria_summary": _summarise(results.get("evaluation")),
+        "dates_summary": _summarise(results.get("key_dates")),
+        "submission_summary": _summarise(results.get("submission")),
+        "bds_summary": _summarise(results.get("bds_analysis")),
+        "technical_summary": _summarise(results.get("technical_requirements")),
+        "commercial_summary": _summarise(results.get("commercial")),
+    }
+
+    await _run_round(ROUND_3_STEPS, round_3_extra)
 
     # Persist results into bid_analyses table
     await _save_analysis(db, project_id, results, total_tokens)

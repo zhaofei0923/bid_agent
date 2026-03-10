@@ -11,6 +11,7 @@ export interface BidAnalysis {
   id: string
   project_id: string
   bid_type: string | null
+  executive_summary: Record<string, unknown> | null
   qualification_requirements: Record<string, unknown> | null
   evaluation_criteria: Record<string, unknown> | null
   evaluation_methodology: Record<string, unknown> | null
@@ -18,6 +19,9 @@ export interface BidAnalysis {
   submission_checklist: Record<string, unknown> | null
   key_dates: Record<string, unknown> | null
   bds_modifications: Record<string, unknown> | null
+  technical_requirements: Record<string, unknown> | null
+  technical_strategy: Record<string, unknown> | null
+  compliance_matrix: Record<string, unknown> | null
   risk_assessment: Record<string, unknown> | null
   budget_info: Record<string, unknown> | null
   scoring_breakdown: Record<string, unknown> | null

@@ -10,11 +10,13 @@ SYSTEM_PROMPT = (
 ASSESSMENT_PROMPT = """请根据以下投标分析结果，进行综合风险评估。
 
 === 前序分析结果 ===
+项目概览: {executive_summary}
 资质分析: {qualification_summary}
 评标标准: {criteria_summary}
 关键日期: {dates_summary}
 提交要求: {submission_summary}
 BDS 修改: {bds_summary}
+技术要求: {technical_summary}
 商务条款: {commercial_summary}
 
 === 参考知识 ===
@@ -81,6 +83,7 @@ class AssessRisk(Skill):
 
     async def execute(self, ctx: SkillContext) -> SkillResult:
         # Gather summaries from prior analysis results
+        executive_summary = ctx.parameters.get("executive_summary", "未分析")
         qualification_summary = ctx.parameters.get(
             "qualification_summary", "未分析"
         )
@@ -93,14 +96,19 @@ class AssessRisk(Skill):
         commercial_summary = ctx.parameters.get(
             "commercial_summary", "未分析"
         )
+        technical_summary = ctx.parameters.get(
+            "technical_summary", "未分析"
+        )
         kb_context = ctx.parameters.get("kb_context", "")
 
         prompt = ASSESSMENT_PROMPT.format(
+            executive_summary=executive_summary,
             qualification_summary=qualification_summary,
             criteria_summary=criteria_summary,
             dates_summary=dates_summary,
             submission_summary=submission_summary,
             bds_summary=bds_summary,
+            technical_summary=technical_summary,
             commercial_summary=commercial_summary,
             kb_context=kb_context,
         )

@@ -1,4 +1,4 @@
-"""Bid analysis service — wraps the 8-step analysis pipeline."""
+"""Bid analysis service — wraps the 12-step analysis pipeline."""
 
 import logging
 from typing import Any
@@ -67,13 +67,17 @@ class BidAnalysisService:
 
         analysis = await self.get_by_project(project_id)
         field_map = {
-            "qualification": "qualification_analysis",
+            "executive_summary": "executive_summary",
+            "qualification": "qualification_requirements",
             "evaluation": "evaluation_criteria",
             "key_dates": "key_dates",
-            "submission": "submission_requirements",
-            "bds_modification": "bds_modifications",
-            "methodology": "methodology_analysis",
+            "submission": "submission_checklist",
+            "bds_analysis": "bds_modifications",
+            "technical_requirements": "technical_requirements",
+            "methodology": "evaluation_methodology",
             "commercial": "commercial_terms",
+            "technical_strategy": "technical_strategy",
+            "compliance_matrix": "compliance_matrix",
             "risk_assessment": "risk_assessment",
         }
         field = field_map.get(step, step)

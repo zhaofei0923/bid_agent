@@ -22,6 +22,7 @@ class BidAnalysis(Base):
         nullable=False,
         unique=True,
     )
+    executive_summary: Mapped[dict | None] = mapped_column(JSONB)
     qualification_requirements: Mapped[dict | None] = mapped_column(JSONB)
     evaluation_criteria: Mapped[dict | None] = mapped_column(JSONB)
     evaluation_methodology: Mapped[dict | None] = mapped_column(JSONB)
@@ -29,6 +30,9 @@ class BidAnalysis(Base):
     submission_checklist: Mapped[dict | None] = mapped_column(JSONB)
     key_dates: Mapped[dict | None] = mapped_column(JSONB)
     bds_modifications: Mapped[dict | None] = mapped_column(JSONB)
+    technical_requirements: Mapped[dict | None] = mapped_column(JSONB)
+    technical_strategy: Mapped[dict | None] = mapped_column(JSONB)
+    compliance_matrix: Mapped[dict | None] = mapped_column(JSONB)
     risk_assessment: Mapped[dict | None] = mapped_column(JSONB)
     budget_info: Mapped[dict | None] = mapped_column(JSONB)
     special_notes: Mapped[str | None] = mapped_column(Text)

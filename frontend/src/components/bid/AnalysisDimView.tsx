@@ -104,21 +104,47 @@ const CAT_LABELS: Record<string, string> = {
 
 function QualificationView({ data }: { data: Rec }) {
   const reqs = arr(data.qualification_requirements) as Rec[]
+  const implied = arr(data.implied_requirements) as Rec[]
   const jv = rec(data.joint_venture_requirements)
   const domestic = rec(data.domestic_preference)
+  const summary = rec(data.qualification_summary)
 
   return (
     <div className="space-y-3 pt-1">
+      {num(summary.total_requirements) > 0 && (
+        <div className="flex flex-wrap gap-2 pb-1">
+          <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
+            共 {num(summary.total_requirements)} 项要求
+          </span>
+          {num(summary.pass_fail_count) > 0 && (
+            <span className="rounded bg-red-50 px-2 py-1 text-xs text-red-600">
+              {num(summary.pass_fail_count)} 项硬性 (Pass/Fail)
+            </span>
+          )}
+          {num(summary.scoring_count) > 0 && (
+            <span className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600">
+              {num(summary.scoring_count)} 项评分
+            </span>
+          )}
+        </div>
+      )}
       {reqs.map((req, i) => (
         <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
           <div className="mb-2 flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-700">
               {CAT_LABELS[str(req.category)] ?? str(req.category)}
             </span>
+            {str(req.type) && (
+              <span className={`rounded px-1.5 py-0.5 text-xs ${str(req.type) === "pass_fail" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"}`}>
+                {str(req.type) === "pass_fail" ? "Pass/Fail" : "评分"}
+              </span>
+            )}
             {str(req.source_reference) && (
               <span className="text-xs text-slate-400">{str(req.source_reference)}</span>
             )}
           </div>
+          <p className="mb-1 text-sm text-slate-800">{str(req.requirement)}</p>
+          {/* Backward compat: old format used requirements array */}
           <BulletList items={arr(req.requirements) as string[]} />
           {(arr(req.evidence_required) as string[]).length > 0 && (
             <div className="mt-2 border-t border-slate-200 pt-2">
@@ -126,8 +152,29 @@ function QualificationView({ data }: { data: Rec }) {
               <BulletList items={arr(req.evidence_required) as string[]} />
             </div>
           )}
+          {rec(req.self_check).question && (
+            <div className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-700">
+              ☐ {str(rec(req.self_check).question)}
+              {str(rec(req.self_check).guidance) && (
+                <span className="block mt-0.5 text-amber-600">{str(rec(req.self_check).guidance)}</span>
+              )}
+            </div>
+          )}
         </div>
       ))}
+      {implied.length > 0 && (
+        <Section title="隐含要求">
+          {implied.map((imp, i) => (
+            <div key={i} className="mb-2 rounded-lg border border-amber-100 bg-amber-50 p-3">
+              <p className="text-sm text-amber-800">{str(imp.requirement)}</p>
+              <p className="mt-1 text-xs text-amber-600">推断依据：{str(imp.basis)}</p>
+              {str(imp.recommendation) && (
+                <p className="mt-1 text-xs text-amber-700">→ {str(imp.recommendation)}</p>
+              )}
+            </div>
+          ))}
+        </Section>
+      )}
       {(jv.allowed !== undefined || domestic.applicable !== undefined) && (
         <div className="flex flex-wrap gap-2 pt-1">
           {jv.allowed !== undefined && (
@@ -151,12 +198,14 @@ function QualificationView({ data }: { data: Rec }) {
 
 // ── Evaluation ────────────────────────────────────────────────────────────────
 function EvaluationView({ data }: { data: Rec }) {
-  const method = str(data.evaluation_method)
+  const evalMethodObj = rec(data.evaluation_method)
+  const method = str(evalMethodObj.type) || str(data.evaluation_method)
   const tw = num(data.technical_weight)
   const fw = num(data.financial_weight)
   const criteria = arr(data.technical_criteria) as Rec[]
   const thresholds = rec(data.qualification_thresholds)
   const finEval = rec(data.financial_evaluation)
+  const scoringTips = arr(data.scoring_tips) as string[]
 
   return (
     <div className="space-y-4 pt-1">
@@ -175,6 +224,16 @@ function EvaluationView({ data }: { data: Rec }) {
           </span>
         )}
       </div>
+      {(str(evalMethodObj.introduction) || str(evalMethodObj.guidance_notes)) && (
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-1">
+          {str(evalMethodObj.introduction) && (
+            <p className="text-sm text-blue-800">{str(evalMethodObj.introduction)}</p>
+          )}
+          {str(evalMethodObj.guidance_notes) && (
+            <p className="text-xs text-blue-700">💡 {str(evalMethodObj.guidance_notes)}</p>
+          )}
+        </div>
+      )}
       {criteria.length > 0 && (
         <Section title="评分标准">
           <div className="space-y-2">
@@ -197,6 +256,17 @@ function EvaluationView({ data }: { data: Rec }) {
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {scoringTips.length > 0 && (
+        <Section title="评分策略提示">
+          <div className="space-y-1">
+            {scoringTips.map((tip, i) => (
+              <p key={i} className="rounded bg-green-50 px-2 py-1 text-xs text-green-700">
+                💡 {tip}
+              </p>
             ))}
           </div>
         </Section>
@@ -237,9 +307,33 @@ function KeyDatesView({ data }: { data: Rec }) {
   const dates = arr(data.key_dates) as Rec[]
   const summary = rec(data.timeline_summary)
   const warnings = arr(data.warnings) as string[]
+  const urgency = rec(data.urgency_assessment)
+  const rhythm = arr(data.preparation_rhythm) as Rec[]
+
+  const urgencyLevel = str(urgency.level)
+  const urgencyStyle = urgencyLevel === "red"
+    ? "border-red-200 bg-red-50 text-red-800"
+    : urgencyLevel === "yellow"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : urgencyLevel === "green"
+        ? "border-green-200 bg-green-50 text-green-800"
+        : ""
 
   return (
     <div className="space-y-4 pt-1">
+      {urgencyLevel && (
+        <div className={`rounded-lg border p-3 ${urgencyStyle}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold">
+              {urgencyLevel === "red" ? "🔴 紧急" : urgencyLevel === "yellow" ? "🟡 注意时间" : "🟢 时间充裕"}
+            </span>
+          </div>
+          <p className="text-sm">{str(urgency.description)}</p>
+          {str(urgency.rationale) && (
+            <p className="mt-1 text-xs opacity-80">{str(urgency.rationale)}</p>
+          )}
+        </div>
+      )}
       {warnings.length > 0 && (
         <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3">
           {warnings.map((w, i) => (
@@ -269,15 +363,30 @@ function KeyDatesView({ data }: { data: Rec }) {
                   <p className="text-xs text-slate-400">{str(d.time_zone)}</p>
                 )}
               </div>
-              <span className="shrink-0 text-sm font-semibold text-slate-700">
-                {str(d.date)}
-              </span>
+              <div className="flex shrink-0 flex-col items-end">
+                <span className="text-sm font-semibold text-slate-700">
+                  {str(d.date)}
+                </span>
+                {d.days_from_today !== undefined && d.days_from_today !== null && (
+                  <span className={`text-xs ${num(d.days_from_today) < 0 ? "text-slate-400" : num(d.days_from_today) <= 7 ? "text-red-500 font-semibold" : "text-slate-500"}`}>
+                    {num(d.days_from_today) < 0 ? `已过 ${Math.abs(num(d.days_from_today))} 天` : `还剩 ${num(d.days_from_today)} 天`}
+                  </span>
+                )}
+              </div>
             </div>
           )
         })}
       </div>
       {Object.values(summary).some(Boolean) && (
-        <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3">
+          {summary.remaining_days_to_submission !== undefined && summary.remaining_days_to_submission !== null && (
+            <div className="rounded bg-slate-50 p-2 text-center">
+              <p className="text-2xl font-bold text-slate-800">
+                {summary.remaining_days_to_submission}
+              </p>
+              <p className="text-xs text-slate-500">距截标剩余天数</p>
+            </div>
+          )}
           {summary.total_days_from_issue_to_submission !== undefined && (
             <div className="rounded bg-slate-50 p-2 text-center">
               <p className="text-2xl font-bold text-slate-800">
@@ -295,6 +404,31 @@ function KeyDatesView({ data }: { data: Rec }) {
             </div>
           )}
         </div>
+      )}
+      {rhythm.length > 0 && (
+        <Section title="准备节奏建议">
+          <div className="space-y-2">
+            {rhythm.map((r, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                  {i + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-800">{str(r.milestone)}</span>
+                    {str(r.suggested_date) && (
+                      <span className="text-xs text-slate-500">{str(r.suggested_date)}</span>
+                    )}
+                    {num(r.days_before_deadline) > 0 && (
+                      <span className="text-xs text-slate-400">截标前 {num(r.days_before_deadline)} 天</span>
+                    )}
+                  </div>
+                  <BulletList items={arr(r.key_tasks) as string[]} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
       )}
     </div>
   )
@@ -405,12 +539,30 @@ function BDSView({ data }: { data: Rec }) {
   const mods = arr(data.bds_modifications) as Rec[]
   const summary = str(data.critical_changes_summary)
   const checklist = arr(data.compliance_checklist) as Rec[]
+  const stats = rec(data.statistics)
   const sorted = [...mods].sort(
     (a, b) => (PRIORITY_ORDER[str(a.priority)] ?? 9) - (PRIORITY_ORDER[str(b.priority)] ?? 9),
   )
 
   return (
     <div className="space-y-4 pt-1">
+      {num(stats.total_bds_items) > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
+            共 {num(stats.total_bds_items)} 条
+          </span>
+          {num(stats.critical_count) > 0 && (
+            <span className="rounded bg-red-50 px-2 py-1 text-xs text-red-600">
+              {num(stats.critical_count)} 关键
+            </span>
+          )}
+          {num(stats.high_count) > 0 && (
+            <span className="rounded bg-orange-50 px-2 py-1 text-xs text-orange-600">
+              {num(stats.high_count)} 高优先
+            </span>
+          )}
+        </div>
+      )}
       {summary && (
         <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
           {summary}
@@ -426,8 +578,28 @@ function BDSView({ data }: { data: Rec }) {
                 {str(mod.bds_reference) && (
                   <span className="text-xs text-slate-400">{str(mod.bds_reference)}</span>
                 )}
+                {str(mod.change_type) && (
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                    {str(mod.change_type)}
+                  </span>
+                )}
               </div>
-              <p className="mb-1 text-sm text-slate-800">{str(mod.modification)}</p>
+              {str(mod.itb_standard_content) && (
+                <div className="mb-1.5 rounded bg-blue-50 px-2 py-1">
+                  <p className="text-xs text-blue-600">
+                    <span className="font-semibold">ITB 标准：</span>
+                    {str(mod.itb_standard_content)}
+                  </p>
+                </div>
+              )}
+              <p className="mb-1 text-sm text-slate-800">
+                {str(mod.bds_modification) || str(mod.modification)}
+              </p>
+              {str(mod.impact_analysis) && (
+                <p className="mb-1 text-xs text-slate-600">
+                  影响：{str(mod.impact_analysis)}
+                </p>
+              )}
               {str(mod.action_required) && (
                 <p className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700">
                   → {str(mod.action_required)}
@@ -446,6 +618,11 @@ function BDSView({ data }: { data: Rec }) {
                 <span>{str(item.item)}</span>
                 {str(item.bds_reference) && (
                   <span className="shrink-0 text-xs text-slate-400">{str(item.bds_reference)}</span>
+                )}
+                {str(item.difficulty) && (
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${str(item.difficulty) === "challenging" ? "bg-red-50 text-red-600" : str(item.difficulty) === "moderate" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}>
+                    {str(item.difficulty) === "challenging" ? "困难" : str(item.difficulty) === "moderate" ? "中等" : "简单"}
+                  </span>
                 )}
               </div>
             ))}
@@ -764,6 +941,436 @@ function RiskView({ data }: { data: Rec }) {
   )
 }
 
+// ── Executive Summary ─────────────────────────────────────────────────────────
+function ExecutiveSummaryView({ data }: { data: Rec }) {
+  const procurement = rec(data.procurement_method)
+  const lot = rec(data.lot_info)
+  const assessment = rec(data.quick_assessment)
+
+  const attractivenessStyle = str(assessment.attractiveness) === "high"
+    ? "border-green-200 bg-green-50 text-green-800"
+    : str(assessment.attractiveness) === "medium"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : str(assessment.attractiveness) === "low"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-slate-200 bg-slate-50 text-slate-800"
+
+  return (
+    <div className="space-y-4 pt-1">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {str(data.project_name) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">项目名称</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.project_name)}</p>
+          </div>
+        )}
+        {str(data.country_region) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">国家/地区</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.country_region)}</p>
+          </div>
+        )}
+        {str(data.borrower_agency) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">采购机构</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.borrower_agency)}</p>
+          </div>
+        )}
+        {str(data.funding_source) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">资金来源</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.funding_source)}</p>
+          </div>
+        )}
+        {str(data.estimated_budget) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">预估预算</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.estimated_budget)}</p>
+          </div>
+        )}
+        {str(procurement.type) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">采购方式</p>
+            <p className="text-sm font-medium text-slate-800">
+              {str(procurement.type)} — {str(procurement.full_name)}
+            </p>
+            {str(procurement.brief_description) && (
+              <p className="mt-0.5 text-xs text-slate-500">{str(procurement.brief_description)}</p>
+            )}
+          </div>
+        )}
+        {str(data.contract_type) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">合同类型</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.contract_type)}</p>
+          </div>
+        )}
+        {str(data.industry_sector) && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-1 text-xs text-slate-500">行业领域</p>
+            <p className="text-sm font-medium text-slate-800">{str(data.industry_sector)}</p>
+          </div>
+        )}
+      </div>
+      {bool(lot.has_lots) && (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <p className="mb-1 text-xs text-slate-500">标段信息（{num(lot.lot_count)} 个标段）</p>
+          <BulletList items={arr(lot.lot_descriptions) as string[]} />
+        </div>
+      )}
+      {str(data.project_scope_summary) && (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <p className="mb-1 text-xs text-slate-500">项目范围</p>
+          <p className="text-sm text-slate-800">{str(data.project_scope_summary)}</p>
+        </div>
+      )}
+      {str(assessment.attractiveness) && (
+        <div className={`rounded-lg border p-3 ${attractivenessStyle}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold">
+              快速评估：{str(assessment.attractiveness) === "high" ? "值得投标 ✅" : str(assessment.attractiveness) === "medium" ? "需进一步分析 ⚠️" : "谨慎考虑 ❌"}
+            </span>
+          </div>
+          {str(assessment.rationale) && (
+            <p className="text-sm">{str(assessment.rationale)}</p>
+          )}
+          {(arr(assessment.key_considerations) as string[]).length > 0 && (
+            <BulletList items={arr(assessment.key_considerations) as string[]} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Technical Requirements ───────────────────────────────────────────────────
+function TechnicalView({ data }: { data: Rec }) {
+  const scope = rec(data.project_scope)
+  const deliverables = arr(data.deliverables) as Rec[]
+  const standards = arr(data.technical_standards) as Rec[]
+  const sysReqs = arr(data.system_requirements) as Rec[]
+  const personnel = arr(data.key_personnel) as Rec[]
+  const risks = arr(data.risk_areas) as Rec[]
+  const clarifications = arr(data.clarification_needed) as Rec[]
+
+  return (
+    <div className="space-y-4 pt-1">
+      {(str(scope.objective) || str(scope.scope_summary)) && (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+          {str(scope.objective) && (
+            <p className="mb-1 text-sm font-medium text-slate-800">{str(scope.objective)}</p>
+          )}
+          {str(scope.scope_summary) && (
+            <p className="text-sm text-slate-700">{str(scope.scope_summary)}</p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {str(scope.geographic_coverage) && (
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">📍 {str(scope.geographic_coverage)}</span>
+            )}
+            {str(scope.implementation_period) && (
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">⏱ {str(scope.implementation_period)}</span>
+            )}
+          </div>
+        </div>
+      )}
+      {deliverables.length > 0 && (
+        <Section title={`交付物（${deliverables.length} 项）`}>
+          <div className="space-y-2">
+            {deliverables.map((d, i) => (
+              <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-slate-800">{str(d.name)}</span>
+                  {str(d.deadline) && (
+                    <span className="text-xs text-slate-500">{str(d.deadline)}</span>
+                  )}
+                </div>
+                {str(d.description) && (
+                  <p className="text-xs text-slate-600">{str(d.description)}</p>
+                )}
+                {str(d.acceptance_criteria) && (
+                  <p className="mt-1 text-xs text-green-700">验收标准：{str(d.acceptance_criteria)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {personnel.length > 0 && (
+        <Section title={`关键人员（${personnel.length} 个岗位）`}>
+          <div className="space-y-2">
+            {personnel.map((p, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                  {i + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-800">{str(p.position)}</p>
+                  <p className="text-xs text-slate-600">{str(p.qualifications)}</p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {str(p.experience_years) && (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">经验 {str(p.experience_years)}</span>
+                    )}
+                    {str(p.man_months) && (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">{str(p.man_months)} 人月</span>
+                    )}
+                    {str(p.evaluation_weight) && (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-600">权重 {str(p.evaluation_weight)}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {standards.length > 0 && (
+        <Section title="技术标准">
+          <div className="space-y-1">
+            {standards.map((s, i) => (
+              <div key={i} className="flex items-start gap-2 border-b border-slate-100 py-1.5 last:border-0">
+                <span className="shrink-0 text-xs text-slate-400">📐</span>
+                <div>
+                  <p className="text-sm text-slate-800">{str(s.standard)}</p>
+                  {str(s.description) && (
+                    <p className="text-xs text-slate-500">{str(s.description)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {risks.length > 0 && (
+        <Section title="技术风险">
+          {risks.map((r, i) => (
+            <div key={i} className="mb-2 rounded-lg border border-slate-100 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <RiskBadge level={str(r.impact)} />
+                <span className="text-sm text-slate-800">{str(r.area)}</span>
+              </div>
+              <p className="text-xs text-slate-600">{str(r.description)}</p>
+              {str(r.suggested_mitigation) && (
+                <p className="mt-1 text-xs text-green-700">→ {str(r.suggested_mitigation)}</p>
+              )}
+            </div>
+          ))}
+        </Section>
+      )}
+      {clarifications.length > 0 && (
+        <Section title="建议澄清事项">
+          {clarifications.map((c, i) => (
+            <div key={i} className="mb-2 rounded-lg border border-amber-100 bg-amber-50 p-3">
+              <p className="text-sm text-amber-800">❓ {str(c.item)}</p>
+              {str(c.reason) && (
+                <p className="mt-0.5 text-xs text-amber-600">{str(c.reason)}</p>
+              )}
+              {str(c.suggested_question) && (
+                <p className="mt-1 text-xs text-amber-700 italic">建议提问：{str(c.suggested_question)}</p>
+              )}
+            </div>
+          ))}
+        </Section>
+      )}
+    </div>
+  )
+}
+
+// ── Technical Strategy ───────────────────────────────────────────────────────
+function TechnicalStrategyView({ data }: { data: Rec }) {
+  const framework = rec(data.proposal_framework)
+  const structure = arr(framework.recommended_structure) as Rec[]
+  const scoring = arr(data.scoring_strategy) as Rec[]
+  const differentiators = arr(data.differentiators) as Rec[]
+  const innovations = arr(data.innovation_opportunities) as Rec[]
+  const riskPlan = arr(data.risk_mitigation_plan) as Rec[]
+  const themes = arr(data.win_themes) as string[]
+
+  return (
+    <div className="space-y-4 pt-1">
+      {themes.length > 0 && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+          <p className="mb-1 text-xs font-semibold text-green-700">🎯 核心中标主题</p>
+          <BulletList items={themes} />
+        </div>
+      )}
+      {str(framework.overall_approach) && (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <p className="mb-1 text-xs text-slate-500">总体策略</p>
+          <p className="text-sm text-slate-800">{str(framework.overall_approach)}</p>
+        </div>
+      )}
+      {structure.length > 0 && (
+        <Section title="技术方案建议结构">
+          <div className="space-y-1.5">
+            {structure.map((s, i) => (
+              <div key={i} className="flex items-start gap-3 border-b border-slate-100 py-2 last:border-0">
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${str(s.priority) === "high" ? "bg-red-50 text-red-600" : str(s.priority) === "medium" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}>
+                  {str(s.priority) === "high" ? "★" : str(s.priority) === "medium" ? "●" : "○"}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-800">{str(s.section)}</p>
+                  <p className="text-xs text-slate-600">{str(s.key_content)}</p>
+                </div>
+                {str(s.page_estimate) && (
+                  <span className="shrink-0 text-xs text-slate-400">{str(s.page_estimate)} 页</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {scoring.length > 0 && (
+        <Section title="得分策略">
+          <div className="space-y-2">
+            {scoring.map((s, i) => (
+              <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-slate-800">{str(s.criterion)}</span>
+                  {num(s.weight) > 0 && (
+                    <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-600">
+                      权重 {num(s.weight)}%
+                    </span>
+                  )}
+                </div>
+                {str(s.strategy) && (
+                  <p className="mb-1 text-xs text-green-700">💡 {str(s.strategy)}</p>
+                )}
+                {(arr(s.key_evidence) as string[]).length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-xs text-slate-500 mb-0.5">重点展示：</p>
+                    <BulletList items={arr(s.key_evidence) as string[]} />
+                  </div>
+                )}
+                {(arr(s.pitfalls) as string[]).length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-xs text-red-500 mb-0.5">常见失分：</p>
+                    <BulletList items={arr(s.pitfalls) as string[]} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {differentiators.length > 0 && (
+        <Section title="差异化竞争">
+          {differentiators.map((d, i) => (
+            <div key={i} className="mb-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <p className="text-sm font-medium text-slate-800">{str(d.area)}</p>
+              <p className="text-xs text-slate-600">{str(d.approach)}</p>
+              {str(d.expected_impact) && (
+                <p className="mt-1 text-xs text-green-700">预期影响：{str(d.expected_impact)}</p>
+              )}
+            </div>
+          ))}
+        </Section>
+      )}
+      {riskPlan.length > 0 && (
+        <Section title="风险缓解方案">
+          {riskPlan.map((r, i) => (
+            <div key={i} className="mb-2 flex items-start gap-2 border-b border-slate-100 py-1.5 last:border-0">
+              <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${bool(r.include_in_proposal) ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-500"}`}>
+                {bool(r.include_in_proposal) ? "写入方案" : "内部参考"}
+              </span>
+              <div>
+                <p className="text-sm text-slate-800">{str(r.risk)}</p>
+                <p className="text-xs text-slate-600">{str(r.mitigation_approach)}</p>
+              </div>
+            </div>
+          ))}
+        </Section>
+      )}
+    </div>
+  )
+}
+
+// ── Compliance Matrix ────────────────────────────────────────────────────────
+function ComplianceMatrixView({ data }: { data: Rec }) {
+  const items = arr(data.compliance_items) as Rec[]
+  const goNoGo = arr(data.go_no_go_checklist) as Rec[]
+  const summary = rec(data.summary)
+
+  const riskStyle = str(summary.overall_compliance_risk) === "high"
+    ? "border-red-200 bg-red-50 text-red-800"
+    : str(summary.overall_compliance_risk) === "medium"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-green-200 bg-green-50 text-green-800"
+
+  return (
+    <div className="space-y-4 pt-1">
+      {num(summary.total_mandatory) > 0 && (
+        <div className={`rounded-lg border p-3 ${riskStyle}`}>
+          <div className="flex flex-wrap gap-3 mb-1">
+            <span className="text-sm font-semibold">
+              合规风险：{str(summary.overall_compliance_risk) === "high" ? "🔴 高" : str(summary.overall_compliance_risk) === "medium" ? "🟡 中" : "🟢 低"}
+            </span>
+            <span className="text-xs">
+              强制 {num(summary.total_mandatory)} 项 · 评分 {num(summary.total_scoring)} 项
+            </span>
+          </div>
+          {(arr(summary.key_attention_areas) as string[]).length > 0 && (
+            <BulletList items={arr(summary.key_attention_areas) as string[]} />
+          )}
+        </div>
+      )}
+      {goNoGo.length > 0 && (
+        <Section title="Go/No-Go 检查">
+          <div className="space-y-1.5">
+            {goNoGo.map((item, i) => (
+              <div key={i} className="flex items-start gap-2 rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                <span className={`shrink-0 text-sm ${bool(item.is_showstopper) ? "text-red-500" : "text-green-500"}`}>
+                  {bool(item.is_showstopper) ? "🚫" : "☐"}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm text-slate-800">{str(item.item)}</p>
+                  {str(item.assessment_guidance) && (
+                    <p className="text-xs text-slate-500">{str(item.assessment_guidance)}</p>
+                  )}
+                </div>
+                {str(item.source_reference) && (
+                  <span className="shrink-0 text-xs text-slate-400">{str(item.source_reference)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {items.length > 0 && (
+        <Section title={`合规检查项（${items.length} 项）`}>
+          <div className="space-y-1.5">
+            {items.map((item, i) => (
+              <div key={i} className="flex items-start gap-2 border-b border-slate-100 py-2 last:border-0">
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${str(item.type) === "mandatory" ? "bg-red-50 text-red-600" : str(item.type) === "scoring" ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
+                  {str(item.type) === "mandatory" ? "强制" : str(item.type) === "scoring" ? "评分" : "建议"}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm text-slate-800">{str(item.requirement)}</p>
+                  {str(item.action_required) && (
+                    <p className="text-xs text-blue-700">→ {str(item.action_required)}</p>
+                  )}
+                  {str(item.evidence_needed) && (
+                    <p className="text-xs text-slate-500">需提供：{str(item.evidence_needed)}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {str(item.source) && (
+                    <span className="text-xs text-slate-400">{str(item.source)} {str(item.reference)}</span>
+                  )}
+                  {str(item.difficulty) && (
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${str(item.difficulty) === "challenging" ? "bg-red-50 text-red-600" : str(item.difficulty) === "moderate" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}>
+                      {str(item.difficulty) === "challenging" ? "困难" : str(item.difficulty) === "moderate" ? "中等" : "简单"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </div>
+  )
+}
+
 // ── Main dispatcher ───────────────────────────────────────────────────────────
 interface AnalysisDimViewProps {
   dimension: string
@@ -772,6 +1379,8 @@ interface AnalysisDimViewProps {
 
 export function AnalysisDimView({ dimension, data }: AnalysisDimViewProps) {
   switch (dimension) {
+    case "executive_summary":
+      return <ExecutiveSummaryView data={data} />
     case "qualification":
       return <QualificationView data={data} />
     case "evaluation":
@@ -780,12 +1389,18 @@ export function AnalysisDimView({ dimension, data }: AnalysisDimViewProps) {
       return <KeyDatesView data={data} />
     case "submission":
       return <SubmissionView data={data} />
-    case "bds_modification":
+    case "bds_analysis":
       return <BDSView data={data} />
+    case "technical_requirements":
+      return <TechnicalView data={data} />
     case "methodology":
       return <MethodologyView data={data} />
     case "commercial":
       return <CommercialView data={data} />
+    case "technical_strategy":
+      return <TechnicalStrategyView data={data} />
+    case "compliance_matrix":
+      return <ComplianceMatrixView data={data} />
     case "risk_assessment":
       return <RiskView data={data} />
     default:

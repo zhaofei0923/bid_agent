@@ -4,39 +4,48 @@ from app.agents.skills.base import Skill, SkillContext, SkillResult
 
 SYSTEM_PROMPT = (
     "你是专业的多边发展银行投标分析师。"
-    "请从招标文件中提取评分标准和方法论，并以 JSON 格式返回。"
+    "请从招标文件中提取评分标准和方法论，并基于采购指南对评标方法做简要介绍和指导说明。"
 )
 
-EXTRACTION_PROMPT = """请从以下招标文件内容中提取完整的评分标准。
+EXTRACTION_PROMPT = """请从以下招标文件内容中提取完整的评分标准，并介绍该评标方法。
 
 === 招标文件摘录 ===
 {bid_context}
 
-=== 参考知识 ===
+=== 采购指南参考 ===
 {kb_context}
 
 请以 JSON 格式返回:
 {{
-  "evaluation_method": "QCBS|QBS|FBS|LCS|CQS",
+  "evaluation_method": {{
+    "type": "QCBS|QBS|FBS|LCS|CQS|ICB|NCB|other",
+    "full_name": "完整名称",
+    "introduction": "基于采购指南的方法介绍（该方法的适用范围、特点、注意事项，150字以内）",
+    "guidance_notes": "对投标人的指导说明（该方法下的中标关键策略，100字以内）"
+  }},
   "technical_weight": 80,
   "financial_weight": 20,
   "technical_criteria": [
     {{
-      "criterion": "公司经验",
+      "criterion": "评分大类",
       "weight": 30,
       "sub_criteria": [
-        {{"name": "类似项目经验", "max_score": 15}},
-        {{"name": "行业专长", "max_score": 15}}
+        {{"name": "子项", "max_score": 15, "scoring_hint": "评分要点提示"}}
       ]
     }}
   ],
   "financial_evaluation": {{
     "formula": "Sf = 100 * Fm / F",
-    "description": "..."
+    "description": "财务评分计算说明"
   }},
   "qualification_thresholds": {{
-    "technical_minimum": 75
-  }}
+    "technical_minimum": 75,
+    "description": "最低技术分说明"
+  }},
+  "scoring_tips": [
+    "评分策略提示1（如：技术权重高于财务，应重点投入技术方案质量）",
+    "评分策略提示2"
+  ]
 }}
 """
 

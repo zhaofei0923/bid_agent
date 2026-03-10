@@ -7,7 +7,7 @@ SYSTEM_PROMPT = (
     "请深入分析招标文件的评标方法、评分标准和权重体系。"
 )
 
-ANALYSIS_PROMPT = """请深入分析以下招标文件的评标方法论。
+ANALYSIS_PROMPT = """请深入分析以下招标文件的评标方法论，并给出详细的得分策略。
 
 === 招标文件摘录 ===
 {bid_context}
@@ -33,10 +33,11 @@ ANALYSIS_PROMPT = """请深入分析以下招标文件的评标方法论。
           "name": "子项",
           "weight": 0,
           "max_score": 0,
-          "scoring_guidance": "评分指引"
+          "scoring_guidance": "评分指引（评委通常如何打分）"
         }}
       ],
-      "strategy_tips": "得分策略建议"
+      "strategy_tips": "该大类的得分策略建议",
+      "common_mistakes": "常见失分原因"
     }}
   ],
   "critical_thresholds": {{
@@ -49,7 +50,26 @@ ANALYSIS_PROMPT = """请深入分析以下招标文件的评标方法论。
     "high_impact_areas": ["分值占比高且可提升的领域"],
     "differentiators": ["与竞争对手的差异化要素"],
     "minimum_effort_areas": ["满足及格线即可的领域"],
-    "overall_recommendation": "总体策略建议"
+    "resource_allocation": "资源分配建议（将精力集中在哪些评分项上）",
+    "overall_recommendation": "总体中标策略建议（200字以内）"
+  }},
+  "score_simulation": {{
+    "optimistic_scenario": {{
+      "technical_score": 0,
+      "key_assumptions": ["乐观假设"]
+    }},
+    "conservative_scenario": {{
+      "technical_score": 0,
+      "key_assumptions": ["保守假设"]
+    }},
+    "improvement_priorities": [
+      {{
+        "area": "可提升领域",
+        "current_estimate": "预估得分",
+        "potential_gain": "潜在提升分数",
+        "effort_required": "high|medium|low"
+      }}
+    ]
   }}
 }}
 """
