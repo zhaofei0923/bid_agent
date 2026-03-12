@@ -5,7 +5,15 @@ import type React from "react"
 
 // ── Type helpers ─────────────────────────────────────────────────────────────
 type Rec = Record<string, unknown>
-const str = (v: unknown): string => (typeof v === "string" ? v : "")
+/** Strip markdown emphasis markers (**bold**, *italic*, __bold__, _italic_) from LLM output. */
+function stripMd(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+}
+const str = (v: unknown): string => (typeof v === "string" ? stripMd(v) : "")
 const num = (v: unknown): number => (typeof v === "number" ? v : 0)
 const bool = (v: unknown): boolean => v === true
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
@@ -87,7 +95,7 @@ function BulletList({ items }: { items: string[] }) {
       {items.map((item, i) => (
         <li key={i} className="flex gap-2 text-sm text-slate-700">
           <span className="shrink-0 text-slate-400">·</span>
-          <span>{item}</span>
+          <span>{stripMd(item)}</span>
         </li>
       ))}
     </ul>
@@ -339,7 +347,7 @@ function KeyDatesView({ data }: { data: Rec }) {
           {warnings.map((w, i) => (
             <p key={i} className="flex gap-2 text-sm text-amber-800">
               <span>⚠️</span>
-              <span>{w}</span>
+              <span>{stripMd(w)}</span>
             </p>
           ))}
         </div>
