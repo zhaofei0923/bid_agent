@@ -70,8 +70,19 @@ class AnalyzeBDS(Skill):
 
         if not bid_context:
             return SkillResult(
-                success=False,
-                error="No bid context provided",
+                success=True,
+                data={
+                    "bds_modifications": [],
+                    "critical_changes_summary": "未检索到 BDS 相关内容，可能文档中未包含 Bid Data Sheet 章节或文档解析未识别该章节。",
+                    "compliance_checklist": [],
+                    "statistics": {
+                        "total_bds_items": 0,
+                        "critical_count": 0,
+                        "high_count": 0,
+                        "medium_count": 0,
+                        "low_count": 0,
+                    },
+                },
             )
 
         prompt = ANALYSIS_PROMPT.format(

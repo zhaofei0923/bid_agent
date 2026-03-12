@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.embedding_client import get_embedding_client, get_translator
 from app.agents.llm_client import get_llm_client
-from app.agents.mcp.bid_document_search import bid_document_search
+from app.agents.mcp.bid_document_search import bid_document_search, keyword_search_chunks
 from app.agents.mcp.knowledge_search import knowledge_search
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
         ],
         "section_types": ["section_2_bds", "section_1_itb"],
         "kb_queries": ["bid data sheet standard bidding document"],
+        "keyword_fallback": ["BDS", "Bid Data Sheet", "ITB", "Instructions to Bidders"],
     },
     "commercial": {
         "doc_queries": [
@@ -161,6 +162,31 @@ async def build_analysis_context(
 
     unique_chunks = _deduplicate_by_id(all_chunks)
     top_chunks = sorted(unique_chunks, key=lambda c: c.get("score", 0), reverse=True)[:15]
+
+    # 1b. Keyword fallback — when vector search returns too few results
+    keyword_fallback = config.get("keyword_fallback")
+    if len(top_chunks) < 3 and keyword_fallback:
+        logger.info(
+            "Vector search returned %d chunks for '%s', trying keyword fallback",
+            len(top_chunks), dimension,
+        )
+        try:
+            kw_chunks = await keyword_search_chunks(
+                db=db,
+                project_id=project_id,
+                keywords=keyword_fallback,
+                top_k=15,
+            )
+            # Merge with existing, dedup
+            all_chunks.extend(kw_chunks)
+            unique_chunks = _deduplicate_by_id(all_chunks)
+            top_chunks = sorted(
+                unique_chunks, key=lambda c: c.get("score", 0), reverse=True
+            )[:15]
+        except Exception:
+            with contextlib.suppress(Exception):
+                await db.rollback()
+            logger.warning("Keyword fallback failed for '%s'", dimension, exc_info=True)
 
     # 2. Knowledge base search
     kb_chunks: list[dict] = []
