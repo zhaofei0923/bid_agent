@@ -47,9 +47,6 @@ const FIELD_MAP: Record<string, keyof BidAnalysis> = {
   submission: "submission_checklist",
   bds_analysis: "bds_modifications",
   technical_requirements: "technical_requirements",
-  methodology: "evaluation_methodology",
-  commercial: "commercial_terms",
-  technical_strategy: "technical_strategy",
   compliance_matrix: "compliance_matrix",
 }
 
@@ -61,9 +58,6 @@ const ANALYSIS_DIMENSIONS = [
   { key: "submission", icon: "📦" },
   { key: "bds_analysis", icon: "📝" },
   { key: "technical_requirements", icon: "🔧" },
-  { key: "methodology", icon: "🔬" },
-  { key: "commercial", icon: "💰" },
-  { key: "technical_strategy", icon: "🎯" },
   { key: "compliance_matrix", icon: "✅" },
 ] as const
 
@@ -115,15 +109,6 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
       if (deliverables.length > 0) parts.push(`${deliverables.length} 项交付物`)
       if (personnel.length > 0) parts.push(`${personnel.length} 个关键岗位`)
       return parts.join(" · ") || ""
-    }
-    case "methodology": {
-      const em = r(data.evaluation_method)
-      const sc = n(em.minimum_technical_score)
-      return em.type ? `${s(em.type)} · 最低通过分 ${sc}` : ""
-    }
-    case "technical_strategy": {
-      const themes = a(data.win_themes)
-      return themes.length > 0 ? `${themes.length} 个核心中标主题` : ""
     }
     case "compliance_matrix": {
       const summary = r(data.summary)
@@ -207,15 +192,19 @@ export const AnalysisStep = memo(function AnalysisStep({
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* ── Risk Assessment — full-width at top, always expanded ── */}
+          {/* ── Risk Assessment — collapsible card at top ── */}
           {(() => {
             const riskData = analysis.risk_assessment as Record<
               string,
               unknown
             > | null
             const hasData = riskData && Object.keys(riskData).length > 0
+            const isExpanded = expandedDims.has("risk_assessment")
             return (
-              <Card>
+              <Card
+                className={hasData ? "cursor-pointer transition-colors hover:bg-slate-50" : ""}
+                onClick={hasData ? () => toggleDim("risk_assessment") : undefined}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -224,27 +213,44 @@ export const AnalysisStep = memo(function AnalysisStep({
                         {t("analysis.dimensions.risk_assessment")}
                       </h3>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Badge variant={hasData ? "default" : "secondary"}>
                         {hasData ? t("analysis.completed") : t("analysis.pending")}
                       </Badge>
+                      {hasData && (
+                        <span className="text-muted-foreground">
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  {hasData && !isExpanded && (
+                    <p className="mt-1 text-xs text-muted-foreground/60">
+                      点击展开详情 →
+                    </p>
+                  )}
                 </CardHeader>
-                <CardContent>
-                  {hasData ? (
+                {isExpanded && hasData && (
+                  <CardContent>
                     <AnalysisDimView dimension="risk_assessment" data={riskData} />
-                  ) : (
+                  </CardContent>
+                )}
+                {!hasData && (
+                  <CardContent>
                     <p className="text-xs text-muted-foreground">
                       {t("analysis.clickToRun")}
                     </p>
-                  )}
-                </CardContent>
+                  </CardContent>
+                )}
               </Card>
             )
           })()}
 
-          {/* ── Other 7 dimensions — full-width stacked, accordion ── */}
+          {/* ── Other dimensions — full-width stacked, accordion ── */}
           {ANALYSIS_DIMENSIONS.map((dim) => {
             const field = FIELD_MAP[dim.key]
             const dimData = analysis[field] as Record<string, unknown> | null
