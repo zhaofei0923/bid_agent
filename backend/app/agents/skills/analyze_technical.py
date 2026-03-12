@@ -87,8 +87,21 @@ class AnalyzeTechnical(Skill):
 
         if not bid_context:
             return SkillResult(
-                success=False,
-                error="No bid context provided",
+                success=True,
+                data={
+                    "project_scope": {
+                        "objective": "",
+                        "scope_summary": "未检索到技术要求相关内容，可能文档中未包含 TOR/SOW 章节或文档解析未识别该章节。",
+                        "geographic_coverage": "",
+                        "implementation_period": "",
+                    },
+                    "deliverables": [],
+                    "technical_standards": [],
+                    "system_requirements": [],
+                    "key_personnel": [],
+                    "risk_areas": [],
+                    "clarification_needed": [],
+                },
             )
 
         prompt = ANALYSIS_PROMPT.format(

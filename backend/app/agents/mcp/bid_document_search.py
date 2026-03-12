@@ -123,7 +123,7 @@ async def keyword_search_chunks(
             "id": row.chunk_id,
             "content": row.content,
             "page_number": row.page_number,
-            "score": 0.0,  # 关键词匹配无相似度分数
+            "score": 0.1,  # 关键词匹配给予正向信号但低于向量匹配
             "section_type": row.section_type,
             "section_title": row.section_title,
             "clause_reference": row.clause_reference,

@@ -98,6 +98,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "technical proposal requirements",
             "terms of reference scope of services",
         ],
+        "keyword_fallback": ["technical", "scope of work", "terms of reference", "TOR", "deliverables", "specifications"],
     },
     "compliance": {
         "doc_queries": [

@@ -350,13 +350,50 @@ async def _extract_toc_from_pdf(file_path: str, pages: list[dict]) -> list[dict]
     return []
 
 
+def _match_toc_title_to_section_type(title: str) -> str:
+    """Try to match a TOC section title against SECTION_PATTERNS.
+
+    Returns the matched section_type (e.g. 'section_2_bds') or 'toc_section' if no match.
+    Falls back to a keyword-based matcher for common TOC title variants that
+    the strict page-level patterns may not cover (e.g. plurals, missing acronyms).
+    """
+    from app.services.document_processing.bid_document_parser import SECTION_PATTERNS
+
+    for section_def in SECTION_PATTERNS:
+        for pattern in section_def["patterns"]:
+            if re.search(pattern, title):
+                return section_def["type"]
+
+    # ── Keyword fallback for TOC titles ──
+    t = title.lower()
+    if re.search(r"instructions?\s+to\s+bidders?", t):
+        return "section_1_itb"
+    if re.search(r"bid\s*data\s*sheet", t):
+        return "section_2_bds"
+    if re.search(r"(evaluation|qualification).*(evaluation|qualification|criteria)", t):
+        return "section_3_qualification"
+    if re.search(r"bidding\s*forms?", t):
+        return "section_4_forms"
+    if re.search(r"terms?\s*of\s*reference|eligible\s*countr", t):
+        return "section_5_tos"
+    if re.search(r"(supply|works?)\s*requirement|scope\s*of\s*(works?|supply)", t):
+        return "part_2_requirements"
+    if re.search(r"conditions?\s*of\s*contract|general\s*conditions?", t):
+        return "part_3_contract"
+
+    return "toc_section"
+
+
 def _build_sections_from_toc(
     toc: list[dict], pages: list[dict], document_id: object
 ) -> list[tuple]:
     """Create BidDocumentSection ORM objects from extracted TOC entries.
 
     Returns list of (section_orm, content_str) tuples ready to add to the session.
+    Tries to match each TOC title against standard section patterns for accurate
+    section_type classification instead of generic 'toc_section'.
     """
+    seen_types: set[str] = set()
     sections_and_content: list[tuple] = []
     for item in toc:
         start_p = item["start_page"]
@@ -367,9 +404,20 @@ def _build_sections_from_toc(
             for p in section_pages
             if p["text"].strip()
         )
+        # Try to identify a precise section_type from the TOC title
+        matched_type = _match_toc_title_to_section_type(item["title"])
+        # Avoid duplicate section_types (keep first occurrence)
+        if matched_type != "toc_section" and matched_type in seen_types:
+            matched_type = "toc_section"
+        if matched_type != "toc_section":
+            seen_types.add(matched_type)
+            logger.info(
+                "TOC title '%s' matched section_type '%s'",
+                item["title"], matched_type,
+            )
         section = BidDocumentSection(
             bid_document_id=document_id,
-            section_type="toc_section",
+            section_type=matched_type,
             section_title=item["title"],
             start_page=start_p,
             end_page=end_p,
