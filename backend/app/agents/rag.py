@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.embedding_client import get_embedding_client, get_translator
 from app.agents.llm_client import get_llm_client
-from app.agents.mcp.bid_document_search import bid_document_search, keyword_search_chunks
+from app.agents.mcp.bid_document_search import (
+    bid_document_search,
+    keyword_search_chunks,
+)
 from app.agents.mcp.knowledge_search import knowledge_search
 
 logger = logging.getLogger(__name__)
