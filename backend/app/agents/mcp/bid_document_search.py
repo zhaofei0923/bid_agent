@@ -1,9 +1,12 @@
 """bid_document_search — semantic search within project bid documents."""
 
+import logging
 import re
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 # ── 中英双语投标术语映射 ────────────────────────────────────────────
 # 当用户用中文提问时，将关键术语扩展为英文，提升对英文招标文件的检索效果
@@ -112,6 +115,7 @@ async def keyword_search_chunks(
         result = await db.execute(sql, params)
         rows = result.fetchall()
     except Exception:
+        logger.warning("keyword_search_chunks SQL failed for project %s", project_id, exc_info=True)
         return []
 
     return [

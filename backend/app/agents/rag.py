@@ -25,7 +25,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "minimum experience financial capacity",
             "joint venture consortium",
         ],
-        "section_types": ["section_3", "section_2_bds", "section_1_itb"],
+        "section_types": ["section_3_qualification", "section_2_bds", "section_1_itb"],
         "kb_queries": [
             "ADB qualification criteria",
             "eligibility requirements bidder",
@@ -36,7 +36,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "evaluation criteria scoring methodology weight",
             "technical proposal evaluation points",
         ],
-        "section_types": ["section_3", "section_2_bds"],
+        "section_types": ["section_3_qualification", "section_2_bds"],
         "kb_queries": [
             "QCBS quality cost based selection",
             "merit point criteria",
@@ -93,7 +93,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "system requirements equipment standards",
             "key personnel qualifications staffing",
         ],
-        "section_types": ["part_2_requirements", "section_3", "section_2_bds"],
+        "section_types": ["part_2_requirements", "section_3_qualification", "section_2_bds"],
         "kb_queries": [
             "technical proposal requirements",
             "terms of reference scope of services",
@@ -105,7 +105,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "disqualification rejection grounds",
             "eligibility criteria compliance",
         ],
-        "section_types": ["section_1_itb", "section_2_bds", "section_3", "section_4_forms"],
+        "section_types": ["section_1_itb", "section_2_bds", "section_3_qualification", "section_4_forms"],
         "kb_queries": [
             "bid compliance mandatory requirements",
         ],
@@ -166,30 +166,35 @@ async def build_analysis_context(
     unique_chunks = _deduplicate_by_id(all_chunks)
     top_chunks = sorted(unique_chunks, key=lambda c: c.get("score", 0), reverse=True)[:15]
 
-    # 1b. Keyword fallback — when vector search returns too few results
+    # 1b. Keyword fallback — when vector search has no relevant section-typed results
     keyword_fallback = config.get("keyword_fallback")
-    if len(top_chunks) < 3 and keyword_fallback:
-        logger.info(
-            "Vector search returned %d chunks for '%s', trying keyword fallback",
-            len(top_chunks), dimension,
+    if keyword_fallback:
+        target_types = set(config.get("section_types") or [])
+        has_relevant = target_types and any(
+            c.get("section_type") in target_types for c in top_chunks
         )
-        try:
-            kw_chunks = await keyword_search_chunks(
-                db=db,
-                project_id=project_id,
-                keywords=keyword_fallback,
-                top_k=15,
+        if not has_relevant:
+            logger.info(
+                "No section-type matched chunks for '%s' (got %d generic), trying keyword fallback",
+                dimension, len(top_chunks),
             )
-            # Merge with existing, dedup
-            all_chunks.extend(kw_chunks)
-            unique_chunks = _deduplicate_by_id(all_chunks)
-            top_chunks = sorted(
-                unique_chunks, key=lambda c: c.get("score", 0), reverse=True
-            )[:15]
-        except Exception:
-            with contextlib.suppress(Exception):
-                await db.rollback()
-            logger.warning("Keyword fallback failed for '%s'", dimension, exc_info=True)
+            try:
+                kw_chunks = await keyword_search_chunks(
+                    db=db,
+                    project_id=project_id,
+                    keywords=keyword_fallback,
+                    top_k=15,
+                )
+                # Merge with existing, dedup
+                all_chunks.extend(kw_chunks)
+                unique_chunks = _deduplicate_by_id(all_chunks)
+                top_chunks = sorted(
+                    unique_chunks, key=lambda c: c.get("score", 0), reverse=True
+                )[:15]
+            except Exception:
+                with contextlib.suppress(Exception):
+                    await db.rollback()
+                logger.warning("Keyword fallback failed for '%s'", dimension, exc_info=True)
 
     # 2. Knowledge base search
     kb_chunks: list[dict] = []

@@ -120,6 +120,30 @@ def _step_field_name(step: str) -> str:
     return mapping.get(step, step)
 
 
+def _is_valid_cached(data: Any) -> bool:
+    """Check if cached analysis data contains meaningful results.
+
+    Empty/error results should not be treated as valid cache so the step
+    gets re-executed on next run.
+    """
+    if not data or not isinstance(data, dict):
+        return False
+    if "error" in data:
+        return False
+    # Check for list-type results that are empty (e.g. bds_modifications: [])
+    list_fields = [
+        "bds_modifications", "qualification_requirements", "key_dates",
+        "compliance_checklist", "scoring_criteria", "deliverables",
+    ]
+    for field in list_fields:
+        if field in data and isinstance(data[field], list) and len(data[field]) == 0:
+            # If the primary list field is empty, check statistics
+            stats = data.get("statistics", {})
+            if isinstance(stats, dict) and stats.get("total_bds_items") == 0:
+                return False
+    return True
+
+
 async def run_bid_analysis_pipeline(
     project_id: str,
     db: AsyncSession,
@@ -164,7 +188,7 @@ async def run_bid_analysis_pipeline(
         field = _step_field_name(step)
         if not force_refresh and analysis is not None:
             cached = getattr(analysis, field, None)
-            if cached:
+            if cached and _is_valid_cached(cached):
                 results[step] = cached
                 logger.info("Step '%s' loaded from cache for project %s", step, project_id)
                 continue
