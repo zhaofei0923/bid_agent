@@ -247,7 +247,7 @@ async def run_bid_analysis_pipeline(
                 return step, result.data, result.tokens_consumed
             logger.error("Step '%s' failed: %s", step, result.error)
             return step, {"error": result.error}, 0
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("Step '%s' timed out after 120s for project %s", step, project_id)
             return step, {"error": f"step_{step}_timeout"}, 0
         except Exception:
