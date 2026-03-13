@@ -73,9 +73,9 @@ STEP_SKILL_MAP: dict[str, type[Skill]] = {
 # Per-step timeout overrides (seconds). BDS analysis is
 # inherently slow due to cross-referencing ITB standard clauses.
 STEP_TIMEOUT: dict[str, int] = {
-    "bds_analysis": 180,
+    "bds_analysis": 300,
 }
-DEFAULT_STEP_TIMEOUT = 90
+DEFAULT_STEP_TIMEOUT = 120
 
 # Map step → RAG dimension (for build_analysis_context)
 STEP_DIMENSION_MAP: dict[str, str] = {
@@ -205,15 +205,20 @@ async def run_bid_analysis_pipeline(
     async def _fetch_context(step: str) -> tuple[str, str]:
         """Fetch RAG context for a step."""
         dimension = STEP_DIMENSION_MAP.get(step, step)
+        t0 = datetime.now(UTC)
         try:
-            return await build_analysis_context(
+            result = await build_analysis_context(
                 project_id=project_id,
                 dimension=dimension,
                 db=db,
                 institution=kb_institution,
             )
+            elapsed = (datetime.now(UTC) - t0).total_seconds()
+            logger.info("RAG context for '%s' fetched in %.1fs (bid=%d chars, kb=%d chars)", step, elapsed, len(result[0]), len(result[1]))
+            return result
         except Exception:
-            logger.warning("Context retrieval failed for step '%s'", step, exc_info=True)
+            elapsed = (datetime.now(UTC) - t0).total_seconds()
+            logger.warning("Context retrieval failed for step '%s' after %.1fs", step, elapsed, exc_info=True)
             return "", ""
 
     async def _execute_step(
@@ -241,17 +246,21 @@ async def run_bid_analysis_pipeline(
         skill = skill_cls()
         timeout = STEP_TIMEOUT.get(step, DEFAULT_STEP_TIMEOUT)
         logger.info("Running step '%s' for project %s (timeout=%ds) …", step, project_id, timeout)
+        t0 = datetime.now(UTC)
         try:
             result = await asyncio.wait_for(
                 skill.execute(ctx),
                 timeout=timeout,
             )
+            elapsed = (datetime.now(UTC) - t0).total_seconds()
             if result.success:
+                logger.info("Step '%s' completed in %.1fs (tokens=%d)", step, elapsed, result.tokens_consumed)
                 return step, result.data, result.tokens_consumed
-            logger.error("Step '%s' failed: %s", step, result.error)
+            logger.error("Step '%s' failed after %.1fs: %s", step, elapsed, result.error)
             return step, {"error": result.error}, 0
         except TimeoutError:
-            logger.error("Step '%s' timed out after %ds for project %s", step, timeout, project_id)
+            elapsed = (datetime.now(UTC) - t0).total_seconds()
+            logger.error("Step '%s' timed out after %.1fs for project %s", step, elapsed, project_id)
             return step, {"error": f"step_{step}_timeout"}, 0
         except Exception:
             logger.exception("Unhandled error in step '%s'", step)

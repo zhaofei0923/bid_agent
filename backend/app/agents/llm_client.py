@@ -74,7 +74,7 @@ class LLMClient:
     ) -> LLMResponse:
         """Send a chat completion request."""
         model = model or self.model
-        logger.debug("LLM chat: model=%s, msgs=%d", model, len(messages))
+        logger.info("LLM chat: model=%s, msgs=%d, max_tokens=%d", model, len(messages), max_tokens)
 
         response = await self.client.chat.completions.create(
             model=model,
