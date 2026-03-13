@@ -11,19 +11,6 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright: install system deps (X11 libs, fonts, etc.)
-RUN python -m playwright install-deps chromium
-
-# Download Playwright-compatible Chromium.
-# On GitHub Actions: default cdn.playwright.dev works fine.
-# On China server: pass --build-arg to use npmmirror CDN.
-# Use a fixed path so both root (build) and appuser (runtime) find the browser.
-ARG PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=
-ENV PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST}
-ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
-RUN python -m playwright install chromium && \
-    echo "Playwright Chromium installed successfully"
-
 # Application code
 COPY . .
 
