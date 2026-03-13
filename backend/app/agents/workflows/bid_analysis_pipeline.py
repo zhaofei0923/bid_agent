@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.llm_client import get_llm_client
 from app.agents.rag import build_analysis_context
 from app.agents.skills.analyze_bds import AnalyzeBDS
-from app.agents.skills.analyze_commercial import AnalyzeCommercial
 from app.agents.skills.analyze_qualification import AnalyzeQualification
 from app.agents.skills.analyze_technical import AnalyzeTechnical
 from app.agents.skills.assess_risk import AssessRisk
@@ -45,7 +44,6 @@ ALL_STEPS = [
     # Round 2 — depend on Round 1 partial results
     "bds_analysis",
     "technical_requirements",
-    "commercial",
     "methodology",
     # Round 3 — synthesis / depends on earlier rounds
     "technical_strategy",
@@ -54,7 +52,7 @@ ALL_STEPS = [
 ]
 
 ROUND_1_STEPS = ["executive_summary", "key_dates", "qualification", "evaluation", "submission"]
-ROUND_2_STEPS = ["bds_analysis", "technical_requirements", "commercial", "methodology"]
+ROUND_2_STEPS = ["bds_analysis", "technical_requirements", "methodology"]
 ROUND_3_STEPS = ["technical_strategy", "compliance_matrix", "risk_assessment"]
 
 # Maps step names → Skill classes (each dedicated Skill).
@@ -67,7 +65,6 @@ STEP_SKILL_MAP: dict[str, type[Skill]] = {
     "bds_analysis": AnalyzeBDS,
     "technical_requirements": AnalyzeTechnical,
     "methodology": EvaluateMethodology,
-    "commercial": AnalyzeCommercial,
     "technical_strategy": TechnicalStrategy,
     "compliance_matrix": BuildComplianceMatrix,
     "risk_assessment": AssessRisk,
@@ -83,7 +80,6 @@ STEP_DIMENSION_MAP: dict[str, str] = {
     "bds_analysis": "bds",
     "technical_requirements": "technical",
     "methodology": "evaluation",
-    "commercial": "commercial",
     "technical_strategy": "technical",
     "compliance_matrix": "compliance",
     "risk_assessment": "qualification",  # uses prior results, not new retrieval
@@ -112,7 +108,6 @@ def _step_field_name(step: str) -> str:
         "bds_analysis": "bds_modifications",
         "technical_requirements": "technical_requirements",
         "methodology": "evaluation_methodology",
-        "commercial": "commercial_terms",
         "technical_strategy": "technical_strategy",
         "compliance_matrix": "compliance_matrix",
         "risk_assessment": "risk_assessment",

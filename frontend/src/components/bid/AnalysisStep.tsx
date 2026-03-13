@@ -48,7 +48,6 @@ const FIELD_MAP: Record<string, keyof BidAnalysis> = {
   bds_analysis: "bds_modifications",
   technical_requirements: "technical_requirements",
   methodology: "evaluation_methodology",
-  commercial: "commercial_terms",
   technical_strategy: "technical_strategy",
   compliance_matrix: "compliance_matrix",
 }
@@ -62,7 +61,6 @@ const ANALYSIS_DIMENSIONS = [
   { key: "bds_analysis", icon: "📝" },
   { key: "technical_requirements", icon: "🔧" },
   { key: "methodology", icon: "📐" },
-  { key: "commercial", icon: "💰" },
   { key: "technical_strategy", icon: "🎯" },
   { key: "compliance_matrix", icon: "✅" },
 ] as const
@@ -119,14 +117,6 @@ function getDimSummary(key: string, data: Record<string, unknown>): string {
     case "methodology": {
       const method = s(data.evaluation_approach) || s(data.method_type)
       return method || ""
-    }
-    case "commercial": {
-      const terms = a(data.key_commercial_terms || data.commercial_terms)
-      const risks = a(data.commercial_risks)
-      const parts: string[] = []
-      if (terms.length > 0) parts.push(`${terms.length} 项条款`)
-      if (risks.length > 0) parts.push(`${risks.length} 个风险点`)
-      return parts.join(" · ") || ""
     }
     case "technical_strategy": {
       const strengths = a(data.strengths || data.competitive_advantages)
