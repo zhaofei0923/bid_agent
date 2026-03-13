@@ -239,14 +239,38 @@ async def run_bid_analysis_pipeline(
         skill = skill_cls()
         logger.info("Running step '%s' for project %s …", step, project_id)
         try:
-            result = await skill.execute(ctx)
+            result = await asyncio.wait_for(
+                skill.execute(ctx),
+                timeout=120,
+            )
             if result.success:
                 return step, result.data, result.tokens_consumed
             logger.error("Step '%s' failed: %s", step, result.error)
             return step, {"error": result.error}, 0
+        except asyncio.TimeoutError:
+            logger.error("Step '%s' timed out after 120s for project %s", step, project_id)
+            return step, {"error": f"step_{step}_timeout"}, 0
         except Exception:
             logger.exception("Unhandled error in step '%s'", step)
             return step, {"error": "internal_error"}, 0
+
+    async def _execute_step_with_retry(
+        step: str,
+        bid_ctx: str,
+        kb_ctx: str,
+        extra_params: dict[str, Any] | None = None,
+        max_retries: int = 1,
+    ) -> tuple[str, dict | None, int]:
+        """Execute a step with automatic retry on failure."""
+        step_name, data, tokens = await _execute_step(step, bid_ctx, kb_ctx, extra_params)
+        if data and isinstance(data, dict) and "error" in data and max_retries > 0:
+            logger.info("Retrying step '%s' after failure (attempt 2) …", step)
+            step_name, retry_data, retry_tokens = await _execute_step(
+                step, bid_ctx, kb_ctx, extra_params
+            )
+            if retry_data and isinstance(retry_data, dict) and "error" not in retry_data:
+                return step_name, retry_data, retry_tokens
+        return step_name, data, tokens
 
     async def _run_round(
         round_steps: list[str],
@@ -264,12 +288,12 @@ async def run_bid_analysis_pipeline(
         for step in active_steps:
             step_contexts[step] = await _fetch_context(step)
 
-        # Execute LLM calls in parallel
+        # Execute LLM calls in parallel (with per-step retry on failure)
         tasks = []
         for step in active_steps:
             bid_ctx, kb_ctx = step_contexts[step]
             extra = extra_params_fn.get(step) if extra_params_fn else None
-            tasks.append(_execute_step(step, bid_ctx, kb_ctx, extra))
+            tasks.append(_execute_step_with_retry(step, bid_ctx, kb_ctx, extra))
 
         parallel_results = await asyncio.gather(*tasks)
         for step, data, tokens in parallel_results:

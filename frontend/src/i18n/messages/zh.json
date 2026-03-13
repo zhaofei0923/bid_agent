@@ -925,10 +925,10 @@
     },
     "analysis": {
       "title": "投标分析",
-      "subtitle": "12 维度 AI 深度分析招标文件",
+      "subtitle": "多维度 AI 深度分析招标文件",
       "reanalyze": "重新分析",
       "analyzing": "分析中...",
-      "analyzingHint": "AI 正在分析招标文件，12 个维度分 3 轮执行，需要 3-5 分钟，请耐心等待...",
+      "analyzingHint": "AI 正在分析招标文件，分 3 轮执行，需要 3-5 分钟，请耐心等待...",
       "startAnalysis": "开始 AI 分析",
       "noAnalysis": "尚未运行分析",
       "completed": "已完成",

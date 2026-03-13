@@ -925,10 +925,10 @@
     },
     "analysis": {
       "title": "Bid Analysis",
-      "subtitle": "12-dimension AI deep analysis of tender documents",
+      "subtitle": "Multi-dimension AI deep analysis of tender documents",
       "reanalyze": "Re-analyze",
       "analyzing": "Analyzing...",
-      "analyzingHint": "AI is analyzing the tender documents across 12 dimensions in 3 rounds. This may take 3–5 minutes, please wait...",
+      "analyzingHint": "AI is analyzing the tender documents in 3 rounds. This may take 3–5 minutes, please wait...",
       "startAnalysis": "Start AI Analysis",
       "noAnalysis": "No analysis run yet",
       "completed": "Completed",
