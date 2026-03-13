@@ -15,6 +15,73 @@ import { useTranslations } from "next-intl"
 const SUCCESS_STATUSES = new Set(["processed", "completed"])
 const ACTIVE_STATUSES = new Set(["pending", "processing"])
 
+// Shared Markdown component overrides for consistent typography
+const markdownComponents = {
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="mt-6 mb-3 border-b border-slate-200 pb-2 text-base font-bold text-slate-900 first:mt-0">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="mt-6 mb-2 border-b border-slate-200 pb-1 text-[15px] font-semibold text-slate-800 first:mt-0">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="mt-4 mb-1.5 text-sm font-semibold text-slate-800">
+      {children}
+    </h3>
+  ),
+  h4: ({ children }: { children?: React.ReactNode }) => (
+    <h4 className="mt-3 mb-1 text-sm font-medium text-slate-700">
+      {children}
+    </h4>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2.5 text-[13px] leading-relaxed text-slate-600">
+      {children}
+    </p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-2.5 list-disc pl-5 text-[13px] text-slate-600">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-2.5 list-decimal pl-5 text-[13px] text-slate-600">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="mb-1 leading-relaxed">{children}</li>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-slate-800">{children}</strong>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="my-3 border-l-4 border-slate-300 bg-slate-50 py-2 pl-4 pr-2 text-[13px] italic text-slate-600">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="my-3 overflow-x-auto">
+      <table className="min-w-full border-collapse text-[13px] text-slate-700">
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[13px] font-semibold text-slate-800">
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="border border-slate-200 px-3 py-1.5 text-left">
+      {children}
+    </td>
+  ),
+} as const
+
 // ──────────────────────────────────────────────
 // Main component
 // ──────────────────────────────────────────────
@@ -104,29 +171,7 @@ export const OverviewStep = memo(function OverviewStep({
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                components={{
-                  h2: ({ children }) => (
-                    <h2 className="mt-5 mb-2 border-b border-slate-200 pb-1 text-sm font-semibold text-slate-800 first:mt-0">
-                      {children}
-                    </h2>
-                  ),
-                  p: ({ children }) => (
-                    <p className="mb-3 text-sm leading-relaxed text-slate-700">
-                      {children}
-                    </p>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="mb-3 list-disc pl-5 text-sm text-slate-700">
-                      {children}
-                    </ul>
-                  ),
-                  li: ({ children }) => (
-                    <li className="mb-1 leading-relaxed">{children}</li>
-                  ),
-                  strong: ({ children }) => (
-                    <strong className="font-semibold text-slate-800">{children}</strong>
-                  ),
-                }}
+                components={markdownComponents}
               >
                 {project!.combined_ai_overview!}
               </ReactMarkdown>
