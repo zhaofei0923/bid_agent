@@ -37,6 +37,7 @@ pymupdf4llm>=0.0.17
 
 # ============ Embedding Providers ============
 tencentcloud-sdk-python-hunyuan>=3.1.48
+tencentcloud-sdk-python-ocr>=3.0.0  # OCR for scanned PDF pages
 zhipuai>=2.1.5
 
 # ============ Utilities ============

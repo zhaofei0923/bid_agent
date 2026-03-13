@@ -70,6 +70,13 @@ STEP_SKILL_MAP: dict[str, type[Skill]] = {
     "risk_assessment": AssessRisk,
 }
 
+# Per-step timeout overrides (seconds). BDS analysis is
+# inherently slow due to cross-referencing ITB standard clauses.
+STEP_TIMEOUT: dict[str, int] = {
+    "bds_analysis": 180,
+}
+DEFAULT_STEP_TIMEOUT = 90
+
 # Map step → RAG dimension (for build_analysis_context)
 STEP_DIMENSION_MAP: dict[str, str] = {
     "executive_summary": "executive",
@@ -232,18 +239,19 @@ async def run_bid_analysis_pipeline(
             parameters=params,
         )
         skill = skill_cls()
-        logger.info("Running step '%s' for project %s …", step, project_id)
+        timeout = STEP_TIMEOUT.get(step, DEFAULT_STEP_TIMEOUT)
+        logger.info("Running step '%s' for project %s (timeout=%ds) …", step, project_id, timeout)
         try:
             result = await asyncio.wait_for(
                 skill.execute(ctx),
-                timeout=90,
+                timeout=timeout,
             )
             if result.success:
                 return step, result.data, result.tokens_consumed
             logger.error("Step '%s' failed: %s", step, result.error)
             return step, {"error": result.error}, 0
         except TimeoutError:
-            logger.error("Step '%s' timed out after 90s for project %s", step, project_id)
+            logger.error("Step '%s' timed out after %ds for project %s", step, timeout, project_id)
             return step, {"error": f"step_{step}_timeout"}, 0
         except Exception:
             logger.exception("Unhandled error in step '%s'", step)

@@ -95,7 +95,7 @@ class AnalyzeBDS(Skill):
                 prompt=prompt,
                 system_prompt=SYSTEM_PROMPT,
                 temperature=0.2,
-                max_tokens=4000,
+                max_tokens=8000,
             )
             return SkillResult(
                 success=True,

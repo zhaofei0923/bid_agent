@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "deepseek-chat"
     LLM_REASONING_MODEL: str = "deepseek-reasoner"
     LLM_MAX_RETRIES: int = 1
-    LLM_TIMEOUT: int = 90
+    LLM_TIMEOUT: int = 180
 
     # ── Embedding ────────────────────────────────────────────────
     EMBEDDING_PROVIDER: str = "hunyuan"  # hunyuan | zhipu

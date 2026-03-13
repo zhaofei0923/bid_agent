@@ -103,3 +103,72 @@ async def parse_pdf_async(file_path: str | Path) -> ParsedDocument:
 
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, parse_pdf, file_path)
+
+
+async def enhance_scanned_pages(
+    parsed_doc: ParsedDocument,
+    file_path: str | Path,
+) -> ParsedDocument:
+    """Use Tencent Cloud OCR to fill in text for scanned pages.
+
+    Only activates when:
+    1. TENCENT_OCR_ENABLED is True in settings
+    2. The document has scanned pages (is_scanned=True)
+
+    Non-scanned pages are left untouched.
+    Returns a new ParsedDocument with OCR text merged in.
+    """
+    from app.services.document_processing.tencent_doc_parser import (
+        get_tencent_doc_parser,
+    )
+
+    if not parsed_doc.has_scanned_pages:
+        return parsed_doc
+
+    parser = get_tencent_doc_parser()
+    if parser is None:
+        logger.info("Tencent OCR not available — %d scanned pages skipped",
+                    sum(1 for p in parsed_doc.pages if p.is_scanned))
+        return parsed_doc
+
+    scanned_page_nums = [p.page_number for p in parsed_doc.pages if p.is_scanned]
+    logger.info(
+        "Sending %d scanned pages to Tencent OCR: %s",
+        len(scanned_page_nums), scanned_page_nums,
+    )
+
+    ocr_results = await parser.ocr_pdf_pages(
+        file_path, scanned_page_nums, concurrency=3
+    )
+
+    # Merge OCR text back into pages
+    enhanced_pages: list[ParsedPage] = []
+    ocr_recovered = 0
+    for page in parsed_doc.pages:
+        if page.is_scanned and page.page_number in ocr_results:
+            ocr_text = ocr_results[page.page_number]
+            if ocr_text.strip():
+                enhanced_pages.append(ParsedPage(
+                    page_number=page.page_number,
+                    text=ocr_text,
+                    is_scanned=False,  # Successfully OCR'd
+                ))
+                ocr_recovered += 1
+                continue
+        enhanced_pages.append(page)
+
+    logger.info(
+        "Tencent OCR recovered %d/%d scanned pages",
+        ocr_recovered, len(scanned_page_nums),
+    )
+
+    full_text = "\n\n".join(p.text for p in enhanced_pages)
+    has_remaining_scanned = any(p.is_scanned for p in enhanced_pages)
+
+    return ParsedDocument(
+        pages=enhanced_pages,
+        total_pages=parsed_doc.total_pages,
+        full_text=full_text,
+        metadata=parsed_doc.metadata,
+        has_scanned_pages=has_remaining_scanned,
+    )

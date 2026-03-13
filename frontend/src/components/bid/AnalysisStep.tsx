@@ -214,7 +214,8 @@ export const AnalysisStep = memo(function AnalysisStep({
               string,
               unknown
             > | null
-            const hasData = riskData && Object.keys(riskData).length > 0
+            const hasError = riskData && "error" in riskData
+            const hasData = riskData && Object.keys(riskData).length > 0 && !hasError
             const isExpanded = expandedDims.has("risk_assessment")
             return (
               <Card
@@ -270,7 +271,8 @@ export const AnalysisStep = memo(function AnalysisStep({
           {ANALYSIS_DIMENSIONS.map((dim) => {
             const field = FIELD_MAP[dim.key]
             const dimData = analysis[field] as Record<string, unknown> | null
-            const hasData = dimData && Object.keys(dimData).length > 0
+            const hasError = dimData && "error" in dimData
+            const hasData = dimData && Object.keys(dimData).length > 0 && !hasError
             const isExpanded = expandedDims.has(dim.key)
             const summary = hasData ? getDimSummary(dim.key, dimData) : ""
 

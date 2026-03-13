@@ -149,11 +149,19 @@ def _clean_pdf_text(text: str) -> str:
 async def _parse_pdf(file_path: str) -> list[dict]:
     """Parse PDF using pymupdf4llm (Markdown output with table preservation).
 
-    Falls back to pdfplumber on failure.
+    Hybrid strategy:
+    1. pymupdf4llm extracts text from all pages (local, free)
+    2. Pages with < SCAN_THRESHOLD chars are flagged as scanned
+    3. Scanned pages are sent to Tencent Cloud OCR (if enabled)
+    4. OCR results are merged back, producing a complete document
+
+    Falls back to pdfplumber if pymupdf4llm fails entirely.
 
     Returns:
         List of {page_number, text} dicts.
     """
+    from app.services.document_processing.pdf_parser import SCAN_THRESHOLD
+
     # Primary engine: pymupdf4llm — outputs Markdown with tables/headings preserved
     try:
         import pymupdf4llm
@@ -169,27 +177,77 @@ async def _parse_pdf(file_path: str) -> list[dict]:
             pages.append({"page_number": page_num, "text": text})
         if pages:
             logger.info("pymupdf4llm parsed %d pages from %s", len(pages), file_path)
-            return pages
-        logger.warning("pymupdf4llm returned empty — falling back to pdfplumber")
+        else:
+            logger.warning("pymupdf4llm returned empty — falling back to pdfplumber")
+            pages = None
     except Exception:
         logger.warning("pymupdf4llm failed for %s — falling back to pdfplumber", file_path, exc_info=True)
+        pages = None
 
     # Fallback: pdfplumber
-    try:
-        import pdfplumber
-    except ImportError:
-        logger.error("pdfplumber not installed — run: pip install pdfplumber")
-        return []
+    if pages is None:
+        try:
+            import pdfplumber
+        except ImportError:
+            logger.error("pdfplumber not installed — run: pip install pdfplumber")
+            return []
 
-    pages = []
-    try:
-        with pdfplumber.open(file_path) as pdf:
-            for i, page in enumerate(pdf.pages):
-                text = page.extract_text() or ""
-                text = _clean_pdf_text(text)
-                pages.append({"page_number": i + 1, "text": text})
-    except Exception:
-        logger.exception("Failed to parse PDF: %s", file_path)
+        pages = []
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for i, page in enumerate(pdf.pages):
+                    text = page.extract_text() or ""
+                    text = _clean_pdf_text(text)
+                    pages.append({"page_number": i + 1, "text": text})
+        except Exception:
+            logger.exception("Failed to parse PDF: %s", file_path)
+            return []
+
+    if not pages:
+        return pages
+
+    # ── Hybrid: Tencent Cloud OCR for scanned pages ──────────────
+    scanned_page_nums = [
+        p["page_number"] for p in pages
+        if len(p["text"].strip()) < SCAN_THRESHOLD
+    ]
+
+    if scanned_page_nums:
+        logger.info(
+            "%d/%d pages appear scanned (<%d chars): %s",
+            len(scanned_page_nums), len(pages), SCAN_THRESHOLD, scanned_page_nums,
+        )
+        from app.services.document_processing.tencent_doc_parser import (
+            get_tencent_doc_parser,
+        )
+
+        parser = get_tencent_doc_parser()
+        if parser is not None:
+            try:
+                ocr_results = await parser.ocr_pdf_pages(
+                    file_path, scanned_page_nums, concurrency=3
+                )
+                recovered = 0
+                for page in pages:
+                    if page["page_number"] in ocr_results:
+                        ocr_text = ocr_results[page["page_number"]]
+                        if ocr_text.strip():
+                            page["text"] = _clean_pdf_text(ocr_text)
+                            recovered += 1
+                logger.info(
+                    "Tencent OCR recovered %d/%d scanned pages",
+                    recovered, len(scanned_page_nums),
+                )
+            except Exception:
+                logger.warning(
+                    "Tencent OCR batch failed — scanned pages remain empty",
+                    exc_info=True,
+                )
+        else:
+            logger.info(
+                "Tencent OCR not configured — %d scanned pages skipped",
+                len(scanned_page_nums),
+            )
 
     return pages
 
