@@ -28,11 +28,11 @@ export const bidAnalysisService = {
       params.steps.forEach((step) => searchParams.append("steps", step))
     }
 
-    // Analysis pipeline runs 12 LLM calls in 3 rounds — allow up to 5 minutes
+    // Analysis pipeline runs 12 LLM calls in 3 rounds — allow up to 10 minutes
     const { data } = await apiClient.post(
       `/projects/${projectId}/analysis/trigger?${searchParams.toString()}`,
       undefined,
-      { timeout: 300_000 }
+      { timeout: 600_000 }
     )
     return data
   },

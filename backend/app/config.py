@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = "https://api.deepseek.com"
     LLM_MODEL: str = "deepseek-chat"
     LLM_REASONING_MODEL: str = "deepseek-reasoner"
-    LLM_MAX_RETRIES: int = 3
-    LLM_TIMEOUT: int = 60
+    LLM_MAX_RETRIES: int = 1
+    LLM_TIMEOUT: int = 90
 
     # ── Embedding ────────────────────────────────────────────────
     EMBEDDING_PROVIDER: str = "hunyuan"  # hunyuan | zhipu
@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     EMBEDDING_FALLBACK_URL: str = "https://open.bigmodel.cn/api/paas/v4/embeddings"
     EMBEDDING_FALLBACK_KEY: str = ""
     EMBEDDING_FALLBACK_MODEL: str = "embedding-3"
+
+    # ── Tencent Cloud OCR (扫描件 PDF 识别) ────────────────────
+    TENCENT_OCR_ENABLED: bool = False  # 开关: True 时启用扫描件 OCR
+    TENCENT_OCR_SECRET_ID: str = ""  # 可复用 HUNYUAN_SECRET_ID
+    TENCENT_OCR_SECRET_KEY: str = ""  # 可复用 HUNYUAN_SECRET_KEY
+    TENCENT_OCR_REGION: str = "ap-guangzhou"
 
     # ── Celery ───────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
