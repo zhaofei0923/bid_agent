@@ -527,6 +527,8 @@ async def generate_checklist(
 
     try:
         # ── 2. RAG retrieval (institution-specific) ──────────────────
+        import asyncio
+
         emb_client = get_embedding_client()
 
         # Institution-specific seed queries & keywords
@@ -578,9 +580,13 @@ async def generate_checklist(
                 "qualification forms ELI CON FIN EXP TECH"
             )
 
-        # ── Vector search #1: broad seed query ────────────────────
-        emb_result = await emb_client.embed_text(seed_query)
+        # ── Parallel embeddings (independent HTTP calls) ────────
+        emb_result, s4_emb = await asyncio.gather(
+            emb_client.embed_text(seed_query),
+            emb_client.embed_text(section4_query),
+        )
 
+        # ── Vector search #1: broad seed query ────────────────────
         try:
             vector_results = await bid_document_search(
                 db=db,
@@ -594,7 +600,6 @@ async def generate_checklist(
 
         # ── Vector search #2: Section 4 / forms focused ──────────
         try:
-            s4_emb = await emb_client.embed_text(section4_query)
             s4_results = await bid_document_search(
                 db=db,
                 project_id=str(project_id),

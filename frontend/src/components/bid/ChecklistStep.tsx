@@ -284,9 +284,14 @@ export const ChecklistStep = memo(function ChecklistStep({
       )}
 
       {/* ── Error state ── */}
-      {generateMutation.isError && (
+      {generateMutation.isError && !checklist && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           生成失败，请稍后重试
+        </div>
+      )}
+      {generateMutation.isError && checklist && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          重新生成失败，当前显示缓存版本
         </div>
       )}
 
