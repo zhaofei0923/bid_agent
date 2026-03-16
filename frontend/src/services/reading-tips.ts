@@ -16,7 +16,9 @@ export interface ReadingTipsResponse {
 export const readingTipsService = {
   get: async (projectId: string): Promise<ReadingTipsResponse> => {
     const { data } = await apiClient.post<ReadingTipsResponse>(
-      `/projects/${projectId}/reading-tips`
+      `/projects/${projectId}/reading-tips`,
+      null,
+      { timeout: 120_000 }
     )
     return data
   },

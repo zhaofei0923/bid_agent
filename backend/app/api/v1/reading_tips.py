@@ -1,6 +1,11 @@
 """Reading tips API — generate reading guidance and bidding suggestions
-based on ADB/WB knowledge base RAG."""
+based on ADB/WB knowledge base RAG.
 
+Performance: embeddings, RAG searches, and LLM calls are parallelised
+via asyncio.gather() to keep total latency under ~25 s.
+"""
+
+import asyncio
 import logging
 from uuid import UUID
 
@@ -35,38 +40,53 @@ class ReadingTipsResponse(BaseModel):
     sources: list[ReadingTipsSource]
 
 
-# ── System prompts per institution ──────────────────────────
-_SYSTEM_PROMPTS: dict[str, str] = {
+# ── Institution-specific base context (shared between the two LLM calls) ──
+_INST_CONTEXT: dict[str, str] = {
     "adb": (
-        "你是一位精通亚洲开发银行（ADB）采购规程和标准招标文件（SBD）的投标顾问。"
-        "根据用户提供的招标文件概览和知识库参考资料，给出两部分建议：\n"
-        "1. **招标文件阅读建议**：建议阅读顺序、每个章节重点关注项\n"
-        "2. **投标文件编制建议**：根据 ADB SBD 结构给出编制要点和注意事项\n"
         "ADB SBD 通常包含 Section 1 ITB（投标人须知）、Section 2 BDS（投标数据表）、"
         "Section 3 Evaluation/Qualification Criteria、Section 4 Bidding Forms、"
         "Part 2 Requirements (TOR/SOW)、Part 3 Contract。"
         "BDS 是对 ITB 的项目特定修改，冲突时以 BDS 为准。"
-        "回答请使用中文，结构化输出，引用知识库时标注来源编号。"
     ),
     "wb": (
-        "你是一位精通世界银行（WB）采购规程和标准采购文件（SPD）的投标顾问。"
-        "根据用户提供的招标文件概览和知识库参考资料，给出两部分建议：\n"
-        "1. **招标文件阅读建议**：建议阅读顺序、每个章节重点关注项\n"
-        "2. **投标文件编制建议**：根据 WB SPD 结构给出编制要点和注意事项\n"
         "WB SPD 通常包含 Section I Instructions to Consultants、Section II Data Sheet、"
         "Section III Technical Proposal Forms、Section IV Financial Proposal Forms、"
         "Section V Eligible Countries、Section VI Standard Forms of Contract。"
         "重点关注 PPSD 选择方式（QCBS/CQS/FBS/LCS/SSS）和 ESF 合规要求。"
-        "回答请使用中文，结构化输出，引用知识库时标注来源编号。"
     ),
-    "afdb": (
-        "你是一位精通非洲开发银行（AfDB）采购规程的投标顾问。"
-        "根据用户提供的招标文件概览和知识库参考资料，给出两部分建议：\n"
-        "1. **招标文件阅读建议**：建议阅读顺序、每个章节重点关注项\n"
-        "2. **投标文件编制建议**：根据 AfDB 采购文件结构给出编制要点和注意事项\n"
-        "回答请使用中文，结构化输出，引用知识库时标注来源编号。"
-    ),
+    "afdb": "AfDB 采购文件结构通常包含投标人须知、数据表、评标标准和合同条款等部分。",
 }
+
+_INST_NAMES: dict[str, str] = {
+    "adb": "亚洲开发银行（ADB）",
+    "wb": "世界银行（WB）",
+    "afdb": "非洲开发银行（AfDB）",
+}
+
+
+def _system_reading(institution: str) -> str:
+    name = _INST_NAMES.get(institution, institution.upper())
+    ctx = _INST_CONTEXT.get(institution, "")
+    return (
+        f"你是一位精通{name}采购规程的投标顾问。"
+        f"{ctx}"
+        "请根据招标文件概览和知识库参考资料，给出**招标文件阅读建议**："
+        "建议阅读顺序、每个章节的重点关注事项。"
+        "回答请使用中文，结构化输出，引用知识库时标注来源编号。"
+    )
+
+
+def _system_bidding(institution: str) -> str:
+    name = _INST_NAMES.get(institution, institution.upper())
+    ctx = _INST_CONTEXT.get(institution, "")
+    return (
+        f"你是一位精通{name}采购规程的投标顾问。"
+        f"{ctx}"
+        "请根据招标文件概览和知识库参考资料，给出**投标文件编制建议**："
+        "针对该项目类型和评标方式的编制要点、常见陷阱和提分技巧。"
+        "回答请使用中文，结构化输出，引用知识库时标注来源编号。"
+    )
+
 
 # ── RAG queries per institution ─────────────────────────────
 _SEARCH_QUERIES: dict[str, list[str]] = {
@@ -96,9 +116,7 @@ async def get_reading_tips(
 ) -> ReadingTipsResponse:
     """Generate reading tips and bidding suggestions via knowledge base RAG.
 
-    Uses the project's institution type and combined_ai_overview to retrieve
-    relevant ADB/WB/AfDB guidelines and produce targeted advice.
-
+    Embeddings, RAG searches, and LLM calls are parallelised to avoid timeout.
     Costs 5 credits (same as guidance_qa).
     """
     project_svc = ProjectService(db)
@@ -107,76 +125,90 @@ async def get_reading_tips(
     institution: str = getattr(project, "institution", None) or "adb"
     overview: str = getattr(project, "combined_ai_overview", None) or ""
 
-    # ── Step 1: multi-query RAG over knowledge base ──
+    # ── Step 1: parallel embedding of all search queries ──
     emb_client = get_embedding_client()
     queries = _SEARCH_QUERIES.get(institution, _SEARCH_QUERIES["adb"])
+    emb_results = await asyncio.gather(
+        *[emb_client.embed_text(q) for q in queries]
+    )
 
-    seen: set[str] = set()
-    merged: list[dict] = []
-    for q in queries:
-        emb = await emb_client.embed_text(q)
-        chunks = await knowledge_search(
+    # ── Step 2: parallel RAG search ──
+    search_tasks = [
+        knowledge_search(
             db=db,
             query_embedding=emb.embedding,
             institution=institution,
             top_k=5,
             score_threshold=0.3,
         )
+        for emb in emb_results
+    ]
+    search_results = await asyncio.gather(*search_tasks)
+
+    # De-duplicate results
+    seen: set[str] = set()
+    merged: list[dict] = []
+    for chunks in search_results:
         for c in chunks:
             cid = c.get("source_document", "") + str(c.get("page_number"))
             if cid not in seen:
                 seen.add(cid)
                 merged.append(c)
-
     top_results = merged[:12]
 
-    # ── Step 2: build context ──
+    # ── Step 3: build shared context ──
     kb_context = "\n\n".join(
         f"[来源{i + 1}] {r['source_document']} (P{r.get('page_number', '?')})\n{r['content']}"
         for i, r in enumerate(top_results)
     )
-
     overview_snippet = overview[:3000] if overview else "（暂无文档概览）"
-
-    # ── Step 3: LLM synthesis ──
-    system_prompt = _SYSTEM_PROMPTS.get(institution, _SYSTEM_PROMPTS["adb"])
-    user_prompt = (
+    shared_context = (
         f"## 招标文件概览\n\n{overview_snippet}\n\n"
-        f"## 知识库参考资料\n\n{kb_context}\n\n"
-        "请基于以上信息，分两部分回答：\n"
-        "### 一、招标文件阅读建议\n"
-        "（建议阅读顺序、每个章节的重点关注事项）\n\n"
-        "### 二、投标文件编制建议\n"
-        "（针对该项目类型和评标方式的编制要点、常见陷阱和提分技巧）"
+        f"## 知识库参考资料\n\n{kb_context}"
     )
 
+    # ── Step 4: two parallel LLM calls ──
     llm = get_llm_client()
-    result = await llm.chat(
-        messages=[
-            LLMMessage(role="system", content=system_prompt),
-            LLMMessage(role="user", content=user_prompt),
-        ],
-        temperature=0.4,
-        max_tokens=3000,
+
+    async def _call_reading() -> str:
+        r = await llm.chat(
+            messages=[
+                LLMMessage(role="system", content=_system_reading(institution)),
+                LLMMessage(
+                    role="user",
+                    content=(
+                        f"{shared_context}\n\n"
+                        "请给出**招标文件阅读建议**（建议阅读顺序、每个章节的重点关注事项）。"
+                    ),
+                ),
+            ],
+            temperature=0.4,
+            max_tokens=2000,
+        )
+        return r.content or ""
+
+    async def _call_bidding() -> str:
+        r = await llm.chat(
+            messages=[
+                LLMMessage(role="system", content=_system_bidding(institution)),
+                LLMMessage(
+                    role="user",
+                    content=(
+                        f"{shared_context}\n\n"
+                        "请给出**投标文件编制建议**（编制要点、常见陷阱和提分技巧）。"
+                    ),
+                ),
+            ],
+            temperature=0.4,
+            max_tokens=2000,
+        )
+        return r.content or ""
+
+    reading_tips, bidding_suggestions = await asyncio.gather(
+        _call_reading(), _call_bidding()
     )
 
-    full_text = result.content or ""
-
-    # Split on the two headings
-    reading_tips = full_text
-    bidding_suggestions = ""
-
-    marker = "### 二、投标文件编制建议"
-    if marker in full_text:
-        parts = full_text.split(marker, 1)
-        reading_tips = parts[0].strip()
-        bidding_suggestions = (marker + parts[1]).strip()
-    elif "## 二" in full_text:
-        parts = full_text.split("## 二", 1)
-        reading_tips = parts[0].strip()
-        bidding_suggestions = ("## 二" + parts[1]).strip()
-
-    # ── Step 4: deduct credits ──
+    # ── Step 5: deduct credits ──
     await deduct_credits(
         current_user,
         cost_info["action"],
