@@ -758,24 +758,27 @@ async def generate_checklist(
 
         generated_at = datetime.now(UTC)
 
-        # ── 4. Upsert cache ───────────────────────────────────────
-        checklist_data = {
-            "sections": [s.model_dump() for s in sections],
-            "generated_at": generated_at.isoformat(),
-        }
-        try:
-            if analysis is None:
-                new_analysis = BidAnalysis(
-                    project_id=project_id,
-                    submission_checklist=checklist_data,
-                )
-                db.add(new_analysis)
-            else:
-                analysis.submission_checklist = checklist_data
-            await db.commit()
-        except Exception as exc:
-            logger.error("Failed to persist checklist for project %s: %s", project_id, exc)
-            await db.rollback()
+        # ── 4. Upsert cache (only when sections are non-empty) ────
+        if sections:
+            checklist_data = {
+                "sections": [s.model_dump() for s in sections],
+                "generated_at": generated_at.isoformat(),
+            }
+            try:
+                if analysis is None:
+                    new_analysis = BidAnalysis(
+                        project_id=project_id,
+                        submission_checklist=checklist_data,
+                    )
+                    db.add(new_analysis)
+                else:
+                    analysis.submission_checklist = checklist_data
+                await db.commit()
+            except Exception as exc:
+                logger.error("Failed to persist checklist for project %s: %s", project_id, exc)
+                await db.rollback()
+        else:
+            logger.warning("Checklist generation produced 0 sections for project %s — not caching", project_id)
 
         return SubmissionChecklistResponse(
             project_id=project_id,

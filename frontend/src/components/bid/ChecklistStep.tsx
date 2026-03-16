@@ -181,7 +181,9 @@ export const ChecklistStep = memo(function ChecklistStep({
     },
   })
 
-  const checklist = generateMutation.data ?? cachedData
+  const rawChecklist = generateMutation.data ?? cachedData
+  // Treat checklist with 0 sections as "no data" so empty state shows
+  const checklist = rawChecklist && rawChecklist.sections.length > 0 ? rawChecklist : undefined
   const isGenerating = generateMutation.isPending
 
   return (
