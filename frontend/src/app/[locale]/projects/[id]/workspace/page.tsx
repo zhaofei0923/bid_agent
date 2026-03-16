@@ -7,7 +7,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { projectService } from "@/services/projects"
 import { documentService } from "@/services/documents"
-import { bidAnalysisService } from "@/services/bid-analysis"
 import { bidPlanService } from "@/services/bid-plan"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { BidProgressNav } from "@/components/bid/BidProgressNav"
@@ -25,7 +24,7 @@ export default function WorkspacePage({
   const t = useTranslations("workspace")
   const pathname = usePathname()
   const locale = pathname.split("/")[1] || "zh"
-  const { setProject, initSteps, isChatPanelOpen, toggleChatPanel } =
+  const { setProject, initSteps, isChatPanelOpen, toggleChatPanel, chatMode } =
     useBidWorkspaceStore()
   const initRef = useRef<string | null>(null)
 
@@ -38,13 +37,6 @@ export default function WorkspacePage({
     queryKey: ["documents", id],
     queryFn: () => documentService.list(id),
     enabled: !!id,
-  })
-
-  const { data: analysis, isFetched: analysisFetched } = useQuery({
-    queryKey: ["bid-analysis", id],
-    queryFn: () => bidAnalysisService.getByProject(id),
-    enabled: !!id,
-    retry: false,
   })
 
   const { data: plan, isFetched: planFetched } = useQuery({
@@ -70,13 +62,12 @@ export default function WorkspacePage({
   useEffect(() => {
     // Only run once per project id when all queries have settled
     if (initRef.current === id) return
-    if (!docsFetched || !analysisFetched || !planFetched) return
+    if (!docsFetched || !planFetched) return
 
     const SUCCESS = new Set(["processed", "completed"])
     const hasProcessedDocs =
       !!documents && documents.length > 0 && documents.every((d) => SUCCESS.has(d.status))
     const hasOverview = !!project?.combined_ai_overview
-    const hasAnalysis = !!analysis
     const hasPlan = !!plan
 
     const completed: BidStep[] = []
@@ -89,18 +80,11 @@ export default function WorkspacePage({
     if (hasOverview) {
       if (!completed.includes("upload")) completed.push("upload")
       completed.push("overview")
-      current = "analysis"
-    }
-    if (hasAnalysis) {
-      if (!completed.includes("overview")) {
-        completed.push("upload", "overview")
-      }
-      completed.push("analysis")
       current = "plan"
     }
     if (hasPlan) {
-      if (!completed.includes("analysis")) {
-        completed.push("upload", "overview", "analysis")
+      if (!completed.includes("overview")) {
+        completed.push("upload", "overview")
       }
       completed.push("plan")
       current = "writing"
@@ -110,7 +94,9 @@ export default function WorkspacePage({
     const uniqueCompleted = [...new Set(completed)]
     initSteps(uniqueCompleted, current)
     initRef.current = id
-  }, [id, documents, project, analysis, plan, docsFetched, analysisFetched, planFetched, initSteps])
+  }, [id, documents, project, plan, docsFetched, planFetched, initSteps])
+
+  const isFullscreen = chatMode === "fullscreen"
 
   return (
     <div className="app-shell flex h-screen flex-col">
@@ -131,10 +117,10 @@ export default function WorkspacePage({
         </div>
       </header>
 
-      {/* Three-column layout */}
+      {/* Three-column layout — fullscreen hides nav + workspace */}
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 gap-4 overflow-hidden px-4 pb-4">
-        <BidProgressNav />
-        <BidWorkspace projectId={id} />
+        {!isFullscreen && <BidProgressNav />}
+        {!isFullscreen && <BidWorkspace projectId={id} />}
         <BidChatPanel projectId={id} />
       </div>
     </div>

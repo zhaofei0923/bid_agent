@@ -4,7 +4,6 @@ import { memo } from "react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { UploadStep } from "./UploadStep"
 import { OverviewStep } from "./OverviewStep"
-import { AnalysisStep } from "./AnalysisStep"
 import { PlanStep } from "./PlanStep"
 import { ChecklistStep } from "./ChecklistStep"
 import { QualityReviewPanel } from "./quality/QualityReviewPanel"
@@ -24,7 +23,6 @@ export const BidWorkspace = memo(function BidWorkspace({
   const stepComponents: Record<string, React.ReactNode> = {
     upload: <UploadStep projectId={projectId} />,
     overview: <OverviewStep projectId={projectId} />,
-    analysis: <AnalysisStep projectId={projectId} />,
     plan: <PlanStep projectId={projectId} />,
     writing: <ChecklistStep projectId={projectId} />,
     review: <QualityReviewPanel projectId={projectId} />,

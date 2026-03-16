@@ -1,10 +1,11 @@
 import { create } from "zustand"
 import type { BidStep } from "@/types"
 
+export type ChatMode = "sidebar" | "fullscreen"
+
 const STEP_ORDER: BidStep[] = [
   "upload",
   "overview",
-  "analysis",
   "plan",
   "writing",
   "review",
@@ -17,6 +18,7 @@ interface BidWorkspaceState {
   currentStep: BidStep
   completedSteps: BidStep[]
   isChatPanelOpen: boolean
+  chatMode: ChatMode
 
   // Legacy aliases
   isChatOpen: boolean
@@ -26,6 +28,7 @@ interface BidWorkspaceState {
   goToStep: (step: BidStep) => void
   completeStep: (step: BidStep) => void
   toggleChatPanel: () => void
+  setChatMode: (mode: ChatMode) => void
   reset: () => void
 
   // Legacy
@@ -40,6 +43,7 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
   currentStep: "upload",
   completedSteps: [],
   isChatPanelOpen: true,
+  chatMode: "sidebar",
   isChatOpen: true,
 
   setProject: (id, institution) =>
@@ -81,12 +85,20 @@ export const useBidWorkspaceStore = create<BidWorkspaceState>((set) => ({
       isChatOpen: !s.isChatPanelOpen,
     })),
 
+  setChatMode: (mode) =>
+    set({
+      chatMode: mode,
+      isChatPanelOpen: true,
+      isChatOpen: true,
+    }),
+
   reset: () =>
     set({
       projectId: null,
       institution: null,
       currentStep: "upload",
       completedSteps: [],
+      chatMode: "sidebar",
     }),
 
   // Legacy — same validation as goToStep

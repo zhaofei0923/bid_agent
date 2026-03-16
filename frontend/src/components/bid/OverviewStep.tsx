@@ -6,9 +6,11 @@ import remarkGfm from "remark-gfm"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useDocuments, useAnalyzeCombined } from "@/hooks/use-documents"
 import { useProject } from "@/hooks/use-projects"
+import { useReadingTips } from "@/hooks/use-reading-tips"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "next-intl"
 
 // Backend statuses
@@ -82,6 +84,13 @@ const markdownComponents = {
   ),
 } as const
 
+// ── Institution display labels ──
+const INSTITUTION_LABELS: Record<string, string> = {
+  adb: "ADB (亚洲开发银行)",
+  wb: "WB (世界银行)",
+  afdb: "AfDB (非洲开发银行)",
+}
+
 // ──────────────────────────────────────────────
 // Main component
 // ──────────────────────────────────────────────
@@ -114,6 +123,14 @@ export const OverviewStep = memo(function OverviewStep({
 
   const hasCombinedOverview = !!project?.combined_ai_overview
 
+  // Reading tips — fetch once overview is ready
+  const {
+    data: readingTips,
+    isLoading: tipsLoading,
+    isError: tipsError,
+    refetch: refetchTips,
+  } = useReadingTips(projectId, hasCombinedOverview)
+
   // Auto-trigger combined analysis once all docs are processed and overview is missing
   useEffect(() => {
     if (
@@ -129,7 +146,7 @@ export const OverviewStep = memo(function OverviewStep({
 
   const handleNext = () => {
     completeStep("overview")
-    goToStep("analysis")
+    goToStep("plan")
   }
 
   if (docsLoading || projectLoading) {
@@ -149,15 +166,24 @@ export const OverviewStep = memo(function OverviewStep({
     )
   }
 
+  const institution = project?.institution || "adb"
+
   return (
     <div className="space-y-6">
+      {/* ── Part A: Document Overview ── */}
       <Card>
         <CardHeader className="pb-2">
-          <h3 className="text-sm font-semibold">{t("overview.aiReading")}</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">{t("overview.aiReading")}</h3>
+            {institution && (
+              <Badge variant="outline" className="text-xs">
+                {INSTITUTION_LABELS[institution] || institution.toUpperCase()}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {anyProcessing ? (
-            // Still parsing PDFs
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground animate-pulse">
                 ⏳ {t("overview.processingHint")}
@@ -167,7 +193,6 @@ export const OverviewStep = memo(function OverviewStep({
               <Skeleton className="h-4 w-4/6" />
             </div>
           ) : hasCombinedOverview ? (
-            // Combined overview ready — render as structured Markdown
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -177,7 +202,6 @@ export const OverviewStep = memo(function OverviewStep({
               </ReactMarkdown>
             </div>
           ) : (
-            // All processed but waiting for LLM analysis
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground animate-pulse">
                 ⏳ {t("overview.generatingOverview")}
@@ -189,6 +213,99 @@ export const OverviewStep = memo(function OverviewStep({
           )}
         </CardContent>
       </Card>
+
+      {/* ── Part B: Reading Tips & Bidding Suggestions (from KB RAG) ── */}
+      {hasCombinedOverview && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">{t("overview.readingTipsTitle")}</h3>
+              {readingTips && (
+                <Badge variant="secondary" className="text-xs">
+                  {t("overview.kbPowered")}
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("overview.readingTipsSubtitle")}
+            </p>
+          </CardHeader>
+          <CardContent>
+            {tipsLoading ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground animate-pulse">
+                  ⏳ {t("overview.loadingTips")}
+                </p>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-full mt-4" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+            ) : tipsError ? (
+              <div className="text-center py-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t("overview.tipsError")}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => refetchTips()}>
+                  {t("overview.retry")}
+                </Button>
+              </div>
+            ) : readingTips ? (
+              <div className="space-y-6">
+                {/* Reading Tips */}
+                {readingTips.reading_tips && (
+                  <div>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {readingTips.reading_tips}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bidding Suggestions */}
+                {readingTips.bidding_suggestions && (
+                  <div>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {readingTips.bidding_suggestions}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sources */}
+                {readingTips.sources.length > 0 && (
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      {t("overview.tipsSources")}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {readingTips.sources.map((src, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700"
+                          title={src.content}
+                        >
+                          [{i + 1}] {src.source_document}
+                          {src.page_number ? ` P${src.page_number}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       {hasCombinedOverview && (
         <div className="flex justify-end pt-2">

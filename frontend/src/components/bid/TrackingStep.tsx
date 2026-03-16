@@ -57,7 +57,6 @@ export const TrackingStep = memo(function TrackingStep({
             {[
               "upload",
               "overview",
-              "analysis",
               "plan",
               "writing",
               "review",

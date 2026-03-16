@@ -147,7 +147,6 @@
     "steps": {
       "upload": "文件上传",
       "overview": "文档解读",
-      "analysis": "投标分析",
       "plan": "投标计划",
       "writing": "AI编制指导",
       "review": "质量审查",
@@ -175,7 +174,9 @@
         "formatRequirements": "格式和装订要求",
         "winningStrategy": "提高中标竞争力",
         "commonMistakes": "常见失分项"
-      }
+      },
+      "enterFullscreen": "全屏模式",
+      "exitFullscreen": "退出全屏"
     }
   },
   "credits": {
@@ -909,7 +910,14 @@
       "qualificationReqs": "资质要求",
       "evaluationCriteria": "评分标准",
       "extracted": "已提取",
-      "nextStep": "下一步：投标分析 →",
+      "nextStep": "下一步：投标计划 →",
+      "readingTipsTitle": "阅读建议与投标指导",
+      "readingTipsSubtitle": "基于 ADB/WB 指导手册，为您提供文档阅读重点和投标建议",
+      "kbPowered": "知识库驱动",
+      "loadingTips": "正在从知识库生成阅读建议...",
+      "tipsError": "获取阅读建议失败",
+      "retry": "重试",
+      "tipsSources": "参考来源",
       "processing": "处理中",
       "completed": "已完成",
       "failed": "处理失败",

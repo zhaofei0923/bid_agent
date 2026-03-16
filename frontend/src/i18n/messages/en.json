@@ -147,7 +147,6 @@
     "steps": {
       "upload": "Upload Files",
       "overview": "Document Overview",
-      "analysis": "Bid Analysis",
       "plan": "Bid Plan",
       "writing": "AI Writing Guide",
       "review": "Quality Review",
@@ -175,7 +174,9 @@
         "formatRequirements": "Format & Binding Requirements",
         "winningStrategy": "Improve Win Strategy",
         "commonMistakes": "Common Scoring Pitfalls"
-      }
+      },
+      "enterFullscreen": "Fullscreen Mode",
+      "exitFullscreen": "Exit Fullscreen"
     }
   },
   "credits": {
@@ -909,7 +910,14 @@
       "qualificationReqs": "Qualification Requirements",
       "evaluationCriteria": "Evaluation Criteria",
       "extracted": "Extracted",
-      "nextStep": "Next: Bid Analysis →",
+      "nextStep": "Next: Bid Plan →",
+      "readingTipsTitle": "Reading Tips & Bidding Guidance",
+      "readingTipsSubtitle": "Based on ADB/WB guidelines, providing document reading focus and bidding suggestions",
+      "kbPowered": "KB Powered",
+      "loadingTips": "Generating reading tips from knowledge base...",
+      "tipsError": "Failed to load reading tips",
+      "retry": "Retry",
+      "tipsSources": "Reference Sources",
       "processing": "Processing",
       "completed": "Completed",
       "failed": "Failed",

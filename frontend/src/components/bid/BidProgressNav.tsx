@@ -8,7 +8,6 @@ import type { BidStep } from "@/types/bid"
 const STEPS: { key: BidStep; icon: string }[] = [
   { key: "upload", icon: "📄" },
   { key: "overview", icon: "📋" },
-  { key: "analysis", icon: "🔍" },
   { key: "plan", icon: "📅" },
   { key: "writing", icon: "✍️" },
   { key: "review", icon: "✅" },

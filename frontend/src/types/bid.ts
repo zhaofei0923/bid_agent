@@ -1,7 +1,6 @@
 export type BidStep =
   | "upload"
   | "overview"
-  | "analysis"
   | "plan"
   | "writing"
   | "review"

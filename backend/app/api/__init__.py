@@ -15,6 +15,7 @@ from app.api.v1.payment import router as payment_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.public import router as public_router
 from app.api.v1.quality_review import router as quality_review_router
+from app.api.v1.reading_tips import router as reading_tips_router
 from app.api.v1.stats import router as stats_router
 
 api_router = APIRouter()
@@ -45,6 +46,9 @@ api_router.include_router(
 )
 api_router.include_router(
     quality_review_router, prefix="/projects", tags=["quality-review"]
+)
+api_router.include_router(
+    reading_tips_router, prefix="/projects", tags=["reading-tips"]
 )
 api_router.include_router(
     payment_router, prefix="/payment", tags=["payment"]

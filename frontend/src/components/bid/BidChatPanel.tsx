@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { Maximize2, Minimize2 } from "lucide-react"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { useGuidanceStream } from "@/hooks/use-generation"
 import { Button } from "@/components/ui/button"
@@ -18,13 +19,16 @@ interface BidChatPanelProps {
 export const BidChatPanel = memo(function BidChatPanel({
   projectId,
 }: BidChatPanelProps) {
-  const { isChatPanelOpen, toggleChatPanel } = useBidWorkspaceStore()
+  const { isChatPanelOpen, toggleChatPanel, chatMode, setChatMode } =
+    useBidWorkspaceStore()
   const t = useTranslations("workspace")
   const [mode, setMode] = useState<ChatMode>("bid_document")
   const { messages, isStreaming, streamingContent, send, stop, reset } =
     useGuidanceStream(projectId, mode)
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const isFullscreen = chatMode === "fullscreen"
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -34,6 +38,10 @@ export const BidChatPanel = memo(function BidChatPanel({
     if (newMode === mode) return
     reset()
     setMode(newMode)
+  }
+
+  const handleToggleFullscreen = () => {
+    setChatMode(isFullscreen ? "sidebar" : "fullscreen")
   }
 
   if (!isChatPanelOpen) {
@@ -58,15 +66,35 @@ export const BidChatPanel = memo(function BidChatPanel({
   }
 
   return (
-    <div className="app-section-frame flex w-[380px] shrink-0 flex-col overflow-hidden">
+    <div
+      className={`app-section-frame flex flex-col overflow-hidden ${
+        isFullscreen ? "flex-1" : "w-[380px] shrink-0"
+      }`}
+    >
       <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
         <h3 className="text-sm font-semibold">{t("chat.title")}</h3>
-        <button
-          onClick={toggleChatPanel}
-          className="text-sm text-stone-500 transition-colors duration-200 hover:text-slate-900"
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleToggleFullscreen}
+            className="text-stone-500 transition-colors duration-200 hover:text-slate-900"
+            title={isFullscreen ? t("chat.exitFullscreen") : t("chat.enterFullscreen")}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              if (isFullscreen) setChatMode("sidebar")
+              toggleChatPanel()
+            }}
+            className="text-sm text-stone-500 transition-colors duration-200 hover:text-slate-900"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {/* Mode Tabs */}
@@ -95,12 +123,12 @@ export const BidChatPanel = memo(function BidChatPanel({
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && !isStreaming && (
-          <div className="app-surface-muted px-4 py-6 text-center text-sm text-muted-foreground">
+          <div className={`app-surface-muted px-4 py-6 text-center text-sm text-muted-foreground ${isFullscreen ? "mx-auto max-w-2xl" : ""}`}>
             <p className="mb-2">{t("chat.greeting")}</p>
             <p className="mb-4 text-xs">
               {mode === "bid_document" ? t("chat.modeDocHint") : t("chat.modeKbHint")}
             </p>
-            <div className="grid grid-cols-2 gap-2 px-2">
+            <div className={`grid gap-2 px-2 ${isFullscreen ? "grid-cols-4" : "grid-cols-2"}`}>
               {mode === "bid_document" ? (
                 <>
                   <Button variant="outline" size="sm" className="text-xs h-auto py-2 justify-start text-left" onClick={() => send(t("chat.skills.extractDates"))}>
@@ -139,10 +167,12 @@ export const BidChatPanel = memo(function BidChatPanel({
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} ${isFullscreen ? "mx-auto max-w-3xl w-full" : ""}`}
           >
             <div
-              className={`max-w-[85%] rounded-[22px] px-3 py-2 text-sm ${
+              className={`rounded-[22px] px-3 py-2 text-sm ${
+                isFullscreen ? "max-w-[75%]" : "max-w-[85%]"
+              } ${
                 msg.role === "user"
                   ? "bg-slate-900 text-white"
                   : "bg-stone-100 text-stone-700"
@@ -160,8 +190,8 @@ export const BidChatPanel = memo(function BidChatPanel({
         ))}
 
         {isStreaming && streamingContent && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-[22px] bg-stone-100 px-3 py-2 text-sm text-stone-700">
+          <div className={`flex justify-start ${isFullscreen ? "mx-auto max-w-3xl w-full" : ""}`}>
+            <div className={`rounded-[22px] bg-stone-100 px-3 py-2 text-sm text-stone-700 ${isFullscreen ? "max-w-[75%]" : "max-w-[85%]"}`}>
               <div className="prose prose-sm prose-stone max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
               </div>
@@ -174,7 +204,7 @@ export const BidChatPanel = memo(function BidChatPanel({
       </div>
 
       <div className="border-t border-stone-200 bg-white/40 p-4">
-        <div className="flex gap-2">
+        <div className={`flex gap-2 ${isFullscreen ? "mx-auto max-w-3xl" : ""}`}>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
