@@ -662,16 +662,24 @@ async def generate_checklist(
         if not merged:
             logger.warning("No bid document chunks found for project %s", project_id)
 
-        context_block = "\n\n".join(
-            "[参考 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
+        # Cap chunks to avoid oversized LLM prompts (huge context → timeout)
+        max_chunks = 40
+        max_context_chars = 30_000
+        if len(merged) > max_chunks:
+            merged = merged[:max_chunks]
+
+        context_block = ""
+        for i, c in enumerate(merged):
+            entry = "[参考 {n}] {section}（{filename}，第{page}页）:\n{content}".format(
                 n=i + 1,
                 section=c.get("section_title") or c.get("section_type") or "未知章节",
                 filename=c.get("filename") or c.get("source_document") or "",
                 page=c.get("page_number") or "?",
                 content=c.get("content", ""),
             )
-            for i, c in enumerate(merged)
-        )
+            if len(context_block) + len(entry) + 2 > max_context_chars:
+                break
+            context_block += ("\n\n" if context_block else "") + entry
 
         # ── 3. LLM JSON extraction ────────────────────────────────
         llm = get_llm_client()
@@ -682,9 +690,21 @@ async def generate_checklist(
         )
         messages = [LLMMessage(role="user", content=prompt)]
 
+        # Retry LLM up to 2 attempts on transient failures
         raw_json = ""
-        async for chunk in llm.chat_stream(messages, max_tokens=6000):
-            raw_json += chunk
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                raw_json = ""
+                async for chunk in llm.chat_stream(messages, max_tokens=4000):
+                    raw_json += chunk
+                last_exc = None
+                break
+            except Exception as llm_exc:
+                last_exc = llm_exc
+                logger.warning("Checklist LLM attempt %d failed: %s", attempt + 1, llm_exc)
+        if last_exc is not None:
+            raise last_exc
 
         # Parse JSON — strip accidental markdown fences
         raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip(), flags=re.MULTILINE)
@@ -767,4 +787,13 @@ async def generate_checklist(
 
     except Exception as exc:
         logger.exception("generate_checklist failed for project %s: %s", project_id, exc)
-        raise
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "CHECKLIST_GENERATION_FAILED",
+                    "message": f"清单生成失败: {type(exc).__name__}: {exc}",
+                }
+            },
+        )

@@ -46,8 +46,8 @@ export const checklistService = {
     const { data } = await apiClient.post(
       `/projects/${projectId}/checklist/generate?force_refresh=${forceRefresh}`,
       undefined,
-      // LLM generation can take 60-120s; override global 30s timeout
-      { timeout: 180_000 }
+      // LLM generation can take 60-180s; align with Nginx proxy_read_timeout
+      { timeout: 300_000 }
     )
     return data
   },
