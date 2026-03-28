@@ -6,6 +6,7 @@ LOG_PREFIX="[remote-deploy]"
 
 BACKEND_IMAGE="${BACKEND_IMAGE:-ghcr.io/zhaofei0923/bid_agent-backend}"
 FRONTEND_IMAGE="${FRONTEND_IMAGE:-ghcr.io/zhaofei0923/bid_agent-frontend}"
+GHCR_USERNAME="${GHCR_USERNAME:-zhaofei0923}"
 
 mark_failed() {
   echo "failed" > "$STATUS_FILE"
@@ -48,7 +49,7 @@ if [ -z "$TOKEN" ]; then
   fail "GHCR token is empty (set GHCR_READ_TOKEN or GHCR_TOKEN)"
 fi
 
-echo "$TOKEN" | docker login ghcr.io -u zhaofei0923 --password-stdin || fail "GHCR login"
+echo "$TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || fail "GHCR login"
 docker pull "$BACKEND_IMAGE:latest" || fail "pull backend image"
 docker pull "$FRONTEND_IMAGE:latest" || fail "pull frontend image"
 docker tag "$BACKEND_IMAGE:latest" bidagent-backend:latest || fail "tag backend image"
