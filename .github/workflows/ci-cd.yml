@@ -141,7 +141,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 15m
+          command_timeout: 25m
           script: |
             # Manual error handling — no set -e so we can report which step fails
             cd /opt/bid_agent || { echo "FATAL: cannot cd /opt/bid_agent"; exit 1; }
