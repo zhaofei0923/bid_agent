@@ -438,6 +438,15 @@ def _match_toc_title_to_section_type(title: str) -> str:
         return "part_2_requirements"
     if re.search(r"conditions?\s*of\s*contract|general\s*conditions?", t):
         return "part_3_contract"
+    # ── Volume-level fallback (standalone ADB SBD PDFs) ──
+    if re.search(r"volume\s*(?:1|i|one).*(?:bidding|procedure)", t):
+        return "section_1_itb"
+    if re.search(r"volume\s*(?:2|ii|two).*(?:technical|specification|requirement|employer)", t):
+        return "part_2_requirements"
+    if re.search(r"volume\s*(?:3|iii|three).*(?:contract|condition)", t):
+        return "part_3_contract"
+    if re.search(r"technical\s*specifications?", t):
+        return "part_2_requirements"
 
     return "toc_section"
 
@@ -670,18 +679,23 @@ async def _process_document(document_id: str) -> dict:
             page_texts = [p["text"] for p in pages]
             semantic_sections = identify_sections(full_text, page_texts)
 
-            if len(semantic_sections) >= 3:
+            if len(semantic_sections) >= 1:
                 # ── Semantic section classification succeeded ──────────
+                # Threshold lowered from 3→1 so single-volume PDFs
+                # (e.g. Volume 2 with only "part_2_requirements") still
+                # get proper section_type assignment.
                 logger.info(
                     "Document %s: identified %d semantic sections",
                     document_id, len(semantic_sections),
                 )
+                covered_pages: set[int] = set()
                 for sec in semantic_sections:
                     start_p = sec["page_number"]
                     end_p = sec.get("page_end", start_p)
                     section_pages = [
                         p for p in pages if start_p <= p["page_number"] <= end_p
                     ]
+                    covered_pages.update(p["page_number"] for p in section_pages)
                     content = "\n\n".join(
                         f"=== 第{p['page_number']}页 ===\n{p['text']}"
                         for p in section_pages
@@ -697,6 +711,29 @@ async def _process_document(document_id: str) -> dict:
                         detected_by="regex",
                     )
                     section_tuples.append((section_orm, content))
+
+                # Create a catch-all section for pages not covered by
+                # any semantic section (common for single-volume PDFs
+                # where only 1-2 patterns match).
+                uncovered = [
+                    p for p in pages
+                    if p["page_number"] not in covered_pages and p["text"].strip()
+                ]
+                if uncovered:
+                    uc_content = "\n\n".join(
+                        f"=== 第{p['page_number']}页 ===\n{p['text']}"
+                        for p in uncovered
+                    )
+                    uc_section = BidDocumentSection(
+                        bid_document_id=doc.id,
+                        section_type="full_document",
+                        section_title=f"其他内容（第{uncovered[0]['page_number']}-{uncovered[-1]['page_number']}页）",
+                        start_page=uncovered[0]["page_number"],
+                        end_page=uncovered[-1]["page_number"],
+                        content_preview=uc_content[:500],
+                        detected_by="regex",
+                    )
+                    section_tuples.append((uc_section, uc_content))
             else:
                 # ── Fallback: TOC bookmarks / text scan / page groups ─
                 toc_items = await _extract_toc_from_pdf(doc.file_path, pages)

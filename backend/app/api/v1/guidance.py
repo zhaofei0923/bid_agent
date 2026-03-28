@@ -209,14 +209,82 @@ async def stream_guidance(
                             seen_ids.add(c["id"])
                             merged.append(c)
 
+                # 2b-2b. 跨文档覆盖性检查：确保每个已处理的文档都在结果中有代表
+                # 如果某些文档缺失（典型情况：Volume 2 数量优势压过 Volume 1/3），补充搜索
+                doc_filenames_in_results = {c.get("filename") for c in merged if c.get("filename")}
+                all_docs_result = await db.execute(
+                    _sql_text(
+                        "SELECT filename FROM bid_documents "
+                        "WHERE project_id = :pid AND status = 'processed'"
+                    ),
+                    {"pid": str(project_id)},
+                )
+                all_doc_filenames = {row[0] for row in all_docs_result.fetchall()}
+                missing_docs = all_doc_filenames - doc_filenames_in_results
+                if missing_docs:
+                    logger.info(
+                        "Documents missing from search results: %s — supplementing",
+                        missing_docs,
+                    )
+                    for q in search_queries[:1]:  # one query is enough for supplement
+                        emb = await emb_client.embed_text(q)
+                        for missing_fn in missing_docs:
+                            supplement_sql = _sql_text("""
+                                SELECT ch.content, ch.page_number,
+                                       1 - (ch.embedding <=> cast(:embedding as vector)) AS similarity,
+                                       ch.section_type,
+                                       COALESCE(s.section_title, '') AS section_title,
+                                       ch.clause_reference,
+                                       d.filename AS filename,
+                                       ch.id::text AS chunk_id
+                                FROM bid_document_chunks ch
+                                JOIN bid_documents d ON ch.bid_document_id = d.id
+                                LEFT JOIN bid_document_sections s ON ch.section_id = s.id
+                                WHERE d.project_id = :project_id
+                                  AND d.status = 'processed'
+                                  AND d.filename = :doc_filename
+                                  AND ch.embedding IS NOT NULL
+                                ORDER BY ch.embedding <=> cast(:embedding as vector)
+                                LIMIT 3
+                            """)
+                            try:
+                                sup_result = await db.execute(
+                                    supplement_sql,
+                                    {
+                                        "embedding": str(emb.embedding),
+                                        "project_id": str(project_id),
+                                        "doc_filename": missing_fn,
+                                    },
+                                )
+                                for row in sup_result.fetchall():
+                                    if row.chunk_id not in seen_ids:
+                                        seen_ids.add(row.chunk_id)
+                                        merged.append({
+                                            "id": row.chunk_id,
+                                            "content": row.content,
+                                            "page_number": row.page_number,
+                                            "score": float(row.similarity),
+                                            "section_type": row.section_type,
+                                            "section_title": row.section_title,
+                                            "clause_reference": row.clause_reference,
+                                            "filename": row.filename,
+                                        })
+                            except Exception:
+                                logger.warning(
+                                    "Supplement search failed for doc %s", missing_fn,
+                                    exc_info=True,
+                                )
+
                 # 2b-3. Intent 驱动章节定向检索 + 年份关键词（精准命中表格行）
+                # 每个 intent 都包含 "full_document" 和 "toc_section" 作为 fallback，
+                # 确保 section 检测失败（落到 page group）的文档也能被搜到
                 _intent_section_map: dict[str, list[str]] = {
-                    "dates": ["section_2_bds", "section_1_itb"],
-                    "qualification": ["section_3", "section_2_bds", "section_1_itb"],
-                    "evaluation": ["section_3", "section_2_bds"],
-                    "submission": ["section_2_bds", "section_1_itb", "section_4_forms"],
-                    "bds": ["section_2_bds", "section_1_itb"],
-                    "commercial": ["section_2_bds", "part_3_contract"],
+                    "dates": ["section_2_bds", "section_1_itb", "full_document", "toc_section"],
+                    "qualification": ["section_3", "section_2_bds", "section_1_itb", "full_document", "toc_section"],
+                    "evaluation": ["section_3", "section_2_bds", "full_document", "toc_section"],
+                    "submission": ["section_2_bds", "section_1_itb", "section_4_forms", "full_document", "toc_section"],
+                    "bds": ["section_2_bds", "section_1_itb", "full_document", "toc_section"],
+                    "commercial": ["section_2_bds", "part_3_contract", "full_document", "toc_section"],
                 }
                 if intent in _intent_section_map:
                     section_types = _intent_section_map[intent]

@@ -78,6 +78,32 @@ SECTION_PATTERNS = [
             r"(?i)general\s*conditions?\s*of\s*contract",
         ],
     },
+    # ── Volume-level patterns for standalone ADB SBD PDFs ──
+    {
+        "type": "section_1_itb",
+        "title": "Volume 1: Bidding Procedures",
+        "patterns": [
+            r"(?i)volume\s*(?:1|i|one)[:\.\s]+bidding\s*procedure",
+            r"(?i)vol\.?\s*(?:1|i)[:\.\s]+bidding\s*procedure",
+        ],
+    },
+    {
+        "type": "part_2_requirements",
+        "title": "Volume 2: Technical Specifications",
+        "patterns": [
+            r"(?i)volume\s*(?:2|ii|two)[:\.\s]+(?:technical|employer|works?|supply)",
+            r"(?i)vol\.?\s*(?:2|ii)[:\.\s]+(?:technical|employer|works?|supply)",
+            r"(?i)technical\s*specifications?\s*(?:\(|$|\n)",
+        ],
+    },
+    {
+        "type": "part_3_contract",
+        "title": "Volume 3: Conditions of Contract",
+        "patterns": [
+            r"(?i)volume\s*(?:3|iii|three)[:\.\s]+condition",
+            r"(?i)vol\.?\s*(?:3|iii)[:\.\s]+condition",
+        ],
+    },
     # ── WB-specific patterns ──────────────────────────────
     {
         "type": "section_1_itb",

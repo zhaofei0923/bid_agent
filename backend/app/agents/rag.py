@@ -25,45 +25,49 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "minimum experience financial capacity",
             "joint venture consortium",
         ],
-        "section_types": ["section_3_qualification", "section_2_bds", "section_1_itb"],
+        "section_types": ["section_3_qualification", "section_2_bds", "section_1_itb", "full_document", "toc_section"],
         "kb_queries": [
             "ADB qualification criteria",
             "eligibility requirements bidder",
         ],
+        "keyword_fallback": ["qualification", "eligibility", "experience", "financial capacity"],
     },
     "evaluation": {
         "doc_queries": [
             "evaluation criteria scoring methodology weight",
             "technical proposal evaluation points",
         ],
-        "section_types": ["section_3_qualification", "section_2_bds"],
+        "section_types": ["section_3_qualification", "section_2_bds", "full_document", "toc_section"],
         "kb_queries": [
             "QCBS quality cost based selection",
             "merit point criteria",
         ],
+        "keyword_fallback": ["evaluation", "scoring", "criteria", "merit point"],
     },
     "dates": {
         "doc_queries": [
             "submission deadline bid opening date",
             "bid validity period",
         ],
-        "section_types": ["section_2_bds", "section_1_itb"],
+        "section_types": ["section_2_bds", "section_1_itb", "full_document", "toc_section"],
         "kb_queries": ["bid submission deadline requirements"],
+        "keyword_fallback": ["deadline", "submission", "opening", "validity", "date"],
     },
     "submission": {
         "doc_queries": [
             "submission requirements format copies",
             "bid security guarantee",
         ],
-        "section_types": ["section_2_bds", "section_1_itb", "section_4_forms"],
+        "section_types": ["section_2_bds", "section_1_itb", "section_4_forms", "full_document", "toc_section"],
         "kb_queries": ["bid submission format requirements"],
+        "keyword_fallback": ["submission", "format", "copies", "bid security"],
     },
     "bds": {
         "doc_queries": [
             "BDS bid data sheet modifications",
             "ITB instruction reference",
         ],
-        "section_types": ["section_2_bds", "section_1_itb"],
+        "section_types": ["section_2_bds", "section_1_itb", "full_document", "toc_section"],
         "kb_queries": ["bid data sheet standard bidding document"],
         "keyword_fallback": ["BDS", "Bid Data Sheet", "ITB", "Instructions to Bidders"],
     },
@@ -72,8 +76,9 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "payment terms warranty insurance penalty",
             "performance security",
         ],
-        "section_types": ["section_2_bds", "part_3_contract"],
+        "section_types": ["section_2_bds", "part_3_contract", "full_document", "toc_section"],
         "kb_queries": ["contract terms consulting services"],
+        "keyword_fallback": ["payment", "warranty", "insurance", "penalty", "performance security"],
     },
     "executive": {
         "doc_queries": [
@@ -81,10 +86,11 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "invitation for bids contract overview",
             "scope of work objective background",
         ],
-        "section_types": ["section_1_itb", "section_2_bds"],
+        "section_types": ["section_1_itb", "section_2_bds", "full_document", "toc_section"],
         "kb_queries": [
             "procurement method ICB NCB QCBS overview",
         ],
+        "keyword_fallback": ["invitation", "procurement", "project", "funding"],
     },
     "technical": {
         "doc_queries": [
@@ -93,7 +99,7 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "system requirements equipment standards",
             "key personnel qualifications staffing",
         ],
-        "section_types": ["part_2_requirements", "section_3_qualification", "section_2_bds"],
+        "section_types": ["part_2_requirements", "section_3_qualification", "section_2_bds", "full_document", "toc_section"],
         "kb_queries": [
             "technical proposal requirements",
             "terms of reference scope of services",
@@ -106,10 +112,11 @@ DIMENSION_CONFIGS: dict[str, dict[str, Any]] = {
             "disqualification rejection grounds",
             "eligibility criteria compliance",
         ],
-        "section_types": ["section_1_itb", "section_2_bds", "section_3_qualification", "section_4_forms"],
+        "section_types": ["section_1_itb", "section_2_bds", "section_3_qualification", "section_4_forms", "full_document", "toc_section"],
         "kb_queries": [
             "bid compliance mandatory requirements",
         ],
+        "keyword_fallback": ["mandatory", "shall", "must", "disqualification", "compliance"],
     },
 }
 
@@ -167,17 +174,21 @@ async def build_analysis_context(
     unique_chunks = _deduplicate_by_id(all_chunks)
     top_chunks = sorted(unique_chunks, key=lambda c: c.get("score", 0), reverse=True)[:15]
 
-    # 1b. Keyword fallback — when vector search has no relevant section-typed results
+    # 1b. Keyword fallback — trigger when:
+    #   - No section-typed chunks found, OR
+    #   - Results come from only 1 document (single-doc dominance problem)
     keyword_fallback = config.get("keyword_fallback")
     if keyword_fallback:
         target_types = set(config.get("section_types") or [])
         has_relevant = target_types and any(
             c.get("section_type") in target_types for c in top_chunks
         )
-        if not has_relevant:
+        doc_count = len({c.get("filename") for c in top_chunks if c.get("filename")})
+        needs_fallback = not has_relevant or (doc_count <= 1 and len(top_chunks) > 0)
+        if needs_fallback:
             logger.info(
-                "No section-type matched chunks for '%s' (got %d generic), trying keyword fallback",
-                dimension, len(top_chunks),
+                "Keyword fallback for '%s': has_relevant=%s, doc_count=%d, chunks=%d",
+                dimension, has_relevant, doc_count, len(top_chunks),
             )
             try:
                 kw_chunks = await keyword_search_chunks(

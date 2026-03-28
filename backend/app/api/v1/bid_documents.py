@@ -184,3 +184,67 @@ async def list_document_sections(
         .order_by(BidDocumentSection.start_page)
     )
     return result.scalars().all()
+
+
+@router.get("/{project_id}/bid-documents/diagnostics")
+async def document_diagnostics(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return vectorization diagnostics for all documents in a project.
+
+    Shows per-document chunk count, section_type distribution, and embedding
+    coverage — useful for diagnosing why search results may be biased toward
+    certain documents.
+    """
+    from sqlalchemy import func, select, text
+
+    from app.models.bid_document import BidDocument, BidDocumentChunk
+    from app.services.project_service import ProjectService
+
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)
+
+    # Per-document summary
+    docs_result = await db.execute(
+        select(BidDocument).where(BidDocument.project_id == project_id)
+    )
+    docs = docs_result.scalars().all()
+
+    diagnostics = []
+    for doc in docs:
+        # Chunk counts
+        total_chunks = await db.execute(
+            select(func.count()).where(BidDocumentChunk.bid_document_id == doc.id)
+        )
+        vectorized_chunks = await db.execute(
+            select(func.count()).where(
+                BidDocumentChunk.bid_document_id == doc.id,
+                BidDocumentChunk.embedding.isnot(None),
+            )
+        )
+        # Section type distribution
+        section_dist = await db.execute(
+            text(
+                "SELECT section_type, COUNT(*) as cnt "
+                "FROM bid_document_chunks "
+                "WHERE bid_document_id = :doc_id "
+                "GROUP BY section_type ORDER BY cnt DESC"
+            ),
+            {"doc_id": str(doc.id)},
+        )
+
+        diagnostics.append({
+            "document_id": str(doc.id),
+            "filename": doc.original_filename or doc.filename,
+            "status": doc.status,
+            "page_count": doc.page_count,
+            "total_chunks": total_chunks.scalar_one(),
+            "vectorized_chunks": vectorized_chunks.scalar_one(),
+            "section_type_distribution": {
+                row[0] or "null": row[1] for row in section_dist.fetchall()
+            },
+        })
+
+    return {"project_id": str(project_id), "documents": diagnostics}

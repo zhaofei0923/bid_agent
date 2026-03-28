@@ -141,6 +141,7 @@ async def bid_document_search(
     section_types: list[str] | None = None,
     top_k: int = 5,
     score_threshold: float = 0.3,
+    ensure_doc_diversity: bool = True,
 ) -> list[dict]:
     """Search bid document chunks via pgvector cosine similarity.
 
@@ -151,6 +152,8 @@ async def bid_document_search(
         section_types: Optional filter on section type (matches ch.section_type).
         top_k: Number of results.
         score_threshold: Minimum cosine similarity.
+        ensure_doc_diversity: When True, ensure results include chunks from
+            multiple documents (not dominated by a single PDF).
 
     Returns:
         List of dicts with content, score, section_type, section_title,
@@ -162,9 +165,10 @@ async def bid_document_search(
         "top_k": top_k,
     }
 
-    # When section_types requested, first try SQL-level filtering
+    filtered_results: list[dict] = []
+
+    # When section_types requested, do section-filtered search first
     if section_types:
-        # Build SQL with section_type IN (...) filter
         type_placeholders = ", ".join(f":st_{i}" for i in range(len(section_types)))
         for i, st in enumerate(section_types):
             params[f"st_{i}"] = st
@@ -191,22 +195,23 @@ async def bid_document_search(
         result = await db.execute(sql_filtered, params)
         rows = result.fetchall()
 
-        # If SQL filter returned enough results, use them
-        if len(rows) >= 3:
-            return [
-                {
-                    "id": row.chunk_id,
-                    "content": row.content,
-                    "page_number": row.page_number,
-                    "score": float(row.similarity),
-                    "section_type": row.section_type,
-                    "section_title": row.section_title,
-                    "clause_reference": row.clause_reference,
-                    "filename": row.filename,
-                }
-                for row in rows
-                if float(row.similarity) >= score_threshold
-            ] or [
+        filtered_results = [
+            {
+                "id": row.chunk_id,
+                "content": row.content,
+                "page_number": row.page_number,
+                "score": float(row.similarity),
+                "section_type": row.section_type,
+                "section_title": row.section_title,
+                "clause_reference": row.clause_reference,
+                "filename": row.filename,
+            }
+            for row in rows
+            if float(row.similarity) >= score_threshold
+        ]
+        # If threshold filtered everything, keep raw results
+        if not filtered_results and rows:
+            filtered_results = [
                 {
                     "id": row.chunk_id,
                     "content": row.content,
@@ -220,10 +225,14 @@ async def bid_document_search(
                 for row in rows
             ]
 
-        # Not enough section-typed results (e.g. old docs with "full_document"),
-        # fall through to unfiltered search below
+    # Always run unfiltered search to catch cross-document results
+    # (previously this was skipped when filtered returned >= 3)
+    unfiltered_params: dict = {
+        "embedding": str(query_embedding),
+        "project_id": project_id,
+        "top_k": top_k,
+    }
 
-    # Unfiltered vector search (general fallback)
     sql = text("""
         SELECT ch.content, ch.page_number,
                1 - (ch.embedding <=> cast(:embedding as vector)) AS similarity,
@@ -242,13 +251,10 @@ async def bid_document_search(
         LIMIT :top_k
     """)
 
-    result = await db.execute(sql, params)
+    result = await db.execute(sql, unfiltered_params)
     rows = result.fetchall()
 
-    if not rows:
-        return []
-
-    scored_rows = [
+    unfiltered_results = [
         {
             "id": row.chunk_id,
             "content": row.content,
@@ -262,6 +268,47 @@ async def bid_document_search(
         for row in rows
     ]
 
-    above_threshold = [r for r in scored_rows if r["score"] >= score_threshold]
-    # If threshold filters out all results, fall back to returning top_k un-filtered
-    return above_threshold if above_threshold else scored_rows
+    # Merge filtered + unfiltered, dedup by chunk id
+    seen_ids: set[str] = set()
+    merged: list[dict] = []
+    # Filtered results first (higher priority — matched requested sections)
+    for r in filtered_results:
+        if r["id"] not in seen_ids:
+            seen_ids.add(r["id"])
+            merged.append(r)
+    for r in unfiltered_results:
+        if r["id"] not in seen_ids:
+            seen_ids.add(r["id"])
+            merged.append(r)
+
+    if not merged:
+        return []
+
+    # Cross-document diversity: ensure results aren't dominated by one document
+    if ensure_doc_diversity and len(merged) > 3:
+        doc_files = {r["filename"] for r in merged if r.get("filename")}
+        if len(doc_files) > 1:
+            # Round-robin pick: take best chunk from each document first,
+            # then fill remaining slots by score
+            by_doc: dict[str, list[dict]] = {}
+            for r in merged:
+                fn = r.get("filename", "")
+                by_doc.setdefault(fn, []).append(r)
+            diverse: list[dict] = []
+            diverse_ids: set[str] = set()
+            # One best chunk per document
+            for fn in sorted(by_doc.keys()):
+                best = by_doc[fn][0]  # already sorted by score from SQL
+                diverse.append(best)
+                diverse_ids.add(best["id"])
+            # Fill remaining slots by score
+            for r in merged:
+                if len(diverse) >= top_k:
+                    break
+                if r["id"] not in diverse_ids:
+                    diverse.append(r)
+                    diverse_ids.add(r["id"])
+            merged = diverse
+
+    above_threshold = [r for r in merged if r["score"] >= score_threshold]
+    return (above_threshold if above_threshold else merged)[:top_k]
