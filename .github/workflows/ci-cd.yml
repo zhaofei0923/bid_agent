@@ -137,78 +137,65 @@ jobs:
       packages: read
 
     steps:
-      - name: Deploy via SSH (pull images + restart)
+      - name: Trigger remote deploy and poll status
         uses: appleboy/ssh-action@v1
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 90m
-          envs: GHCR_TOKEN
+          command_timeout: 20m
+          envs: GHCR_TOKEN,GHCR_READ_TOKEN
           script: |
-            # Manual error handling — no set -e so we can report which step fails
             cd /opt/bid_agent || { echo "FATAL: cannot cd /opt/bid_agent"; exit 1; }
 
-            echo "=== Step 1/6: Git sync ==="
+            echo "=== Step 1/4: Git sync ==="
             git fetch origin main && git reset --hard origin/main && git clean -fd
             if [ $? -ne 0 ]; then echo "FAILED at: git sync"; exit 1; fi
             echo "    HEAD: $(git log --oneline -1)"
 
-            echo "=== Step 2/6: Ensure .env & data dir ==="
-            mkdir -p data/uploads
-            if [ ! -f .env ]; then
-              cp .env.production.example .env
-              SECRET_KEY=$(openssl rand -hex 32)
-              JWT_SECRET=$(openssl rand -hex 32)
-              DB_PASS=$(openssl rand -hex 16)
-              sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$SECRET_KEY/" .env
-              sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s//$JWT_SECRET/" .env
-              sed -i "s/REPLACE_STRONG_DB_PASSWORD/$DB_PASS/g" .env
-              echo "    .env created from template"
-            else
-              echo "    .env exists"
+            echo "=== Step 2/4: Start remote deploy script (async) ==="
+            chmod +x deploy/remote-deploy.sh
+            : > /tmp/bid_agent_deploy.log
+            echo "running" > /tmp/bid_agent_deploy.status
+            nohup env \
+              GHCR_TOKEN="$GHCR_TOKEN" \
+              GHCR_READ_TOKEN="$GHCR_READ_TOKEN" \
+              BACKEND_IMAGE="${{ env.BACKEND_IMAGE }}" \
+              FRONTEND_IMAGE="${{ env.FRONTEND_IMAGE }}" \
+              bash deploy/remote-deploy.sh >> /tmp/bid_agent_deploy.log 2>&1 &
+            DEPLOY_PID=$!
+            echo "$DEPLOY_PID" > /tmp/bid_agent_deploy.pid
+            echo "    Started PID: $DEPLOY_PID"
+
+            echo "=== Step 3/4: Poll deploy status (max 40m) ==="
+            for i in $(seq 1 120); do
+              STATUS=$(cat /tmp/bid_agent_deploy.status 2>/dev/null || echo "running")
+              if [ "$STATUS" = "success" ]; then
+                echo "    Deploy succeeded"
+                break
+              fi
+              if [ "$STATUS" = "failed" ]; then
+                echo "FAILED: remote deploy script reported failure"
+                tail -n 120 /tmp/bid_agent_deploy.log || true
+                exit 1
+              fi
+              if [ $((i % 6)) -eq 0 ]; then
+                echo "    still running... (${i}/120)"
+              fi
+              sleep 20
+            done
+
+            STATUS=$(cat /tmp/bid_agent_deploy.status 2>/dev/null || echo "unknown")
+            if [ "$STATUS" != "success" ]; then
+              echo "FAILED: deploy did not finish in 40 minutes (status=$STATUS)"
+              tail -n 120 /tmp/bid_agent_deploy.log || true
+              exit 1
             fi
 
-            echo "=== Step 3/6: Nginx ==="
-            bash deploy/install-nginx-sites.sh
-            if [ $? -ne 0 ]; then echo "FAILED at: nginx config"; exit 1; fi
-            echo "    OK"
-
-            echo "=== Step 4/6: Pull pre-built images from GHCR ==="
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin
-            if [ $? -ne 0 ]; then echo "FAILED at: GHCR login"; exit 1; fi
-            docker pull ${{ env.BACKEND_IMAGE }}:latest
-            if [ $? -ne 0 ]; then echo "FAILED at: pull backend image"; exit 1; fi
-            docker pull ${{ env.FRONTEND_IMAGE }}:latest
-            if [ $? -ne 0 ]; then echo "FAILED at: pull frontend image"; exit 1; fi
-            docker tag ${{ env.BACKEND_IMAGE }}:latest bidagent-backend:latest
-            docker tag ${{ env.FRONTEND_IMAGE }}:latest bidagent-frontend:latest
-            echo "    OK"
-
-            echo "=== Step 5/6: Docker up ==="
-            # 先停掉并移除孤立容器，避免容器名称冲突
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans 2>&1
-            if [ $? -ne 0 ]; then echo "FAILED at: docker compose up"; exit 1; fi
-            echo "    Container status:"
-            docker compose -f docker-compose.prod.yml ps -a
-
-            echo "=== Step 6/6: Database migration ==="
-            echo "    Waiting 15s for containers..."
-            sleep 15
-            echo "    Running alembic..."
-            docker compose -f docker-compose.prod.yml exec -T backend python -m alembic upgrade head 2>&1
-            ALEMBIC_RC=$?
-            if [ $ALEMBIC_RC -ne 0 ]; then
-              echo "FAILED at: alembic upgrade head (rc=$ALEMBIC_RC)"
-              echo "    Backend logs:"
-              docker compose -f docker-compose.prod.yml logs --tail=50 backend 2>&1 || true
-              exit $ALEMBIC_RC
-            fi
-            echo "    Migration OK"
-
-            docker image prune -f > /dev/null 2>&1
+            echo "=== Step 4/4: Show deploy tail log ==="
+            tail -n 80 /tmp/bid_agent_deploy.log || true
             echo "=== Deploy complete: $(date) ==="
