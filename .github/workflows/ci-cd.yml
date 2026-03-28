@@ -146,7 +146,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 25m
+          command_timeout: 90m
           envs: GHCR_TOKEN
           script: |
             # Manual error handling — no set -e so we can report which step fails
