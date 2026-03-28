@@ -143,17 +143,12 @@ jobs:
     steps:
       - name: Trigger remote deploy and poll status
         uses: appleboy/ssh-action@v1
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
-          GHCR_USERNAME: ${{ github.actor }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          command_timeout: 55m
-          envs: GHCR_TOKEN,GHCR_READ_TOKEN,GHCR_USERNAME
+          command_timeout: 85m
           script: |
             cd /opt/bid_agent || { echo "FATAL: cannot cd /opt/bid_agent"; exit 1; }
 
@@ -166,19 +161,13 @@ jobs:
             chmod +x deploy/remote-deploy.sh
             : > /tmp/bid_agent_deploy.log
             echo "running" > /tmp/bid_agent_deploy.status
-            nohup env \
-              GHCR_TOKEN="$GHCR_TOKEN" \
-              GHCR_READ_TOKEN="$GHCR_READ_TOKEN" \
-              GHCR_USERNAME="$GHCR_USERNAME" \
-              BACKEND_IMAGE="${{ env.BACKEND_IMAGE }}" \
-              FRONTEND_IMAGE="${{ env.FRONTEND_IMAGE }}" \
-              bash deploy/remote-deploy.sh >> /tmp/bid_agent_deploy.log 2>&1 &
+            nohup bash deploy/remote-deploy.sh >> /tmp/bid_agent_deploy.log 2>&1 &
             DEPLOY_PID=$!
             echo "$DEPLOY_PID" > /tmp/bid_agent_deploy.pid
             echo "    Started PID: $DEPLOY_PID"
 
-            echo "=== Step 3/4: Poll deploy status (max 40m) ==="
-            for i in $(seq 1 120); do
+            echo "=== Step 3/4: Poll deploy status (max 70m) ==="
+            for i in $(seq 1 210); do
               STATUS=$(cat /tmp/bid_agent_deploy.status 2>/dev/null || echo "running")
               if [ "$STATUS" = "success" ]; then
                 echo "    Deploy succeeded"
@@ -190,14 +179,14 @@ jobs:
                 exit 1
               fi
               if [ $((i % 6)) -eq 0 ]; then
-                echo "    still running... (${i}/120)"
+                echo "    still running... (${i}/210)"
               fi
               sleep 20
             done
 
             STATUS=$(cat /tmp/bid_agent_deploy.status 2>/dev/null || echo "unknown")
             if [ "$STATUS" != "success" ]; then
-              echo "FAILED: deploy did not finish in 40 minutes (status=$STATUS)"
+              echo "FAILED: deploy did not finish in 70 minutes (status=$STATUS)"
               tail -n 120 /tmp/bid_agent_deploy.log || true
               exit 1
             fi

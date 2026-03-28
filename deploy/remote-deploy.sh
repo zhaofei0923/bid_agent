@@ -4,10 +4,6 @@ set -u
 STATUS_FILE="/tmp/bid_agent_deploy.status"
 LOG_PREFIX="[remote-deploy]"
 
-BACKEND_IMAGE="${BACKEND_IMAGE:-ghcr.io/zhaofei0923/bid_agent-backend}"
-FRONTEND_IMAGE="${FRONTEND_IMAGE:-ghcr.io/zhaofei0923/bid_agent-frontend}"
-GHCR_USERNAME="${GHCR_USERNAME:-zhaofei0923}"
-
 mark_failed() {
   echo "failed" > "$STATUS_FILE"
 }
@@ -43,17 +39,8 @@ fi
 echo "$LOG_PREFIX Step 2/6: configure nginx"
 bash deploy/install-nginx-sites.sh || fail "nginx config"
 
-echo "$LOG_PREFIX Step 3/6: login and pull images"
-TOKEN="${GHCR_READ_TOKEN:-${GHCR_TOKEN:-}}"
-if [ -z "$TOKEN" ]; then
-  fail "GHCR token is empty (set GHCR_READ_TOKEN or GHCR_TOKEN)"
-fi
-
-echo "$TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || fail "GHCR login"
-docker pull "$BACKEND_IMAGE:latest" || fail "pull backend image"
-docker pull "$FRONTEND_IMAGE:latest" || fail "pull frontend image"
-docker tag "$BACKEND_IMAGE:latest" bidagent-backend:latest || fail "tag backend image"
-docker tag "$FRONTEND_IMAGE:latest" bidagent-frontend:latest || fail "tag frontend image"
+echo "$LOG_PREFIX Step 3/6: build images locally"
+docker compose -f docker-compose.prod.yml build backend frontend || fail "docker compose build"
 
 echo "$LOG_PREFIX Step 4/6: restart containers"
 docker compose -f docker-compose.prod.yml down --remove-orphans || true
