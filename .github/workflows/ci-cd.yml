@@ -128,20 +128,26 @@ jobs:
   # ── Job 3: Deploy to Tencent Cloud ──────────────────
   deploy:
     name: Deploy to Production
-    needs: lint-test
+    needs: [lint-test, build-push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
 
     steps:
-      - name: Deploy via SSH (git pull + build on server)
+      - name: Deploy via SSH (pull images + restart)
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           command_timeout: 25m
+          envs: GHCR_TOKEN
           script: |
             # Manual error handling — no set -e so we can report which step fails
             cd /opt/bid_agent || { echo "FATAL: cannot cd /opt/bid_agent"; exit 1; }
@@ -171,10 +177,15 @@ jobs:
             if [ $? -ne 0 ]; then echo "FAILED at: nginx config"; exit 1; fi
             echo "    OK"
 
-            echo "=== Step 4/6: Docker build ==="
-            export PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://registry.npmmirror.com/-/binary/chrome-for-testing"
-            docker compose -f docker-compose.prod.yml build 2>&1
-            if [ $? -ne 0 ]; then echo "FAILED at: docker compose build"; exit 1; fi
+            echo "=== Step 4/6: Pull pre-built images from GHCR ==="
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin
+            if [ $? -ne 0 ]; then echo "FAILED at: GHCR login"; exit 1; fi
+            docker pull ${{ env.BACKEND_IMAGE }}:latest
+            if [ $? -ne 0 ]; then echo "FAILED at: pull backend image"; exit 1; fi
+            docker pull ${{ env.FRONTEND_IMAGE }}:latest
+            if [ $? -ne 0 ]; then echo "FAILED at: pull frontend image"; exit 1; fi
+            docker tag ${{ env.BACKEND_IMAGE }}:latest bidagent-backend:latest
+            docker tag ${{ env.FRONTEND_IMAGE }}:latest bidagent-frontend:latest
             echo "    OK"
 
             echo "=== Step 5/6: Docker up ==="
