@@ -315,11 +315,7 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (window.confirm("确定要重新生成投标计划？现有任务将被替换。")) {
-                  regenerateMutation.mutate()
-                }
-              }}
+              onClick={() => regenerateMutation.mutate()}
               disabled={regenerateMutation.isPending}
               className="shrink-0"
             >

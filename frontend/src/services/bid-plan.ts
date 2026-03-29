@@ -88,7 +88,7 @@ export const bidPlanService = {
     const { data } = await apiClient.post<{ plan: BidPlan; tasks: BidPlanTask[] }>(
       `/projects/${projectId}/plan/generate`,
       undefined,
-      { timeout: 150_000, params: { force: true } }
+      { timeout: 150_000 }
     )
     return data
   },
