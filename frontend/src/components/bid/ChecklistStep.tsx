@@ -218,22 +218,12 @@ export const ChecklistStep = memo(function ChecklistStep({
               )}
             </>
           )}
-          <Button
-            onClick={() => generateMutation.mutate(true)}
-            disabled={isGenerating}
-            size="sm"
-          >
-            {isGenerating ? (
-              <>
-                <span className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                {t("checklist.generating")}
-              </>
-            ) : checklist ? (
-              t("checklist.regenerate")
-            ) : (
-              t("checklist.generate")
-            )}
-          </Button>
+          {isGenerating && (
+            <Button disabled size="sm">
+              <span className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              {t("checklist.generating")}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -291,11 +281,7 @@ export const ChecklistStep = memo(function ChecklistStep({
           生成失败，请稍后重试
         </div>
       )}
-      {generateMutation.isError && checklist && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          重新生成失败，当前显示缓存版本
-        </div>
-      )}
+
 
       {/* ── Next step ── */}
       {checklist && checklist.sections.length > 0 && (
