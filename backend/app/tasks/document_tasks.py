@@ -940,7 +940,32 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
         if not parts:
             return {"status": "no_content"}
 
-        combined_text = "\n\n---\n\n".join(parts)
+        # Supplement with BDS/ITB section chunks from DB — these contain deadline tables
+        # which typically appear on pages 15-40, beyond the per_doc_limit sampled above.
+        bds_result = await db.execute(
+            select(BidDocumentChunk.content)
+            .join(BidDocument, BidDocumentChunk.bid_document_id == BidDocument.id)
+            .where(
+                BidDocument.project_id == project_id,
+                BidDocumentChunk.section_type.in_(["section_2_bds", "section_1_itb"]),
+            )
+            .order_by(BidDocumentChunk.chunk_index)
+            .limit(20)
+        )
+        bds_rows = bds_result.all()
+        bds_prefix = ""
+        if bds_rows:
+            bds_text = "\n\n".join(row[0] for row in bds_rows)
+            bds_prefix = (
+                "【BDS/ITB关键条款（含截止日期、提交地址、投标有效期等）】\n"
+                f"{bds_text[:5000]}\n\n---\n\n"
+            )
+            logger.info(
+                "Injected %d BDS/ITB chunks into combined analysis for project %s",
+                len(bds_rows), project_id,
+            )
+
+        combined_text = bds_prefix + "\n\n---\n\n".join(parts)
 
         from app.agents.llm_client import LLMClient, Message
         client = LLMClient()
@@ -957,7 +982,9 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
             "## 三、投标人资质要求\n"
             "（150-200字）资质标准、关键人员与专家要求、必要的业绩或认证要求。\n\n"
             "## 四、关键时间节点\n"
-            "（100字以内）投标文件发布日期、截止日期、评标计划、合同签署预期等关键时间点。\n\n"
+            "（100字以内）投标文件发布日期、截止日期、评标计划、合同签署预期等关键时间点。\n"
+            "重要：如在文档开头提供的 BDS/ITB 关键条款中找到明确日期，必须直接引用具体日期"
+            "（例如：2026年X月X日），不得回答"未明确"。\n\n"
             "## 五、阅读重点与注意事项\n"
             "（200-250字）各卷册间的关系与推荐阅读顺序、需特别关注的条款（如 BDS/SCC/EQC）、"
             "常见误解与风险提示、投标人行动建议。\n\n"
@@ -968,7 +995,7 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
             response = await client.chat(
                 messages=[
                     Message("system", system_prompt),
-                    Message("user", f"以下是同一招标项目的多个招标文件内容（可能为不同卷册）：\n\n{combined_text[:12000]}"),
+                    Message("user", f"以下是同一招标项目的多个招标文件内容（可能为不同卷册）：\n\n{combined_text[:15000]}"),
                 ],
                 temperature=0.3,
                 max_tokens=3000,
@@ -983,7 +1010,26 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
         await db.commit()
 
         logger.info("Combined AI analysis generated for project %s", project_id)
-        return {"status": "ok", "project_id": project_id}
+
+    # Auto-trigger key_dates analysis so stream_guidance has structured date data.
+    # Runs outside the main db session; failure is non-fatal.
+    from app.agents.workflows.bid_analysis_pipeline import run_bid_analysis_pipeline
+    async with async_session() as db2:
+        try:
+            await run_bid_analysis_pipeline(
+                project_id=project_id,
+                db=db2,
+                steps=["key_dates"],
+                force_refresh=False,
+            )
+            logger.info("Auto key_dates analysis completed for project %s", project_id)
+        except Exception:
+            logger.warning(
+                "Auto key_dates analysis failed for project %s — non-fatal",
+                project_id, exc_info=True,
+            )
+
+    return {"status": "ok", "project_id": project_id}
 
 
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=10)
