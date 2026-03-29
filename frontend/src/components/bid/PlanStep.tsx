@@ -126,14 +126,6 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
     },
   })
 
-  const regenerateMutation = useMutation({
-    mutationFn: () => bidPlanService.regeneratePlan(projectId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bid-plan", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["bid-plan-tasks", projectId] })
-    },
-  })
-
   const addTaskMutation = useMutation({
     mutationFn: (title: string) =>
       bidPlanService.addTask(projectId, { title }),
@@ -310,25 +302,8 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
             )}
           </div>
 
-          {/* AI 生成 / 重新生成 */}
-          {alreadyGenerated ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => regenerateMutation.mutate()}
-              disabled={regenerateMutation.isPending}
-              className="shrink-0"
-            >
-              {regenerateMutation.isPending ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
-                  重新生成中…
-                </>
-              ) : (
-                "🔄 重新生成计划"
-              )}
-            </Button>
-          ) : (
+          {/* AI 生成（仅首次） */}
+          {!alreadyGenerated && (
             <Button
               onClick={() => generateMutation.mutate()}
               disabled={generateMutation.isPending}
@@ -347,9 +322,8 @@ export const PlanStep = memo(function PlanStep({ projectId }: PlanStepProps) {
         </div>
       </div>
 
-      {(generateMutation.isError || regenerateMutation.isError) && (() => {
-        const mutation = generateMutation.isError ? generateMutation : regenerateMutation
-        const err = mutation.error as { code?: string; response?: { status?: number } } | null
+      {generateMutation.isError && (() => {
+        const err = generateMutation.error as { code?: string; response?: { status?: number } } | null
         const isTimeout = err?.code === "ECONNABORTED"
         const isAuth = err?.response?.status === 401
         return (

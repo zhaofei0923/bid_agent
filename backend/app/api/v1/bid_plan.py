@@ -5,12 +5,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.llm_client import get_llm_client
+from app.core.exceptions import ConflictError
 from app.core.security import get_current_user
 from app.database import get_db
+from app.models.bid_plan import BidPlan
 from app.models.user import User
 from app.services.bid_plan_service import BidPlanService
 from app.services.project_service import ProjectService
@@ -189,7 +191,7 @@ async def reorder_tasks(
     return {"message": "Tasks reordered"}
 
 
-# ── AI generation (idempotent — can be called multiple times) ─────
+# ── AI generation (one-time only) ────────────────────────────────
 
 @router.post("/{project_id}/plan/generate")
 async def generate_plan(
@@ -197,9 +199,19 @@ async def generate_plan(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate or re-generate an AI bid preparation task plan."""
+    """Generate an AI bid preparation task plan (one-time only)."""
     project_svc = ProjectService(db)
     await project_svc.get_by_id(project_id, current_user.id)
+
+    # Prevent duplicate generation
+    result = await db.execute(
+        select(BidPlan).where(
+            BidPlan.project_id == project_id,
+            BidPlan.generated_by_ai.is_(True),
+        )
+    )
+    if result.scalar_one_or_none():
+        raise ConflictError("投标计划已通过 AI 生成，不可重复生成。")
 
     llm_client = get_llm_client()
     plan_svc = BidPlanService(db)

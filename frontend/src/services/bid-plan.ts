@@ -83,13 +83,4 @@ export const bidPlanService = {
     return data
   },
 
-  /** Force-regenerate plan (deletes existing tasks and re-generates). */
-  regeneratePlan: async (projectId: string) => {
-    const { data } = await apiClient.post<{ plan: BidPlan; tasks: BidPlanTask[] }>(
-      `/projects/${projectId}/plan/generate`,
-      undefined,
-      { timeout: 150_000 }
-    )
-    return data
-  },
 }
