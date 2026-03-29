@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to production?"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
 
 concurrency:
   group: ci-cd-${{ github.ref }}
@@ -79,7 +87,8 @@ jobs:
   deploy:
     name: Deploy to Production
     needs: lint-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true')
     runs-on: ubuntu-latest
     environment: production
 
