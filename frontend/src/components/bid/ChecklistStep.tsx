@@ -224,6 +224,7 @@ export const ChecklistStep = memo(function ChecklistStep({
   const t = useTranslations("bid")
   const queryClient = useQueryClient()
   const [allOpen, setAllOpen] = useState(true)
+  const [isTranslating, setIsTranslating] = useState(false)
 
   const handleNext = () => {
     completeStep("writing")
@@ -274,15 +275,41 @@ export const ChecklistStep = memo(function ChecklistStep({
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-xs gap-1">
-                    📥 导出 Excel
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1"
+                    disabled={isTranslating}
+                  >
+                    {isTranslating ? (
+                      <>
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        翻译中...
+                      </>
+                    ) : (
+                      "📥 导出 Excel"
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => exportChecklistToExcel(checklist, "zh")}>
                     🇨🇳 中文版
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportChecklistToExcel(checklist, "en")}>
+                  <DropdownMenuItem
+                    disabled={isTranslating}
+                    onClick={async () => {
+                      setIsTranslating(true)
+                      try {
+                        const translated = await checklistService.translate(projectId, "en")
+                        exportChecklistToExcel(translated, "en")
+                      } catch {
+                        // silently fall back to untranslated export
+                        exportChecklistToExcel(checklist, "en")
+                      } finally {
+                        setIsTranslating(false)
+                      }
+                    }}
+                  >
                     🇺🇸 English
                   </DropdownMenuItem>
                 </DropdownMenuContent>

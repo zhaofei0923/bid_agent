@@ -962,3 +962,184 @@ async def generate_checklist(
                 }
             },
         )
+
+
+# ── Checklist Translation ──────────────────────────────────────────────────────
+
+
+@router.post("/{project_id}/checklist/translate")
+async def translate_checklist(
+    project_id: UUID,
+    lang: str = "en",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Translate the cached checklist to English using DeepSeek.
+
+    Translation result is cached in Redis for 7 days to avoid repeated LLM calls.
+    """
+    import copy
+
+    from sqlalchemy import select
+
+    from app.agents.llm_client import get_llm_client
+    from app.models.bid_analysis import BidAnalysis
+    from app.schemas.checklist import (
+        ChecklistSection,
+        SubmissionChecklistResponse,
+    )
+
+    # Authorise & load project
+    project_svc = ProjectService(db)
+    project = await project_svc.get_by_id(project_id, current_user.id)
+    institution: str = getattr(project, "institution", None) or "adb"
+
+    # Load cached Chinese checklist from DB
+    result_row = await db.execute(
+        select(BidAnalysis).where(BidAnalysis.project_id == project_id)
+    )
+    analysis: BidAnalysis | None = result_row.scalar_one_or_none()
+    if (
+        not analysis
+        or not analysis.submission_checklist
+        or not analysis.submission_checklist.get("sections")
+    ):
+        return JSONResponse(
+            status_code=404,
+            content={"error": {"code": "CHECKLIST_NOT_FOUND", "message": "请先生成清单"}},
+        )
+
+    raw = analysis.submission_checklist
+    try:
+        cached_sections = [ChecklistSection(**s) for s in raw["sections"]]
+    except Exception:
+        return JSONResponse(
+            status_code=422,
+            content={"error": {"code": "CHECKLIST_MALFORMED", "message": "清单数据格式错误，请重新生成"}},
+        )
+
+    # ── Check Redis cache ──────────────────────────────────────────────
+    _cache_key = f"checklist:translated:{project_id}:{lang}"
+    try:
+        _r = aioredis.from_url(get_settings().REDIS_URL, decode_responses=True)
+        _cached_str = await _r.get(_cache_key)
+        await _r.aclose()
+    except Exception:
+        _cached_str = None
+
+    if _cached_str:
+        try:
+            translated_data = json.loads(_cached_str)
+            translated_sections = [ChecklistSection(**s) for s in translated_data["sections"]]
+            return SubmissionChecklistResponse(
+                project_id=project_id,
+                institution=institution,
+                sections=translated_sections,
+                generated_at=raw.get("generated_at", datetime.now(UTC).isoformat()),
+                cached=True,
+            )
+        except Exception:
+            pass  # fall through to re-translate
+
+    # ── Collect all translatable strings ──────────────────────────────
+    texts: list[str] = []
+    # Each entry: (section_idx, item_idx or -1 for section, field_name)
+    positions: list[tuple[int, int, str]] = []
+
+    for si, section in enumerate(cached_sections):
+        texts.append(section.title)
+        positions.append((si, -1, "title"))
+        for ii, item in enumerate(section.items):
+            texts.append(item.title)
+            positions.append((si, ii, "title"))
+            if item.guidance:
+                texts.append(item.guidance)
+                positions.append((si, ii, "guidance"))
+            if item.format_hint:
+                texts.append(item.format_hint)
+                positions.append((si, ii, "format_hint"))
+            if item.source and item.source.section_title:
+                texts.append(item.source.section_title)
+                positions.append((si, ii, "source_section_title"))
+            if item.source and item.source.excerpt:
+                texts.append(item.source.excerpt)
+                positions.append((si, ii, "source_excerpt"))
+
+    if not texts:
+        return SubmissionChecklistResponse(
+            project_id=project_id,
+            institution=institution,
+            sections=cached_sections,
+            generated_at=raw.get("generated_at", datetime.now(UTC).isoformat()),
+            cached=True,
+        )
+
+    # ── Batch LLM translation (split into chunks of 80 to stay within token limits) ──
+    batch_size = 80
+    translations: dict[str, str] = {}
+
+    llm = get_llm_client()
+    for batch_start in range(0, len(texts), batch_size):
+        batch = texts[batch_start : batch_start + batch_size]
+        numbered = "\n".join(
+            f"{batch_start + i + 1}. {t}" for i, t in enumerate(batch)
+        )
+        prompt = (
+            f"Translate the following {len(batch)} Chinese texts to English. "
+            f"Return ONLY a JSON object with numeric string keys "
+            f"'{batch_start + 1}' to '{batch_start + len(batch)}' "
+            f"mapping to the English translations. "
+            f"Preserve technical terms, form references (e.g. TECH-1, Form ELI, BDS), "
+            f"document names, and numbers exactly as-is.\n\n"
+            f"{numbered}"
+        )
+        result = await llm.extract_json(
+            prompt=prompt,
+            system_prompt=(
+                "You are a professional translator specializing in multilateral "
+                "development bank (ADB/WB/AfDB) procurement documents. "
+                "Translate accurately and preserve technical terminology."
+            ),
+            temperature=0.1,
+            max_tokens=8000,
+        )
+        if not result.data.get("parse_error"):
+            translations.update({str(k): str(v) for k, v in result.data.items()})
+
+    # ── Reconstruct translated sections ───────────────────────────────
+    translated_sections = copy.deepcopy(cached_sections)
+    for idx, (si, ii, field) in enumerate(positions):
+        translated_text: str = translations.get(str(idx + 1)) or texts[idx]
+        if ii == -1:
+            translated_sections[si].title = translated_text
+        else:
+            item = translated_sections[si].items[ii]
+            if field == "title":
+                item.title = translated_text
+            elif field == "guidance":
+                item.guidance = translated_text
+            elif field == "format_hint":
+                item.format_hint = translated_text
+            elif field == "source_section_title":
+                item.source.section_title = translated_text
+            elif field == "source_excerpt":
+                item.source.excerpt = translated_text
+
+    # ── Cache in Redis (7 days) ────────────────────────────────────────
+    try:
+        translated_payload = {"sections": [s.model_dump() for s in translated_sections]}
+        _r = aioredis.from_url(get_settings().REDIS_URL, decode_responses=True)
+        await _r.setex(
+            _cache_key, 7 * 86400, json.dumps(translated_payload, ensure_ascii=False)
+        )
+        await _r.aclose()
+    except Exception:
+        logger.warning("Failed to cache translated checklist for project %s", project_id)
+
+    return SubmissionChecklistResponse(
+        project_id=project_id,
+        institution=institution,
+        sections=translated_sections,
+        generated_at=raw.get("generated_at", datetime.now(UTC).isoformat()),
+        cached=False,
+    )

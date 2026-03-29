@@ -51,4 +51,17 @@ export const checklistService = {
     )
     return data
   },
+
+  translate: async (
+    projectId: string,
+    lang: "en" | "zh" = "en"
+  ): Promise<import("@/types/bid").SubmissionChecklist> => {
+    const { data } = await apiClient.post(
+      `/projects/${projectId}/checklist/translate?lang=${lang}`,
+      undefined,
+      // DeepSeek batch translation can take up to 2 minutes
+      { timeout: 180_000 }
+    )
+    return data
+  },
 }
