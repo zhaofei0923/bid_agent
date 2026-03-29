@@ -36,6 +36,7 @@ CREDIT_COST: dict[str, int] = {
     "guidance_stream": 8,
     "quality_review_full": 30,
     "quality_review_quick": 10,
+    "doc_review_item": 5,
 }
 
 

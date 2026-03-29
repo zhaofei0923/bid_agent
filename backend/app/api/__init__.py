@@ -7,6 +7,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.bid_analysis import router as bid_analysis_router
 from app.api.v1.bid_documents import router as bid_documents_router
 from app.api.v1.bid_plan import router as bid_plan_router
+from app.api.v1.document_review import router as document_review_router
 from app.api.v1.guidance import router as guidance_router
 from app.api.v1.health import router as health_router
 from app.api.v1.knowledge_base import router as knowledge_base_router
@@ -46,6 +47,9 @@ api_router.include_router(
 )
 api_router.include_router(
     quality_review_router, prefix="/projects", tags=["quality-review"]
+)
+api_router.include_router(
+    document_review_router, prefix="/projects", tags=["document-review"]
 )
 api_router.include_router(
     reading_tips_router, prefix="/projects", tags=["reading-tips"]

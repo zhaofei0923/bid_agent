@@ -139,3 +139,11 @@ export interface SubmissionChecklist {
   generated_at: string
   cached: boolean
 }
+
+export interface DocumentReviewResult {
+  score: number
+  meets_requirements: boolean
+  gaps: string[]
+  suggestions: string[]
+  knowledge_tips: string[]
+}

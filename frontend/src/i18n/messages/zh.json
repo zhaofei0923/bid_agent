@@ -149,7 +149,7 @@
       "overview": "文档解读",
       "plan": "投标计划",
       "writing": "AI编制指导",
-      "review": "质量审查",
+      "review": "文件审查",
       "tracking": "进度跟踪"
     },
     "stepsTitle": "投标步骤",
@@ -1000,7 +1000,7 @@
       "modeKbHint": "查询编制指南，获取专业建议",
       "send": "发送",
       "stop": "停止",
-      "nextStep": "下一步：质量审查 →"
+      "nextStep": "下一步：文件审查 →"
     },
     "checklist": {
       "title": "投标文件目录",
@@ -1013,7 +1013,26 @@
       "optional": "选填",
       "guidance": "编写指导",
       "source": "出处",
-      "nextStep": "下一步：质量审查 →"
+      "nextStep": "下一步：文件审查 →"
+    },
+    "documentReview": {
+      "title": "文件审查",
+      "subtitle": "逐项上传您编写的标书内容，AI 将对照招标要求进行审查",
+      "noChecklist": "请先完成\"AI编制指导\"步骤，生成投标文件目录",
+      "goToChecklist": "前往 AI编制指导",
+      "tabText": "粘贴文本",
+      "tabFile": "上传文件",
+      "textPlaceholder": "在此粘贴您编写的内容...",
+      "uploadHint": "支持 PDF、JPG、PNG、WEBP，最大 10MB",
+      "reviewBtn": "AI 审查",
+      "reviewing": "审查中...",
+      "score": "评分",
+      "meetsRequirements": "满足要求",
+      "notMeetsRequirements": "存在差距",
+      "gaps": "待改进",
+      "suggestions": "改进建议",
+      "knowledgeTips": "知识库参考",
+      "nextStep": "下一步：进度跟踪 →"
     },
     "quality": {
       "title": "质量审查",

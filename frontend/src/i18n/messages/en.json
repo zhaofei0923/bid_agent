@@ -149,7 +149,7 @@
       "overview": "Document Overview",
       "plan": "Bid Plan",
       "writing": "AI Writing Guide",
-      "review": "Quality Review",
+      "review": "Document Review",
       "tracking": "Progress Tracking"
     },
     "stepsTitle": "Bid Steps",
@@ -1000,7 +1000,7 @@
       "modeKbHint": "Query procurement guides for expert writing advice",
       "send": "Send",
       "stop": "Stop",
-      "nextStep": "Next: Quality Review →"
+      "nextStep": "Next: Document Review →"
     },
     "checklist": {
       "title": "Bid Document Checklist",
@@ -1013,7 +1013,26 @@
       "optional": "Optional",
       "guidance": "Writing Guidance",
       "source": "Source",
-      "nextStep": "Next: Quality Review →"
+      "nextStep": "Next: Document Review →"
+    },
+    "documentReview": {
+      "title": "Document Review",
+      "subtitle": "Upload your drafted content for each item — AI will review against tender requirements",
+      "noChecklist": "Please complete the \"AI Writing Guide\" step first to generate the submission checklist",
+      "goToChecklist": "Go to AI Writing Guide",
+      "tabText": "Paste Text",
+      "tabFile": "Upload File",
+      "textPlaceholder": "Paste your drafted content here...",
+      "uploadHint": "Supports PDF, JPG, PNG, WEBP, max 10MB",
+      "reviewBtn": "AI Review",
+      "reviewing": "Reviewing...",
+      "score": "Score",
+      "meetsRequirements": "Meets Requirements",
+      "notMeetsRequirements": "Has Gaps",
+      "gaps": "Gaps",
+      "suggestions": "Suggestions",
+      "knowledgeTips": "Knowledge Tips",
+      "nextStep": "Next: Progress Tracking →"
     },
     "quality": {
       "title": "Quality Review",
