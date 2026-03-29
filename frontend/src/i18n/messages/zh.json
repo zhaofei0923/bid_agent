@@ -148,7 +148,7 @@
       "upload": "文件上传",
       "overview": "文档解读",
       "plan": "投标计划",
-      "writing": "AI编制指导",
+      "writing": "编制指导",
       "review": "文件审查"
     },
     "stepsTitle": "投标步骤",
@@ -969,7 +969,7 @@
       "addButton": "添加",
       "generateBtn": "AI 一键生成",
       "generating": "生成中...",
-      "nextStep": "下一步：AI编制指导 →"
+      "nextStep": "下一步：编制指导 →"
     },
     "qa": {
       "title": "AI 编制指导",
@@ -1017,8 +1017,8 @@
     "documentReview": {
       "title": "文件审查",
       "subtitle": "逐项上传您编写的标书内容，AI 将对照招标要求进行审查",
-      "noChecklist": "请先完成\"AI编制指导\"步骤，生成投标文件目录",
-      "goToChecklist": "前往 AI编制指导",
+      "noChecklist": "请先完成\"编制指导\"步骤，生成投标文件目录",
+      "goToChecklist": "前往编制指导",
       "tabText": "粘贴文本",
       "tabFile": "上传文件",
       "textPlaceholder": "在此粘贴您编写的内容...",
