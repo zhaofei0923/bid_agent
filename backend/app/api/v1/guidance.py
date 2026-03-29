@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 import uuid
 from datetime import UTC, datetime
 from uuid import UUID
@@ -647,7 +646,6 @@ async def generate_checklist(
     from sqlalchemy import select
 
     from app.agents.embedding_client import get_embedding_client
-    from app.agents.llm_client import Message as LLMMessage
     from app.agents.llm_client import get_llm_client
     from app.agents.mcp.bid_document_search import (
         _extract_keywords,
@@ -861,32 +859,23 @@ async def generate_checklist(
             context=context_block,
             institution_template=institution_template,
         )
-        messages = [LLMMessage(role="user", content=prompt)]
-
-        # Retry LLM up to 2 attempts on transient failures
-        raw_json = ""
-        last_exc: Exception | None = None
-        for attempt in range(2):
-            try:
-                raw_json = ""
-                async for chunk in llm.chat_stream(messages, max_tokens=4000):
-                    raw_json += chunk
-                last_exc = None
-                break
-            except Exception as llm_exc:
-                last_exc = llm_exc
-                logger.warning("Checklist LLM attempt %d failed: %s", attempt + 1, llm_exc)
-        if last_exc is not None:
-            raise last_exc
-
-        # Parse JSON — strip accidental markdown fences
-        raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip(), flags=re.MULTILINE)
-        raw_json = re.sub(r"\s*```$", "", raw_json.strip(), flags=re.MULTILINE)
-
-        try:
-            parsed = json.loads(raw_json)
-        except json.JSONDecodeError:
-            logger.warning("Checklist LLM response is not valid JSON, using empty list. raw=%r", raw_json[:200])
+        # max_tokens=8000: checklist JSON for 40+ items easily exceeds 4000 tokens
+        llm_result = await llm.extract_json(
+            prompt=prompt,
+            system_prompt=(
+                "你是专业招标文件分析师。请严格按照用户要求的 JSON 格式输出，"
+                "不要添加任何说明文字或 markdown 格式。"
+            ),
+            temperature=0.2,
+            max_tokens=8000,
+        )
+        parsed = llm_result.data
+        if parsed.get("parse_error"):
+            logger.warning(
+                "Checklist LLM response is not valid JSON for project %s — raw=%r",
+                project_id,
+                parsed.get("raw_content", "")[:300],
+            )
             parsed = {"sections": []}
 
         sections_raw = parsed.get("sections", [])
