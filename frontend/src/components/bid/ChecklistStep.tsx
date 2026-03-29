@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState } from "react"
+import { memo, useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
 import { checklistService } from "@/services/bid-analysis"
@@ -123,6 +123,10 @@ function SectionBlock({
   defaultOpen: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
+
+  useEffect(() => {
+    setOpen(defaultOpen)
+  }, [defaultOpen])
 
   return (
     <div className="rounded-xl border border-stone-200 overflow-hidden">
