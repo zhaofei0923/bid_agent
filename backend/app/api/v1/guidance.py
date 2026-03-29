@@ -7,11 +7,13 @@ import uuid
 from datetime import UTC, datetime
 from uuid import UUID
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.rag import answer_question
+from app.config import get_settings
 from app.core.credits import (
     deduct_credits,
     require_credits,
@@ -23,6 +25,52 @@ from app.schemas.guidance import GuidanceRequest, GuidanceResponse
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
+
+# ── Conversation history helpers ─────────────────────────────────────────────
+# History is stored in Redis as a JSON list of {role, content} dicts.
+# Key: guidance:hist:{user_id}:{project_id}  TTL: 24 h  Max turns: 12 messages (6 exchanges)
+
+_HISTORY_TTL = 86400          # 24 hours
+_HISTORY_MAX_MSGS = 12        # 6 full exchanges (user + assistant each)
+_ASSISTANT_CONTENT_CAP = 3000  # chars saved per assistant turn
+
+
+def _history_key(user_id: str | UUID, project_id: str | UUID) -> str:
+    return f"guidance:hist:{user_id}:{project_id}"
+
+
+async def _load_history(key: str) -> list[dict]:
+    """Return the stored message history for a conversation key."""
+    try:
+        r = aioredis.from_url(get_settings().REDIS_URL, decode_responses=True)
+        raw = await r.get(key)
+        await r.aclose()
+        if raw:
+            return json.loads(raw)[-_HISTORY_MAX_MSGS:]
+    except Exception:
+        logger.warning("Failed to load guidance history from Redis", exc_info=True)
+    return []
+
+
+async def _save_history(
+    key: str,
+    history: list[dict],
+    user_message: str,
+    assistant_message: str,
+) -> None:
+    """Append the latest exchange and persist back to Redis."""
+    try:
+        updated = [
+                *history,
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": assistant_message[:_ASSISTANT_CONTENT_CAP]},
+            ]
+        updated = updated[-_HISTORY_MAX_MSGS:]
+        r = aioredis.from_url(get_settings().REDIS_URL, decode_responses=True)
+        await r.setex(key, _HISTORY_TTL, json.dumps(updated, ensure_ascii=False))
+        await r.aclose()
+    except Exception:
+        logger.warning("Failed to save guidance history to Redis", exc_info=True)
 router = APIRouter()
 
 
@@ -88,11 +136,16 @@ async def stream_guidance(
     """Stream AI guidance via Server-Sent Events (SSE).
 
     Returns text/event-stream with JSON data chunks.
+    Conversation history is automatically maintained per user × project in Redis (TTL 24 h).
     """
     project_svc = ProjectService(db)
     project = await project_svc.get_by_id(project_id, current_user.id)
     use_kb = request.context_type == "knowledge_base"
     institution: str = getattr(project, "institution", None) or "adb"
+
+    # Load conversation history before entering the async generator
+    _hist_key = _history_key(current_user.id, project_id)
+    _history: list[dict] = await _load_history(_hist_key)
 
     async def event_generator():
         try:
@@ -474,14 +527,18 @@ async def stream_guidance(
             # analysis_prefix 放前面（LLM 上下文前部权重更高）
             user_msg = f"参考资料:\n{analysis_prefix}{context_block}\n\n用户问题: {request.message}"
 
+            # 将对话历史注入 messages（历史条目只含裸问答，当前问题才含 RAG 上下文）
             messages = [
                 LLMMessage(role="system", content=system_prompt),
+                *[LLMMessage(role=h["role"], content=h["content"]) for h in _history],
                 LLMMessage(role="user", content=user_msg),
             ]
 
-            # Stream response — catch LLM errors (e.g., invalid API key)
+            # Stream response — accumulate text for history persistence
+            _accumulated: list[str] = []
             try:
                 async for chunk in llm.chat_stream(messages):
+                    _accumulated.append(chunk)
                     event_data = json.dumps({"type": "content", "content": chunk})
                     yield f"data: {event_data}\n\n"
             except Exception as llm_exc:
@@ -490,7 +547,16 @@ async def stream_guidance(
                     f"LLM服务暂时不可用（{type(llm_exc).__name__}）。\n"
                     f"已检索到{len(results)}个相关片段，请直接查阅候选内容。"
                 )
+                _accumulated.append(fallback)
                 yield f"data: {json.dumps({'type': 'content', 'content': fallback})}\n\n"
+
+            # Persist conversation history (non-blocking, failure-tolerant)
+            await _save_history(
+                _hist_key,
+                _history,
+                request.message,
+                "".join(_accumulated),
+            )
 
             # Send sources after content
             sources_data = json.dumps({"type": "sources", "sources": sources_payload})
@@ -513,6 +579,45 @@ async def stream_guidance(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/{project_id}/guidance/history")
+async def get_guidance_history(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the stored conversation history for this user × project.
+
+    Returns a list of {role, content} dicts (up to 12 messages / 6 exchanges).
+    """
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)  # ownership check
+    key = _history_key(current_user.id, project_id)
+    history = await _load_history(key)
+    return JSONResponse({"history": history})
+
+
+@router.delete("/{project_id}/guidance/history")
+async def clear_guidance_history(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Clear the conversation history for this user × project (new chat).
+
+    The next message will start a fresh conversation.
+    """
+    project_svc = ProjectService(db)
+    await project_svc.get_by_id(project_id, current_user.id)  # ownership check
+    key = _history_key(current_user.id, project_id)
+    try:
+        r = aioredis.from_url(get_settings().REDIS_URL, decode_responses=True)
+        await r.delete(key)
+        await r.aclose()
+    except Exception:
+        logger.warning("Failed to clear guidance history from Redis", exc_info=True)
+    return JSONResponse({"cleared": True})
 
 
 # ── Submission Checklist ──────────────────────────────────────────────────────
