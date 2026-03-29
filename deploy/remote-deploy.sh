@@ -40,7 +40,7 @@ echo "$LOG_PREFIX Step 2/6: configure nginx"
 bash deploy/install-nginx-sites.sh || fail "nginx config"
 
 echo "$LOG_PREFIX Step 3/6: build images locally"
-docker compose -f docker-compose.prod.yml build backend frontend || fail "docker compose build"
+docker compose -f docker-compose.prod.yml build --progress=plain backend frontend || fail "docker compose build"
 
 echo "$LOG_PREFIX Step 4/6: restart containers"
 docker compose -f docker-compose.prod.yml down --remove-orphans || true
