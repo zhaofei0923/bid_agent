@@ -7,8 +7,68 @@ import { checklistService } from "@/services/bid-analysis"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useTranslations } from "next-intl"
-import type { ChecklistItem, ChecklistSection } from "@/types/bid"
+import * as XLSX from "xlsx"
+import type { ChecklistItem, ChecklistSection, SubmissionChecklist } from "@/types/bid"
+
+// ── Export helper ─────────────────────────────────────────────────
+
+function exportChecklistToExcel(checklist: SubmissionChecklist, lang: "zh" | "en") {
+  const isCn = lang === "zh"
+
+  const headers = isCn
+    ? ["序号", "分类", "文件/材料名称", "必填/选填", "份数", "格式要求", "表格编号", "编写指导", "来源文件", "页码", "章节", "原文摘录"]
+    : ["No.", "Category", "Document Name", "Required", "Copies", "Format", "Form Ref.", "Writing Guidance", "Source File", "Page", "Section", "Excerpt"]
+
+  const rows: (string | number | null)[][] = [headers]
+  let seq = 1
+
+  for (const section of checklist.sections) {
+    for (const item of section.items) {
+      rows.push([
+        seq++,
+        section.title,
+        item.title,
+        isCn
+          ? (item.required ? "必填" : "选填")
+          : (item.required ? "Required" : "Optional"),
+        item.copies ?? "",
+        item.format_hint ?? "",
+        item.form_reference ?? "",
+        item.guidance ?? "",
+        item.source?.filename ?? "",
+        item.source?.page_number ?? "",
+        item.source?.section_title ?? "",
+        item.source?.excerpt ?? "",
+      ])
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows)
+
+  // Column widths
+  ws["!cols"] = [8, 20, 36, 10, 8, 18, 12, 48, 20, 8, 24, 48].map((w) => ({ wch: w }))
+
+  // Bold header row
+  const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "EEF2FF" } } }
+  headers.forEach((_, ci) => {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: ci })
+    if (ws[cellRef]) ws[cellRef].s = headerStyle
+  })
+
+  const wb = XLSX.utils.book_new()
+  const sheetName = isCn ? "投标文件清单" : "Submission Checklist"
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+
+  const filename = isCn ? "投标文件清单.xlsx" : "Submission_Checklist.xlsx"
+  XLSX.writeFile(wb, filename)
+}
 
 interface ChecklistStepProps {
   projectId: string
@@ -212,6 +272,21 @@ export const ChecklistStep = memo(function ChecklistStep({
               >
                 {allOpen ? "折叠全部" : "展开全部"}
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-xs gap-1">
+                    📥 导出 Excel
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportChecklistToExcel(checklist, "zh")}>
+                    🇨🇳 中文版
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportChecklistToExcel(checklist, "en")}>
+                    🇺🇸 English
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {checklist.cached && (
                 <Badge
                   variant="secondary"
