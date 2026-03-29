@@ -1,4 +1,4 @@
-name: CI/CD — Lint, Build & Deploy
+name: CI/CD — Lint & Deploy
 
 on:
   push:
@@ -9,11 +9,6 @@ on:
 concurrency:
   group: ci-cd-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/zhaofei0923/bid_agent-backend
-  FRONTEND_IMAGE: ghcr.io/zhaofei0923/bid_agent-frontend
 
 jobs:
   # ── Job 1: Lint & Test ──────────────────────────────
@@ -80,68 +75,16 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://bid.easudata.com
 
-  # ── Job 2: Build & Push Docker Images ───────────────
-  build-push:
-    name: Build & Push Images
+  # ── Job 2: Deploy (SSH → git pull → build on server) ─
+  deploy:
+    name: Deploy to Production
     needs: lint-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build & push backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=https://bid.easudata.com
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ── Job 3: Deploy to Tencent Cloud ──────────────────
-  deploy:
-    name: Deploy to Production
-    needs: [lint-test, build-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: read
-      packages: read
 
     steps:
-      - name: Trigger remote deploy and poll status
+      - name: SSH → git pull → build & restart on server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
