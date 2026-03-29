@@ -660,6 +660,14 @@ async def _process_document(document_id: str) -> dict:
             await db.commit()
 
             # 3. Delete old sections/chunks (in case of re-processing)
+            old_chunks_result = await db.execute(
+                select(BidDocumentChunk).where(
+                    BidDocumentChunk.bid_document_id == document_id
+                )
+            )
+            for chunk in old_chunks_result.scalars().all():
+                await db.delete(chunk)
+
             old_sections = await db.execute(
                 select(BidDocumentSection).where(
                     BidDocumentSection.bid_document_id == document_id
@@ -688,19 +696,33 @@ async def _process_document(document_id: str) -> dict:
                     "Document %s: identified %d semantic sections",
                     document_id, len(semantic_sections),
                 )
-                covered_pages: set[int] = set()
+
+                # Preamble: text before the first matched section (cover page, TOC).
+                # Stored as a full_document section so it still gets chunked/vectorized.
+                first_char_start = semantic_sections[0]["char_start"]
+                if first_char_start > 0:
+                    preamble_text = full_text[:first_char_start].strip()
+                    if preamble_text:
+                        first_page = semantic_sections[0]["page_number"]
+                        preamble_section = BidDocumentSection(
+                            bid_document_id=doc.id,
+                            section_type="full_document",
+                            section_title=f"文档封面与目录（第1-{max(1, first_page - 1)}页）",
+                            start_page=1,
+                            end_page=max(1, first_page - 1),
+                            content_preview=preamble_text[:500],
+                            detected_by="regex",
+                        )
+                        section_tuples.append((preamble_section, preamble_text))
+
                 for sec in semantic_sections:
                     start_p = sec["page_number"]
                     end_p = sec.get("page_end", start_p)
-                    section_pages = [
-                        p for p in pages if start_p <= p["page_number"] <= end_p
-                    ]
-                    covered_pages.update(p["page_number"] for p in section_pages)
-                    content = "\n\n".join(
-                        f"=== 第{p['page_number']}页 ===\n{p['text']}"
-                        for p in section_pages
-                        if p["text"].strip()
-                    )
+                    # Use the char-sliced content returned by identify_sections().
+                    # This avoids page_number mismatch (when _parse_pdf page numbers
+                    # don't match the numbers derived by _find_page_number from
+                    # full_text char offsets).
+                    content = sec.get("content", "")
                     section_orm = BidDocumentSection(
                         bid_document_id=doc.id,
                         section_type=sec["section_type"],
@@ -711,29 +733,6 @@ async def _process_document(document_id: str) -> dict:
                         detected_by="regex",
                     )
                     section_tuples.append((section_orm, content))
-
-                # Create a catch-all section for pages not covered by
-                # any semantic section (common for single-volume PDFs
-                # where only 1-2 patterns match).
-                uncovered = [
-                    p for p in pages
-                    if p["page_number"] not in covered_pages and p["text"].strip()
-                ]
-                if uncovered:
-                    uc_content = "\n\n".join(
-                        f"=== 第{p['page_number']}页 ===\n{p['text']}"
-                        for p in uncovered
-                    )
-                    uc_section = BidDocumentSection(
-                        bid_document_id=doc.id,
-                        section_type="full_document",
-                        section_title=f"其他内容（第{uncovered[0]['page_number']}-{uncovered[-1]['page_number']}页）",
-                        start_page=uncovered[0]["page_number"],
-                        end_page=uncovered[-1]["page_number"],
-                        content_preview=uc_content[:500],
-                        detected_by="regex",
-                    )
-                    section_tuples.append((uc_section, uc_content))
             else:
                 # ── Fallback: TOC bookmarks / text scan / page groups ─
                 toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
