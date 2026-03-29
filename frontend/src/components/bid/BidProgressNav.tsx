@@ -11,7 +11,6 @@ const STEPS: { key: BidStep; icon: string }[] = [
   { key: "plan", icon: "📅" },
   { key: "writing", icon: "✍️" },
   { key: "review", icon: "✅" },
-  { key: "tracking", icon: "📊" },
 ]
 
 export const BidProgressNav = memo(function BidProgressNav() {

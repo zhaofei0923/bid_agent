@@ -149,8 +149,7 @@
       "overview": "Document Overview",
       "plan": "Bid Plan",
       "writing": "AI Writing Guide",
-      "review": "Document Review",
-      "tracking": "Progress Tracking"
+      "review": "Document Review"
     },
     "stepsTitle": "Bid Steps",
     "chat": {
@@ -1031,8 +1030,7 @@
       "notMeetsRequirements": "Has Gaps",
       "gaps": "Gaps",
       "suggestions": "Suggestions",
-      "knowledgeTips": "Knowledge Tips",
-      "nextStep": "Next: Progress Tracking →"
+      "knowledgeTips": "Knowledge Tips"
     },
     "quality": {
       "title": "Quality Review",
@@ -1083,16 +1081,6 @@
           "How to improve the score for this section?"
         ]
       }
-    },
-    "tracking": {
-      "title": "Progress Tracking",
-      "subtitle": "Overall bid project progress overview",
-      "stepsProgress": "Step Completion",
-      "stepsCompleted": "{completed} / 6 steps completed",
-      "taskProgress": "Task Progress",
-      "tasksCompleted": "{completed} / {total} tasks completed",
-      "dueDate": "Due: {date}",
-      "noDueDate": "No due date"
     }
   },
   "payment": {

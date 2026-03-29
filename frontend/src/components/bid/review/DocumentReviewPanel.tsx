@@ -351,9 +351,8 @@ export const DocumentReviewPanel = memo(function DocumentReviewPanel({
   const { completeStep, goToStep } = useBidWorkspaceStore()
   const t = useTranslations("bid")
 
-  const handleNext = () => {
+  const handleComplete = () => {
     completeStep("review")
-    goToStep("tracking")
   }
 
   // Read checklist from cache (no force-regenerate)
@@ -416,11 +415,11 @@ export const DocumentReviewPanel = memo(function DocumentReviewPanel({
         </div>
       )}
 
-      {/* Next step button */}
+      {/* Complete button */}
       {hasSections && (
         <div className="flex justify-end">
-          <Button size="sm" onClick={handleNext}>
-            {t("documentReview.nextStep")}
+          <Button size="sm" variant="outline" onClick={handleComplete}>
+            ✅ 标记完成
           </Button>
         </div>
       )}

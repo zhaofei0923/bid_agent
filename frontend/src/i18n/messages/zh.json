@@ -149,8 +149,7 @@
       "overview": "文档解读",
       "plan": "投标计划",
       "writing": "AI编制指导",
-      "review": "文件审查",
-      "tracking": "进度跟踪"
+      "review": "文件审查"
     },
     "stepsTitle": "投标步骤",
     "chat": {
@@ -1031,8 +1030,7 @@
       "notMeetsRequirements": "存在差距",
       "gaps": "待改进",
       "suggestions": "改进建议",
-      "knowledgeTips": "知识库参考",
-      "nextStep": "下一步：进度跟踪 →"
+      "knowledgeTips": "知识库参考"
     },
     "quality": {
       "title": "质量审查",
@@ -1084,16 +1082,6 @@
           "如何提高这部分的得分？"
         ]
       }
-    },
-    "tracking": {
-      "title": "进度跟踪",
-      "subtitle": "投标项目整体进度概览",
-      "stepsProgress": "步骤完成情况",
-      "stepsCompleted": "已完成 {completed} / 6 个步骤",
-      "taskProgress": "任务进度",
-      "tasksCompleted": "{completed} / {total} 任务已完成",
-      "dueDate": "截止: {date}",
-      "noDueDate": "未设截止日"
     }
   },
   "payment": {

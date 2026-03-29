@@ -4,7 +4,6 @@ export type BidStep =
   | "plan"
   | "writing"
   | "review"
-  | "tracking"
 
 export interface BidAnalysis {
   id: string

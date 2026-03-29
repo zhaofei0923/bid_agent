@@ -38,7 +38,6 @@ export const QualityReviewPanel = memo(function QualityReviewPanel({
 
   const handleNext = () => {
     completeStep("review")
-    goToStep("tracking")
   }
 
   const severityColors: Record<string, string> = {

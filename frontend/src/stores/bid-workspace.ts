@@ -9,7 +9,6 @@ const STEP_ORDER: BidStep[] = [
   "plan",
   "writing",
   "review",
-  "tracking",
 ]
 
 interface BidWorkspaceState {
