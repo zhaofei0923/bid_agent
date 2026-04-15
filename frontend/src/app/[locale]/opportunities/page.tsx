@@ -185,17 +185,63 @@ export default function OpportunitiesPage() {
 
             {/* Pagination */}
             {data && data.total_pages > 1 && (
-              <div className="flex flex-wrap justify-center gap-2 border-t border-stone-200 px-2 pt-4">
-                {Array.from({ length: Math.min(data.total_pages, 10) }, (_, i) => (
-                  <Button
-                    key={i + 1}
-                    variant={params.page === i + 1 ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setParams((p) => ({ ...p, page: i + 1 }))}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center justify-center gap-1 border-t border-stone-200 px-2 pt-4">
+                {/* Prev */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={params.page <= 1}
+                  onClick={() => setParams((p) => ({ ...p, page: p.page - 1 }))}
+                >
+                  ‹
+                </Button>
+
+                {(() => {
+                  const current = params.page
+                  const total = data.total_pages
+                  const pages: (number | "…")[] = []
+
+                  if (total <= 9) {
+                    for (let i = 1; i <= total; i++) pages.push(i)
+                  } else {
+                    pages.push(1)
+                    if (current > 4) pages.push("…")
+                    for (
+                      let i = Math.max(2, current - 2);
+                      i <= Math.min(total - 1, current + 2);
+                      i++
+                    ) {
+                      pages.push(i)
+                    }
+                    if (current < total - 3) pages.push("…")
+                    pages.push(total)
+                  }
+
+                  return pages.map((p, idx) =>
+                    p === "…" ? (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-stone-400 select-none">…</span>
+                    ) : (
+                      <Button
+                        key={p}
+                        variant={params.page === p ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setParams((prev) => ({ ...prev, page: p as number }))}
+                      >
+                        {p}
+                      </Button>
+                    )
+                  )
+                })()}
+
+                {/* Next */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={params.page >= data.total_pages}
+                  onClick={() => setParams((p) => ({ ...p, page: p.page + 1 }))}
+                >
+                  ›
+                </Button>
               </div>
             )}
           </div>

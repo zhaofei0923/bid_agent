@@ -22,8 +22,11 @@ class OpportunityService:
 
         if query.source:
             stmt = stmt.where(Opportunity.source == query.source)
-        if query.status:
+        # Default to open-only; explicitly pass status=all to include expired/closed
+        if query.status and query.status != "all":
             stmt = stmt.where(Opportunity.status == query.status)
+        elif not query.status:
+            stmt = stmt.where(Opportunity.status == "open")
         if query.country:
             stmt = stmt.where(Opportunity.country == query.country)
         if query.sector:
