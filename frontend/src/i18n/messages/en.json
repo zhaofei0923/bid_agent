@@ -694,7 +694,24 @@
         "Built for ADB and World Bank bidding scenarios",
         "From opportunity fit to final review, key decisions stay visible",
         "Start quickly without changing the way your team already works"
-      ]
+      ],
+      "mockCard": {
+        "analyzing": "AI Analyzing",
+        "projectTitle": "Water Supply Infrastructure Improvement Advisory",
+        "matchLabel": "Qualification Match",
+        "recommendation": "Recommended to Bid",
+        "deadlineLabel": "Deadline",
+        "daysLeft": "82 days left",
+        "checklistTitle": "Preparation Checklist",
+        "checkItem1": "Company Qualification Docs",
+        "checkItem2": "Technical Proposal Draft",
+        "checkItem3": "Commercial Bid Document",
+        "requirementsTitle": "AI Requirements",
+        "qualLabel": "Key Qualifications",
+        "passCount": "3 passed",
+        "riskLabel": "Risk Alerts",
+        "pendingCount": "1 pending"
+      }
     },
     "trust": {
       "label": "Trusted Coverage",

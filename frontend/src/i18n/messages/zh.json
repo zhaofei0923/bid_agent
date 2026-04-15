@@ -694,7 +694,24 @@
         "支持 ADB / World Bank 公开招标场景",
         "从机会判断到提交前检查，一页看清关键事项",
         "无需改变原有团队分工，即可快速开始试用"
-      ]
+      ],
+      "mockCard": {
+        "analyzing": "AI 分析中",
+        "projectTitle": "供水基础设施改善项目顾问服务",
+        "matchLabel": "资格匹配度",
+        "recommendation": "建议参与投标",
+        "deadlineLabel": "截止日期",
+        "daysLeft": "剩余 82 天",
+        "checklistTitle": "准备清单",
+        "checkItem1": "公司资质文件",
+        "checkItem2": "技术方案草稿",
+        "checkItem3": "商务报价文件",
+        "requirementsTitle": "AI 要求提炼",
+        "qualLabel": "关键资格要求",
+        "passCount": "3 项通过",
+        "riskLabel": "风险提示",
+        "pendingCount": "1 项待确认"
+      }
     },
     "trust": {
       "label": "Trusted Coverage",
