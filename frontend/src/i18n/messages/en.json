@@ -677,23 +677,23 @@
   },
   "landingV2": {
     "metaTitle": "BidAgent",
-    "metaDescription": "A high-fidelity homepage preview for BidAgent with a lighter, more elegant consulting-style direction designed to encourage trial.",
+    "metaDescription": "Upload ADB / World Bank TOR or RFP. AI extracts requirements, assesses qualification fit, and guides section writing for a stronger, more confident submission.",
     "nav": {
       "platform": "Value",
       "workflow": "How It Works",
       "signIn": "Sign In",
-      "start": "Request Access"
+      "start": "Free Trial"
     },
     "hero": {
-      "eyebrow": "Designed for international bidding teams",
-      "title": "Make international bidding feel clearer, calmer, and easier to try",
-      "subtitle": "BidAgent helps teams move from opportunity review to final submission with clearer requirements, steadier execution, and a more confident final check across ADB and World Bank projects.",
-      "primaryCta": "Request Access",
-      "secondaryCta": "Browse Bids",
+      "eyebrow": "Built for ADB \u00b7 World Bank \u00b7 AfDB Bidding Teams",
+      "title": "Understand the requirements. Win the preparation stage.",
+      "subtitle": "Upload a TOR or RFP and BidAgent instantly extracts key requirements, assesses qualification fit, and guides each section \u2014 so your team submits with confidence before the deadline.",
+      "primaryCta": "Start Free Trial",
+      "secondaryCta": "Browse Open Bids",
       "trustNotes": [
-        "Built for ADB and World Bank bidding scenarios",
-        "From opportunity fit to final review, key decisions stay visible",
-        "Start quickly without changing the way your team already works"
+        "Covers ADB, World Bank, and AfDB tender documents",
+        "AI extracts qualifications, evaluation criteria, and key dates",
+        "Pre-submission compliance check to reduce last-minute errors"
       ],
       "mockCard": {
         "analyzing": "AI Analyzing",
@@ -714,155 +714,159 @@
       }
     },
     "trust": {
-      "label": "Trusted Coverage",
-      "title": "Focused on multilateral bidding, not a generic writing tool",
-      "description": "The page leads with credibility and scope. BidAgent is designed around the real shape of international bidding work, helping teams understand requirements faster, coordinate more smoothly, and submit with more confidence.",
+      "label": "Coverage",
+      "title": "Built for multilateral bidding, not generic writing",
+      "description": "BidAgent is designed around the logic and document structure of ADB and World Bank bids \u2014 helping teams clarify requirements faster, prepare more efficiently, and submit with greater confidence.",
       "institutions": [
         {
           "name": "Asian Development Bank",
-          "detail": "Covers common eligibility requirements, submission formats, and key timeline checkpoints."
+          "detail": "Covers consulting, procurement, and works bids. Supports qualification analysis and evaluation criteria breakdown."
         },
         {
           "name": "World Bank",
-          "detail": "Helps teams understand evaluation structure and response priorities more clearly."
+          "detail": "Handles QCBS, LCS, and other procurement methods. Helps teams target evaluation priorities accurately."
+        },
+        {
+          "name": "African Development Bank",
+          "detail": "Covers key procurement categories across AfDB-funded infrastructure and development projects."
         }
       ]
     },
-    "opportunitiesKicker": "Latest Opportunities",
-    "opportunitiesTitle": "Fresh Bidding Opportunities from ADB & WB",
-    "opportunitiesSubtitle": "Real-time opportunities fetched daily via official APIs and RSS feeds. Click any item to view the original tender notice.",
+    "opportunitiesKicker": "Live Updates",
+    "opportunitiesTitle": "Latest ADB & World Bank Works and Goods Tenders",
+    "opportunitiesSubtitle": "Synced daily from official APIs. Only active works and goods procurement shown. Click any item to view the original notice.",
     "outcomes": {
-      "label": "Product Value",
-      "title": "Three reasons to try it first",
-      "description": "Users do not need the full feature map on day one. The first impression should be simple: faster judgment, smoother execution, and a safer final review.",
+      "label": "Core Value",
+      "title": "Three problems every bidding team faces",
+      "description": "Whether you're new to multilateral bids or a seasoned team, BidAgent focuses on the three moments that most determine success.",
       "items": [
         {
-          "title": "Decide faster whether a bid is worth pursuing",
-          "desc": "Bring scattered inputs into a clearer conclusion so leadership can decide with less friction.",
+          "title": "Is this bid worth pursuing?",
+          "desc": "Quickly assess qualification fit and flag key risks so leadership can decide faster with less guesswork.",
           "bullets": [
-            "Surface key thresholds and risks earlier",
-            "Reduce back-and-forth in the evaluation stage"
+            "Surface key thresholds and major risks early",
+            "Cut down pre-decision back-and-forth"
           ]
         },
         {
-          "title": "Move the bidding process forward more easily",
-          "desc": "Organize requirements, responsibilities, and timing into a more manageable flow.",
+          "title": "What goes in each section?",
+          "desc": "AI maps tender requirements to each section so the team always knows what to write and where to focus.",
           "bullets": [
-            "Keep the team aligned around the same priorities",
-            "Reduce last-minute rework near submission"
+            "Section requirements clear at a glance, no guessing",
+            "Less last-minute rework before the deadline"
           ]
         },
         {
-          "title": "Finish final checks with more confidence",
-          "desc": "Bring likely gaps into view before the team reaches the submission edge.",
+          "title": "Did we miss anything before submission?",
+          "desc": "Automated completeness and compliance check catches gaps before they become costly problems.",
           "bullets": [
-            "Catch completeness and compliance issues earlier",
-            "Make final delivery feel calmer and more controlled"
+            "Dual check on completeness and format compliance",
+            "A calmer, more confident final submission"
           ]
         }
       ]
     },
     "workflow": {
       "label": "How It Works",
-      "title": "A shorter path to a well-prepared bid",
-      "description": "The page keeps only the three moments a new visitor needs to understand right away.",
+      "title": "Three steps. One complete bid.",
+      "description": "From discovering opportunities to submitting your proposal, BidAgent makes every step clear and manageable.",
       "steps": [
         {
-          "name": "Find opportunities",
-          "detail": "Review public tender opportunities in one place and filter what fits your team.",
-          "outcome": "Outcome: a clearer short list"
+          "name": "Find the right bids",
+          "detail": "Daily-synced ADB and World Bank works and goods tenders. Filter and shortlist in minutes.",
+          "outcome": "\u2713 Never miss a relevant opportunity"
         },
         {
-          "name": "Organize preparation",
-          "detail": "Clarify requirements, structure responsibilities, and guide content preparation.",
-          "outcome": "Outcome: one coordinated working rhythm"
+          "name": "Analyze and write",
+          "detail": "Upload the TOR or RFP. AI extracts requirements, checks qualification fit, and guides each section.",
+          "outcome": "\u2713 Know exactly what to write"
         },
         {
           "name": "Review and submit",
-          "detail": "Check completeness and key risks before final delivery.",
-          "outcome": "Outcome: a steadier final submission"
+          "detail": "Run a pre-submission scan for completeness and compliance issues before final delivery.",
+          "outcome": "\u2713 Submit with less stress"
         }
       ]
     },
     "capabilities": {
-      "label": "Key Capabilities",
-      "title": "Professional enough to trust, simple enough to understand quickly",
-      "intro": "The page keeps four core capabilities so visitors can see depth without feeling overloaded on first view.",
+      "label": "Capabilities",
+      "title": "End-to-end support for the bidding process",
+      "intro": "From opportunity discovery to final submission, BidAgent gives your team specific, actionable support at each critical step.",
       "items": [
         {
-          "title": "Bid search and aggregation",
-          "desc": "Bring multilateral public opportunities into one place and reduce repetitive searching.",
-          "stat": "One shared view",
+          "title": "Multi-source tender aggregation",
+          "desc": "ADB and World Bank tenders synced daily. Only active works and procurement, in one place.",
+          "stat": "Daily sync",
           "statLabel": "Discovery"
         },
         {
-          "title": "Document understanding and requirement extraction",
-          "desc": "Clarify eligibility, formatting, dates, and response priorities more quickly.",
+          "title": "Document analysis and requirement extraction",
+          "desc": "Upload any TOR or RFP. AI identifies qualification criteria, evaluation scoring, formatting rules, and key dates.",
           "stat": "8-layer analysis",
           "statLabel": "Analysis"
         },
         {
-          "title": "Guided drafting and team coordination",
-          "desc": "Help teams move through preparation in a clearer order with fewer avoidable loops.",
-          "stat": "Smoother flow",
+          "title": "Section-by-section writing guidance",
+          "desc": "AI maps tender requirements to each section and provides clear, specific guidance for whoever is writing it.",
+          "stat": "Section-level",
           "statLabel": "Execution"
         },
         {
-          "title": "Pre-submission quality review",
-          "desc": "Check completeness, compliance, and key risk areas before delivery.",
-          "stat": "4 review dimensions",
+          "title": "Pre-submission compliance review",
+          "desc": "Automated check for completeness, format compliance, and critical risk areas before final delivery.",
+          "stat": "4 dimensions",
           "statLabel": "Review"
         }
       ]
     },
     "roles": {
       "label": "Who It Helps",
-      "title": "Strong for decision-makers, practical for the team that executes",
-      "description": "The page keeps role messaging light and clear so different audiences can quickly see their own benefit.",
+      "title": "Built for every role on the bidding team",
+      "description": "BidAgent works for decision-makers and the people doing the writing \u2014 without requiring any change to how the team is already organized.",
       "items": [
         {
           "role": "Business Leaders",
-          "summary": "Focused on whether the effort is worth it",
-          "headline": "See opportunity quality sooner before committing team time and budget.",
+          "summary": "Faster resource allocation decisions",
+          "headline": "See opportunity quality and key risks clearly before committing team time and budget.",
           "bullets": [
-            "Gain an earlier view of value and major risk",
-            "Reduce wasted effort in early-stage evaluation"
+            "Qualification assessment in under 10 minutes",
+            "Reduce wasted effort on the wrong bids"
           ]
         },
         {
           "role": "Bid Managers",
-          "summary": "Focused on progress and quality",
-          "headline": "Keep requirements, execution, and final checks on one clearer path.",
+          "summary": "Control over progress and quality",
+          "headline": "Requirements, task coordination, and final review all on one clear path.",
           "bullets": [
-            "Reduce chaotic rework close to the deadline",
-            "Create a steadier project rhythm"
+            "Fewer chaotic sprints close to the deadline",
+            "A steadier rhythm across the project"
           ]
         },
         {
           "role": "Execution Teams",
-          "summary": "Focused on ease of use",
-          "headline": "Start faster without changing the structure of existing responsibilities.",
+          "summary": "Easy to start, smooth to use",
+          "headline": "Work directly from AI-generated section guidance without changing your existing responsibilities.",
           "bullets": [
-            "Get into preparation work more quickly",
-            "Avoid repeated edits caused by missed context"
+            "Jump into preparation work quickly",
+            "Fewer revision loops caused by missed requirements"
           ]
         }
       ]
     },
     "pricing": {
       "label": "Pricing",
-      "title": "Start with a low-friction trial, then scale when the team is ready",
-      "description": "The page should invite trial first, then make the upgrade path feel natural and clear.",
+      "title": "Try it free. Upgrade when it fits.",
+      "description": "Start with a free trial and see the full workflow in action. Upgrade when your team is ready — no pressure.",
       "plans": [
         {
           "name": "Trial",
           "price": "Free",
-          "period": "trial",
-          "summary": "A simple way to experience the workflow and see the product in context.",
-          "cta": "Start Trial",
+          "period": "",
+          "summary": "A complete first look — bid analysis, qualification check, and section guidance in one flow.",
+          "cta": "Start Free Trial",
           "features": [
             "100 credits",
-            "Core experience",
+            "Core analysis features",
             "1 project trial",
             "Standard support"
           ]
@@ -871,13 +875,13 @@
           "name": "Professional",
           "price": "¥299",
           "period": "/mo",
-          "summary": "For teams with recurring bidding work that need the fuller product experience.",
-          "cta": "Start Free Trial",
+          "summary": "For teams with regular bidding activity who need the full analysis and review experience.",
+          "cta": "Start Professional Trial",
           "highlight": "Recommended",
           "features": [
             "2,000 credits / month",
             "Unlimited projects",
-            "Full analysis and review",
+            "Full analysis + review",
             "Priority support"
           ]
         },
@@ -885,20 +889,20 @@
           "name": "Enterprise",
           "price": "Talk to Us",
           "period": "",
-          "summary": "For companies that need deeper support, workflow alignment, or broader rollout.",
+          "summary": "Need custom workflows, system integration, or multi-team rollout? We'll build a plan.",
           "cta": "Contact Us",
           "features": [
-            "Custom process",
-            "System integration",
-            "Dedicated support"
+            "Custom workflow integration",
+            "API and system support",
+            "Dedicated account manager"
           ]
         }
       ]
     },
     "cta": {
-      "title": "Start with one lighter, simpler trial",
-      "subtitle": "No complicated setup is required to experience a clearer path from opportunity review to final check.",
-      "primary": "Request Access",
+      "title": "Upload a tender document and see what happens",
+      "subtitle": "Free trial, no credit card required. First analysis in under 3 minutes.",
+      "primary": "Start Free Trial",
       "secondary": "Browse Public Bids"
     },
     "footer": {
