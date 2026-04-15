@@ -136,7 +136,17 @@
     "createdOn": "Created on {date}",
     "notFound": "Project not found",
     "currentStep": "Current Step",
-    "notStarted": "Not Started"
+    "notStarted": "Not Started",
+    "taskCompleted": "Tasks Done",
+    "pendingTasks": "Pending Tasks",
+    "bidDeadline": "Bid Deadline",
+    "daysLeft": "Days Left",
+    "daysLeftUnit": "days",
+    "overdue": "Overdue",
+    "daysToday": "Due Today",
+    "noPlan": "No Plan Yet",
+    "noDeadline": "Not Set",
+    "tasksUnit": "tasks"
   },
   "workspace": {
     "title": "Bid Workspace",

@@ -136,7 +136,17 @@
     "createdOn": "创建于 {date}",
     "notFound": "未找到该项目",
     "currentStep": "当前步骤",
-    "notStarted": "未开始"
+    "notStarted": "未开始",
+    "taskCompleted": "已完成任务",
+    "pendingTasks": "待处理任务",
+    "bidDeadline": "投标截止日期",
+    "daysLeft": "距截止还有",
+    "daysLeftUnit": "天",
+    "overdue": "已超期",
+    "daysToday": "今日截止",
+    "noPlan": "暂无计划",
+    "noDeadline": "暂无日期",
+    "tasksUnit": "项"
   },
   "workspace": {
     "title": "投标工作台",
