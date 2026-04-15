@@ -190,14 +190,14 @@ export default function OpportunitiesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={params.page <= 1}
-                  onClick={() => setParams((p) => ({ ...p, page: p.page - 1 }))}
+                  disabled={(params.page ?? 1) <= 1}
+                  onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) - 1 }))}
                 >
                   ‹
                 </Button>
 
                 {(() => {
-                  const current = params.page
+                  const current = params.page ?? 1
                   const total = data.total_pages
                   const pages: (number | "…")[] = []
 
@@ -223,7 +223,7 @@ export default function OpportunitiesPage() {
                     ) : (
                       <Button
                         key={p}
-                        variant={params.page === p ? "default" : "outline"}
+                        variant={(params.page ?? 1) === p ? "default" : "outline"}
                         size="sm"
                         onClick={() => setParams((prev) => ({ ...prev, page: p as number }))}
                       >
@@ -237,8 +237,8 @@ export default function OpportunitiesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={params.page >= data.total_pages}
-                  onClick={() => setParams((p) => ({ ...p, page: p.page + 1 }))}
+                  disabled={(params.page ?? 1) >= data.total_pages}
+                  onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}
                 >
                   ›
                 </Button>
