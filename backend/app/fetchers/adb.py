@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 # tracks Goods/Works procurement opportunities, not consulting engagements.
 ADB_RSS_FEEDS = {
     "invitation_for_bids": "https://www.adb.org/rss/tenders/all/all/1521%201521/all/1576/all",
-    "advanced_notices": "https://www.adb.org/rss/tenders/all/all/1536/all/all/all",
     "prequalification": "https://www.adb.org/rss/tenders/all/all/1611/all/all/all",
 }
 
@@ -229,6 +228,10 @@ class ADBFetcher(BaseFetcher):
 
         # Skip consulting-type items even if they appear in the fallback feed
         if _is_consulting_type(procurement_type, title):
+            return None
+
+        # Skip advance notice items (pre-announcement, not a formal bid)
+        if procurement_type in ("Advanced Notice", "Procurement Notice"):
             return None
 
         # Parse <category> field: "Date: 2026-03-02|Project Number: 59312-001|Status: Active|Countries: India|Sectors: ..."
