@@ -30,10 +30,11 @@ logger = logging.getLogger(__name__)
 # full <category> metadata with Status, Date, Countries, Sectors.
 # 'contracts_awarded' is intentionally excluded: those items have
 # Status=Awarded (already signed), so they are NOT open opportunities.
+# 'consulting_services' is intentionally excluded: the platform only
+# tracks Goods/Works procurement opportunities, not consulting engagements.
 ADB_RSS_FEEDS = {
     "invitation_for_bids": "https://www.adb.org/rss/tenders/all/all/1521%201521/all/1576/all",
     "advanced_notices": "https://www.adb.org/rss/tenders/all/all/1536/all/all/all",
-    "consulting_services": "https://www.adb.org/rss/tenders/all/all/1566%201516/all/1576/all",
     "prequalification": "https://www.adb.org/rss/tenders/all/all/1611/all/all/all",
 }
 
@@ -226,6 +227,10 @@ class ADBFetcher(BaseFetcher):
         # Determine procurement type from feed name
         procurement_type = _map_feed_to_procurement_type(feed_name)
 
+        # Skip consulting-type items even if they appear in the fallback feed
+        if _is_consulting_type(procurement_type, title):
+            return None
+
         # Parse <category> field: "Date: 2026-03-02|Project Number: 59312-001|Status: Active|Countries: India|Sectors: ..."
         category_text = self._get_element_text(item, "category")
         cat = _parse_category(category_text)
@@ -279,6 +284,25 @@ def _map_feed_to_procurement_type(feed_name: str) -> str:
         "prequalification": "Invitation for Prequalification",
     }
     return mapping.get(feed_name, feed_name)
+
+
+# Keywords that indicate a consulting-type notice (to be excluded).
+_CONSULTING_KEYWORDS = (
+    "consulting",
+    "consultant",
+    "expression of interest",
+    "eoi",
+    "individual consultant",
+    "国际咨询",
+    "咨询服务",
+)
+
+
+def _is_consulting_type(procurement_type: str, title: str) -> bool:
+    """Return True if the item is a consulting-type notice that should be skipped."""
+    pt_lower = procurement_type.lower()
+    title_lower = title.lower()
+    return any(kw in pt_lower or kw in title_lower for kw in _CONSULTING_KEYWORDS)
 
 
 def _parse_category(text: str) -> dict[str, str]:
