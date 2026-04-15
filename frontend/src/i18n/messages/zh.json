@@ -152,6 +152,18 @@
       "review": "文件审查"
     },
     "stepsTitle": "投标步骤",
+    "planCard": {
+      "title": "投标任务计划",
+      "pendingCount": "{count} 项待完成",
+      "allDone": "全部完成 ✓",
+      "noPlan": "计划待生成",
+      "progress": "{completed}/{total} 项已完成"
+    },
+    "autoGen": {
+      "running": "正在分析招标文件并自动生成投标计划和清单，请稍候（约1-2分钟）...",
+      "done": "投标模块已自动生成完成，已跳转至投标计划",
+      "error": "部分模块生成失败，可进入对应步骤手动生成"
+    },
     "chat": {
       "title": "AI 投标助手",
       "collapsed": "AI 助手 →",

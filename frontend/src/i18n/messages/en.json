@@ -152,6 +152,18 @@
       "review": "Document Review"
     },
     "stepsTitle": "Bid Steps",
+    "planCard": {
+      "title": "Bid Task Plan",
+      "pendingCount": "{count} pending",
+      "allDone": "All done ✓",
+      "noPlan": "Plan not yet generated",
+      "progress": "{completed}/{total} completed"
+    },
+    "autoGen": {
+      "running": "Analyzing tender documents and auto-generating bid plan and checklist, please wait (~1-2 min)...",
+      "done": "Bid modules generated successfully. Navigated to Bid Plan.",
+      "error": "Some modules failed to generate. You can generate them manually in each step."
+    },
     "chat": {
       "title": "AI Bid Assistant",
       "collapsed": "AI Assistant →",

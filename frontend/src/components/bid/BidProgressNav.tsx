@@ -2,7 +2,9 @@
 
 import { memo } from "react"
 import { useTranslations } from "next-intl"
+import { useQuery } from "@tanstack/react-query"
 import { useBidWorkspaceStore } from "@/stores/bid-workspace"
+import { bidPlanService } from "@/services/bid-plan"
 import type { BidStep } from "@/types/bid"
 
 const STEPS: { key: BidStep; icon: string }[] = [
@@ -14,20 +16,90 @@ const STEPS: { key: BidStep; icon: string }[] = [
 ]
 
 export const BidProgressNav = memo(function BidProgressNav() {
-  const { currentStep, completedSteps, goToStep } = useBidWorkspaceStore()
+  const { projectId, currentStep, completedSteps, goToStep } = useBidWorkspaceStore()
   const t = useTranslations("workspace")
+
+  const { data: tasks } = useQuery({
+    queryKey: ["bid-plan-tasks", projectId],
+    queryFn: () => bidPlanService.listTasks(projectId!),
+    enabled: !!projectId,
+    staleTime: 30_000,
+    retry: false,
+  })
+
+  const taskList = Array.isArray(tasks) ? tasks : []
+  const totalCount = taskList.length
+  const completedCount = taskList.filter((t) => t.status === "completed").length
+  const pendingCount = totalCount - completedCount
+  const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const hasTasks = totalCount > 0
+  const allDone = hasTasks && pendingCount === 0
 
   return (
     <nav className="app-section-frame w-[240px] shrink-0 overflow-y-auto px-4 py-5">
       <p className="app-page-kicker mb-3">{t("title")}</p>
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+
+      {/* ── 投标计划持久化卡片 ── */}
+      <button
+        onClick={() => goToStep("plan")}
+        className={`mb-4 w-full rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 ${
+          allDone
+            ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+            : hasTasks
+              ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
+              : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-slate-800">
+            📅 {t("planCard.title")}
+          </span>
+          {hasTasks && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none ${
+                allDone
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-orange-100 text-orange-700"
+              }`}
+            >
+              {allDone
+                ? t("planCard.allDone")
+                : t("planCard.pendingCount", { count: pendingCount })}
+            </span>
+          )}
+        </div>
+
+        {hasTasks ? (
+          <>
+            {/* 进度条 */}
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  allDone ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-500">
+              {t("planCard.progress", { completed: completedCount, total: totalCount })}
+            </p>
+          </>
+        ) : (
+          <p className="mt-1 text-[11px] text-slate-400">{t("planCard.noPlan")}</p>
+        )}
+      </button>
+
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         {t("stepsTitle")}
       </h3>
       <ol className="space-y-1.5">
         {STEPS.map((step, index) => {
           const isActive = currentStep === step.key
           const isCompleted = completedSteps.includes(step.key)
-          const canNavigate = isCompleted || isActive || index === 0
+          const allEarlierCompleted = STEPS.slice(0, index).every((s) =>
+            completedSteps.includes(s.key)
+          )
+          const canNavigate = isCompleted || isActive || index === 0 || allEarlierCompleted
 
           return (
             <li key={step.key}>
