@@ -767,8 +767,7 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/2
 # ===== M4: LLM =====
 DEEPSEEK_API_KEY=your-deepseek-key
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-DEEPSEEK_MODEL_V3=deepseek-chat
-DEEPSEEK_MODEL_R1=deepseek-reasoner
+DEEPSEEK_MODEL_V4_PRO=deepseek-v4-pro
 LLM_MAX_RETRIES=3
 LLM_RETRY_BASE_DELAY=1.0
 

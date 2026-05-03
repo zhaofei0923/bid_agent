@@ -45,11 +45,10 @@ cd frontend && npm install && npm run dev
 |------|------|
 | 前端 | Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui + Zustand + TanStack Query |
 | 后端 | FastAPI + SQLAlchemy 2.0 (async) + Pydantic v2 + Celery |
-| AI | DeepSeek (V3 + R1) + LangGraph + MCP Tools + Skills |
+| AI | DeepSeek V4 Pro + LangGraph + MCP Tools + Skills |
 | 数据 | PostgreSQL 16 + pgvector (1024-dim) + Redis 7 |
 | 向量 | 腾讯混元 Embedding (主) + 智谱 (降级) |
 
 ## License
 
 MIT
-

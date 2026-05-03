@@ -14,6 +14,17 @@ fail() {
   exit 1
 }
 
+set_env_value() {
+  local key="$1"
+  local value="$2"
+
+  if grep -q "^${key}=" .env; then
+    sed -i "s|^${key}=.*|${key}=${value}|" .env || fail "set ${key}"
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> .env || fail "append ${key}"
+  fi
+}
+
 trap 'mark_failed' ERR
 
 echo "running" > "$STATUS_FILE"
@@ -35,6 +46,8 @@ if [ ! -f .env ]; then
 else
   echo "$LOG_PREFIX .env exists"
 fi
+set_env_value "LLM_MODEL" "deepseek-v4-pro"
+set_env_value "LLM_REASONING_MODEL" "deepseek-v4-pro"
 
 echo "$LOG_PREFIX Step 2/6: configure nginx"
 bash deploy/install-nginx-sites.sh || fail "nginx config"

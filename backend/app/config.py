@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     # ── LLM ──────────────────────────────────────────────────────
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = "https://api.deepseek.com"
-    LLM_MODEL: str = "deepseek-chat"
-    LLM_REASONING_MODEL: str = "deepseek-reasoner"
+    LLM_MODEL: str = "deepseek-v4-pro"
+    LLM_REASONING_MODEL: str = "deepseek-v4-pro"
     LLM_MAX_RETRIES: int = 1
     LLM_TIMEOUT: int = 300
 

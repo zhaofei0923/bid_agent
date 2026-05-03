@@ -61,7 +61,7 @@ class LLMClient:
             base_url=f"{settings.LLM_BASE_URL}/v1",
             http_client=httpx.AsyncClient(proxy=None),
         )
-        self.model = settings.LLM_MODEL  # deepseek-chat
+        self.model = settings.LLM_MODEL  # deepseek-v4-pro
     
     async def chat(
         self,
@@ -105,12 +105,12 @@ class LLMClient:
 
 | 场景 | 模型 | Temperature | Max Tokens |
 |------|------|-------------|------------|
-| 通用聊天/问答 | deepseek-chat (V3) | 0.7 | 2000 |
-| JSON 结构化分析 | deepseek-chat (V3) | 0.2 | 4000 |
-| 快速审查 | deepseek-chat (V3) | 0.1 | 500 |
-| 投标计划生成 | deepseek-chat (V3) | 0.5 | 4000 |
-| 预测/推理 | deepseek-reasoner (R1) | 0.3 | 4000 |
-| 章节内容生成 | deepseek-chat (V3) | 0.7 | 8000 |
+| 通用聊天/问答 | deepseek-v4-pro | 0.7 | 2000 |
+| JSON 结构化分析 | deepseek-v4-pro | 0.2 | 4000 |
+| 快速审查 | deepseek-v4-pro | 0.1 | 500 |
+| 投标计划生成 | deepseek-v4-pro | 0.5 | 4000 |
+| 预测/推理 | deepseek-v4-pro | 0.3 | 4000 |
+| 章节内容生成 | deepseek-v4-pro | 0.7 | 8000 |
 
 ---
 

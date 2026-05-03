@@ -68,7 +68,7 @@
 | **向量扩展** | pgvector | 0.8+ | 余弦距离索引、HNSW |
 | **缓存/队列** | Redis | 7.x | Celery Broker + 会话缓存 + 速率限制 |
 | **任务队列** | Celery | 5.x | 分布式任务、定时调度、重试机制 |
-| **LLM** | DeepSeek | V3 / R1 | OpenAI 兼容 API、性价比高 |
+| **LLM** | DeepSeek | V4 Pro | OpenAI 兼容 API、性价比高 |
 | **Embedding** | 腾讯混元 / 智谱 | - | 1024 维、中文优化、多 Provider 降级 |
 | **Agent 框架** | LangGraph | 1.x | 状态图工作流、检查点、human-in-the-loop |
 | **MCP** | Model Context Protocol | - | 标准化 Agent Tool 调用协议 |
@@ -402,7 +402,7 @@ class LLMClient:
             api_key=settings.LLM_API_KEY,
             base_url=settings.LLM_BASE_URL,  # https://api.deepseek.com
         )
-        self.model = settings.LLM_MODEL      # deepseek-chat
+        self.model = settings.LLM_MODEL      # deepseek-v4-pro
     
     async def chat(
         self, messages: List[Message],
@@ -696,8 +696,8 @@ npm run dev
 |------|------|--------|------|
 | `LLM_API_KEY` | **是** | - | DeepSeek API Key |
 | `LLM_BASE_URL` | 否 | https://api.deepseek.com | OpenAI 兼容端点 |
-| `LLM_MODEL` | 否 | deepseek-chat | 通用模型 |
-| `LLM_REASONING_MODEL` | 否 | deepseek-reasoner | 复杂推理模型 |
+| `LLM_MODEL` | 否 | deepseek-v4-pro | 通用模型 |
+| `LLM_REASONING_MODEL` | 否 | deepseek-v4-pro | 复杂推理模型 |
 
 ### 7.4 Embedding
 
