@@ -8,7 +8,7 @@ from app.models.user import User
 
 @pytest.mark.asyncio
 async def test_register(client: AsyncClient):
-    """POST /v1/auth/register creates a user and returns tokens."""
+    """POST /v1/auth/register creates an unverified user and returns pending state."""
     response = await client.post(
         "/v1/auth/register",
         json={
@@ -19,8 +19,8 @@ async def test_register(client: AsyncClient):
     )
     assert response.status_code == 201
     data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["email"] == "new@example.com"
+    assert data["message"]
 
 
 @pytest.mark.asyncio

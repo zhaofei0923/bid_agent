@@ -3,10 +3,13 @@ import apiClient from "./api-client"
 export interface KnowledgeBase {
   id: string
   name: string
+  institution: "adb" | "wb" | "afdb"
+  kb_type: "guide" | "review" | "template"
   description: string | null
-  institution: string | null
-  user_id: string
+  document_count: number
+  chunk_count: number
   created_at: string
+  updated_at: string
 }
 
 export interface KnowledgeSearchResult {
@@ -31,7 +34,8 @@ export const knowledgeBaseService = {
   create: async (params: {
     name: string
     description?: string
-    institution?: string
+    institution: "adb" | "wb" | "afdb"
+    kb_type: "guide" | "review" | "template"
   }) => {
     const { data } = await apiClient.post<KnowledgeBase>("/knowledge-bases", params)
     return data

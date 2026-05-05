@@ -56,9 +56,8 @@ if [ ! -f "${PROJECT_DIR}/.env" ]; then
     JWT_SECRET=$(openssl rand -hex 32)
     DB_PASSWORD=$(openssl rand -hex 16)
 
-    sed -i "s|REPLACE_WITH_openssl_rand_hex_32|${SECRET_KEY}|" "${PROJECT_DIR}/.env"
-    # Fix: sed can only replace first match, do JWT separately
-    sed -i "s|REPLACE_WITH_openssl_rand_hex_32|${JWT_SECRET}|" "${PROJECT_DIR}/.env"
+    sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s||${SECRET_KEY}|" "${PROJECT_DIR}/.env"
+    sed -i "0,/REPLACE_WITH_openssl_rand_hex_32/s||${JWT_SECRET}|" "${PROJECT_DIR}/.env"
     sed -i "s|REPLACE_STRONG_DB_PASSWORD|${DB_PASSWORD}|g" "${PROJECT_DIR}/.env"
 
     echo "    .env created with random secrets."

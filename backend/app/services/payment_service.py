@@ -3,7 +3,7 @@
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,8 +48,11 @@ class PaymentService:
         Raises InsufficientCreditsError if balance is too low.
         Returns new balance.
         """
+        if amount <= 0:
+            raise ValueError("amount must be positive")
+
         result = await self.db.execute(
-            select(User).where(User.id == user_id)
+            select(User).where(User.id == user_id).with_for_update()
         )
         user = result.scalar_one_or_none()
         if not user:
@@ -75,6 +78,7 @@ class PaymentService:
             balance_after=user.credits_balance,
             description=description or None,
             related_type=reference_type or None,
+            related_id=UUID(reference_id) if reference_id else None,
         )
         self.db.add(txn)
         await self.db.commit()
@@ -94,8 +98,11 @@ class PaymentService:
         reference_id: str = "",
     ) -> Decimal:
         """Add credits to user balance (recharge)."""
+        if amount <= 0:
+            raise ValueError("amount must be positive")
+
         result = await self.db.execute(
-            select(User).where(User.id == user_id)
+            select(User).where(User.id == user_id).with_for_update()
         )
         user = result.scalar_one_or_none()
         if not user:
@@ -113,6 +120,7 @@ class PaymentService:
             balance_after=user.credits_balance,
             description=description or None,
             related_type=reference_type or None,
+            related_id=UUID(reference_id) if reference_id else None,
         )
         self.db.add(txn)
         await self.db.commit()
@@ -152,21 +160,28 @@ class PaymentService:
         self,
         user_id: UUID,
         package_id: UUID,
+        payment_method: str = "alipay",
     ) -> PaymentOrder:
         """Create a payment order for credits recharge."""
         result = await self.db.execute(
-            select(RechargePackage).where(RechargePackage.id == package_id)
+            select(RechargePackage).where(
+                RechargePackage.id == package_id,
+                RechargePackage.is_active.is_(True),
+            )
         )
         package = result.scalar_one_or_none()
         if not package:
             raise NotFoundError("RechargePackage", str(package_id))
 
         order = PaymentOrder(
+            order_no=f"CR{datetime.now(UTC):%Y%m%d%H%M%S}{uuid4().hex[:10].upper()}",
             user_id=user_id,
-            package_id=package_id,
             amount=package.price,
-            credits=package.credits,
+            currency=package.currency,
+            payment_method=payment_method,
             status="pending",
+            product_type="credits",
+            product_id=package_id,
         )
         self.db.add(order)
         await self.db.commit()

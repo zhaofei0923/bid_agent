@@ -34,7 +34,11 @@ celery_app.conf.update(
             "schedule": crontab(hour=0, minute=10),  # 00:10, 错开避免并发
             "args": ("adb", 10),
         },
-        # AfDB is currently disabled: their site blocks server-side requests (HTTP 403 WAF).
+        "fetch-afdb-daily": {
+            "task": "app.tasks.fetcher_tasks.fetch_opportunities",
+            "schedule": crontab(hour=0, minute=20),
+            "args": ("afdb", 1),
+        },
         "cleanup-expired-daily": {
             "task": "app.tasks.fetcher_tasks.cleanup_expired_opportunities",
             "schedule": crontab(hour=1, minute=0),  # 01:00, 清理过期机会

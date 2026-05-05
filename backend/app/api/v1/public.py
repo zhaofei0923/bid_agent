@@ -1,6 +1,8 @@
 """Public API routes — no authentication required."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -32,16 +34,22 @@ async def public_search_opportunities(
     - Max 5 pages (100 results) to encourage registration.
     """
     # Validate via public schema (applies le constraints)
-    pub_query = PublicOpportunityQuery(
-        search=search,
-        source=source,
-        country=country,
-        sector=sector,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        page=page,
-        page_size=page_size,
-    )
+    try:
+        pub_query = PublicOpportunityQuery(
+            search=search,
+            source=source,
+            country=country,
+            sector=sector,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            page_size=page_size,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors(),
+        ) from exc
 
     # Convert to internal OpportunityQuery with forced status=open
     query = OpportunityQuery(

@@ -152,12 +152,13 @@ async def build_structure_node(state: BidGuidanceState) -> dict:
 }}"""
 
     try:
-        structure = await llm.extract_json(
+        result = await llm.extract_json(
             prompt=prompt,
             system_prompt="你是专业的投标文件结构设计专家。请根据评分标准设计标书的章节结构。以JSON格式返回。",
             temperature=0.3,
             max_tokens=2000,
         )
+        structure = result.data
         if structure.get("parse_error"):
             structure = _default_structure()
     except Exception:
@@ -385,7 +386,7 @@ def build_bid_guidance_graph() -> StateGraph:
             "provide_guidance": "provide_guidance",
             "review_draft": "review_draft",
             "quality_check": "quality_check",
-            "wait": "guidance_router",
+            "wait": END,
         },
     )
 

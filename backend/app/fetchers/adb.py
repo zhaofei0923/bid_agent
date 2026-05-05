@@ -15,7 +15,7 @@ Countries, Sectors — enabling proper status-based filtering.
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import UTC, datetime, time
 from typing import Any
 from xml.etree import ElementTree
 
@@ -43,8 +43,44 @@ ADB_RSS_FEEDS = {
 _FALLBACK_FEED_URL = "https://www.adb.org/rss/procurement-notices"
 _FALLBACK_FEED_NAME = "procurement_notices"
 
+# Current ADB tenders page. The old /rss/tenders/... URLs now return 404 in
+# some environments; the reader URL is a parseable Markdown view of the same
+# official page and also works when Cloudflare blocks non-browser clients.
+_TENDERS_PAGE_URL = "https://www.adb.org/projects/tenders"
+_TENDERS_READER_URL = "https://r.jina.ai/http://https://www.adb.org/projects/tenders"
+_NODE_READER_URL_TEMPLATE = "https://r.jina.ai/http://https://www.adb.org/node/{node_id}"
+
+# ADB's Projects & Tenders page is backed by a public SearchStax index. This
+# endpoint is more complete than the first-page reader fallback and supports
+# offset pagination through start/rows.
+_SEARCHSTAX_URL = (
+    "https://searchcloud-2-ap-southeast-1.searchstax.com/29847/"
+    "tenders-11959/emselect"
+)
+_SEARCHSTAX_AUTH = "2a076eb3a48fd68fc78506c1a16a5d5000da76e4"
+_SEARCHSTAX_ROWS = 100
+_SEARCHSTAX_FACET_FIELDS = (
+    "sm_fct_country",
+    "sm_fct_sector",
+    "sm_fct_type",
+    "ss_fct_group",
+    "sm_fct_status",
+    "its_fct_year",
+)
+_SEARCHSTAX_ACTIVE_FILTER = '{!tag=sm_fct_status}sm_fct_status:"Active"'
+_SEARCHSTAX_GOODS_FILTER = '{!tag=ss_fct_group}ss_fct_group:"goods"'
+_SEARCHSTAX_NOTICE_FILTER = (
+    '{!tag=sm_fct_type}sm_fct_type:"Invitation for Bids" '
+    'sm_fct_type:"Invitation for prequalification"'
+)
+
 # Statuses considered "open" / worth tracking
 _ACTIVE_STATUSES = {"active", "open"}
+_ACTIVE_NOTICE_TYPES = {
+    "Invitation for Bids",
+    "Invitation for Prequalification",
+    "Invitation for prequalification",
+}
 
 
 class ADBFetcher(BaseFetcher):
@@ -74,6 +110,12 @@ class ADBFetcher(BaseFetcher):
         # Optional proxy for bypassing Cloudflare WAF on CN servers.
         # Set ADB_PROXY_URL=http://<singapore-server-ip>:3128 in .env
         self._proxy_url: str | None = os.getenv("ADB_PROXY_URL")
+        self._goods_only = os.getenv("ADB_GOODS_ONLY", "").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
     async def __aenter__(self):
         proxy_url = self._proxy_url
@@ -88,72 +130,178 @@ class ADBFetcher(BaseFetcher):
         return self
 
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
-        """Fetch ADB tender listings from RSS feeds.
+        """Fetch current ADB tender listings.
 
-        Tries the categorised tenders feeds first (full metadata + status filter).
-        Falls back to the aggregated procurement-notices feed if all tenders
-        feeds return 403 (Cloudflare WAF blocks CN server IPs for /rss/tenders/).
-        Items from the fallback feed have no category metadata and are accepted
-        as active (the feed only lists open notices by design).
-
-        ADB RSS feeds return ALL active tenders in a single request (no
-        pagination). Only page 1 is meaningful; subsequent pages return [].
+        Prefer the public SearchStax index behind the official Projects &
+        Tenders page. It exposes all active tender rows with proper pagination.
+        Fall back to parsing the first reader page when SearchStax is not
+        available.
         """
-        # RSS feeds have no pagination — all active items arrive in page 1.
+        try:
+            tenders = await self._fetch_searchstax_tenders(page)
+            if tenders or page > 1:
+                logger.info(
+                    "[adb] Parsed %d tenders from SearchStax page %d",
+                    len(tenders),
+                    page,
+                )
+                return _dedupe_tenders(tenders)
+            logger.warning("[adb] No SearchStax tenders on first page")
+        except Exception:
+            logger.warning("[adb] Failed to fetch SearchStax tenders page %d", page)
+
         if page > 1:
             return []
 
-        tenders: list[TenderInfo] = []
-        any_success = False
-
-        # Fetch from multiple feeds to get comprehensive data
-        for feed_name, feed_url in ADB_RSS_FEEDS.items():
-            try:
-                items = await self._fetch_rss_feed(feed_url, feed_name)
-                tenders.extend(items)
-                any_success = True
-            except Exception:
-                logger.warning("[adb] Failed to fetch feed: %s", feed_name)
-
-        # All tenders feeds failed (e.g. Cloudflare 403 on CN server IPs)
-        # — fall back to the always-accessible procurement-notices aggregated feed.
-        if not any_success:
-            logger.warning(
-                "[adb] All tenders feeds failed, falling back to %s",
-                _FALLBACK_FEED_URL,
-            )
-            try:
-                items = await self._fetch_rss_feed(
-                    _FALLBACK_FEED_URL, _FALLBACK_FEED_NAME
-                )
-                tenders.extend(items)
-            except Exception:
-                logger.error("[adb] Fallback feed also failed: %s", _FALLBACK_FEED_URL)
-
-        # Remove duplicates by external_id
-        seen: set[str] = set()
-        unique_tenders: list[TenderInfo] = []
-        for tender in tenders:
-            if tender.external_id not in seen:
-                seen.add(tender.external_id)
-                unique_tenders.append(tender)
-
+        tenders = await self._fetch_current_tenders_page()
+        unique_tenders = _dedupe_tenders(tenders)
         logger.info("[adb] Total unique tenders: %d", len(unique_tenders))
         return unique_tenders
 
-    async def fetch_detail(self, tender_id: str) -> TenderInfo:
-        """Fetch full details for a single ADB tender.
+    async def _fetch_searchstax_tenders(self, page: int) -> list[TenderInfo]:
+        rows = int(os.getenv("ADB_SEARCHSTAX_ROWS", str(_SEARCHSTAX_ROWS)))
+        start = max(page - 1, 0) * rows
+        params: list[tuple[str, str]] = [
+            ("q", "*"),
+            ("start", str(start)),
+            ("fq", _SEARCHSTAX_ACTIVE_FILTER),
+            ("fq", _SEARCHSTAX_NOTICE_FILTER),
+            ("facet.limit", "-1"),
+            ("facet.sort", "index"),
+            ("sort", "ds_date_closing desc"),
+            ("spellcheck.correct", "false"),
+            ("rows", str(rows)),
+            ("model", "Default"),
+            ("language", "en"),
+        ]
+        if self._goods_only:
+            params.append(("fq", _SEARCHSTAX_GOODS_FILTER))
+        for field in _SEARCHSTAX_FACET_FIELDS:
+            params.append(
+                ("facet.field", f"{{!key=c_{field} ex={field}}}{field}")
+            )
 
-        Since RSS feeds don't provide full details, this returns
-        the basic tender info with an enriched URL.
-        """
-        url = f"{self.base_url}/node/{tender_id}"
+        response = await self._get(
+            _SEARCHSTAX_URL,
+            params=params,
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Token {os.getenv('ADB_SEARCHSTAX_AUTH', _SEARCHSTAX_AUTH)}",
+            },
+        )
+        data = response.json()
+        docs = data.get("response", {}).get("docs", [])
+        return [_parse_searchstax_doc(doc) for doc in docs]
+
+    async def fetch_all(
+        self,
+        max_pages: int = 10,
+        fetch_details: bool = False,
+    ) -> list[TenderInfo]:
+        tenders = await super().fetch_all(max_pages=max_pages, fetch_details=False)
+        if not fetch_details:
+            if not self._goods_only:
+                return tenders
+            if all(
+                tender.raw_data.get("procurement_group") == "goods"
+                for tender in tenders
+            ):
+                return tenders
+
+        if not (fetch_details or self._goods_only):
+            return tenders
+
+        enriched: list[TenderInfo] = []
+        for tender in tenders:
+            try:
+                detail = await self._fetch_detail_for_tender(tender)
+            except Exception:
+                logger.warning(
+                    "[adb] Failed to enrich %s, using list data",
+                    tender.external_id,
+                )
+                detail = tender
+
+            category = detail.raw_data.get("procurement_category")
+            procurement_group = detail.raw_data.get("procurement_group")
+            if (
+                self._goods_only
+                and category != "goods"
+                and procurement_group != "goods"
+            ):
+                logger.info(
+                    "[adb] Skipping %s: procurement_category=%s",
+                    detail.external_id,
+                    category or "unknown",
+                )
+                continue
+            enriched.append(detail)
+
+        logger.info("[adb] Enriched tenders: %d", len(enriched))
+        return enriched
+
+    async def fetch_detail(self, tender_id: str) -> TenderInfo:
+        """Fetch full details for a single ADB tender."""
+        return await self._fetch_detail_for_tender(
+            TenderInfo(
+                source="adb",
+                external_id=tender_id,
+                url=f"{self.base_url}/node/{tender_id}",
+                title=f"ADB Tender {tender_id}",
+                status="open",
+            )
+        )
+
+    async def _fetch_current_tenders_page(self) -> list[TenderInfo]:
+        """Fetch and parse the current ADB tenders page."""
+        page_url = os.getenv("ADB_TENDERS_URL", _TENDERS_PAGE_URL)
+        reader_url = os.getenv("ADB_TENDERS_READER_URL", _TENDERS_READER_URL)
+
+        for url in (page_url, reader_url):
+            try:
+                response = await self._get(url)
+                tenders = _parse_tenders_page(response.text)
+                if tenders:
+                    logger.info("[adb] Parsed %d tenders from %s", len(tenders), url)
+                    return tenders
+                logger.warning("[adb] No parseable tenders from %s", url)
+            except Exception:
+                logger.warning("[adb] Failed to fetch tenders page: %s", url)
+
+        return []
+
+    async def _fetch_detail_for_tender(self, tender: TenderInfo) -> TenderInfo:
+        node_url = os.getenv("ADB_NODE_READER_URL_TEMPLATE", _NODE_READER_URL_TEMPLATE)
+        url = node_url.format(node_id=tender.external_id)
+        response = await self._get(url)
+        text = response.text
+        category = _classify_adb_detail(text, tender.title)
+        deadline = tender.deadline or _parse_adb_deadline_from_detail(text)
+        description = _strip_markdown(text)[:2000]
+
         return TenderInfo(
-            source="adb",
-            external_id=tender_id,
-            url=url,
-            title=f"ADB Tender {tender_id}",
-            status="open",
+            source=tender.source,
+            external_id=tender.external_id,
+            url=tender.url,
+            title=tender.title,
+            description=description or tender.description,
+            organization=tender.organization,
+            project_number=tender.project_number,
+            published_at=tender.published_at,
+            deadline=deadline,
+            budget_min=tender.budget_min,
+            budget_max=tender.budget_max,
+            currency=tender.currency,
+            location=tender.location,
+            country=tender.country,
+            sector=tender.sector,
+            procurement_type=(
+                "Goods"
+                if category == "goods"
+                else tender.procurement_type
+            ),
+            status=tender.status,
+            raw_data={**tender.raw_data, "procurement_category": category},
         )
 
     async def _fetch_rss_feed(self, feed_url: str, feed_name: str) -> list[TenderInfo]:
@@ -275,6 +423,282 @@ class ADBFetcher(BaseFetcher):
             return ""
         text = elem.text
         return text.strip() if text else ""
+
+
+def _parse_tenders_page(text: str) -> list[TenderInfo]:
+    """Parse ADB Projects & Tenders page text/Markdown."""
+    lines = [line.strip() for line in text.splitlines()]
+    tenders: list[TenderInfo] = []
+    now = datetime.now(UTC)
+
+    for idx, line in enumerate(lines):
+        status_match = re.search(
+            r"\*\*Status:\*\*(?P<status>[^*]+)\*\*Deadline:\*\*(?P<deadline>.+)",
+            line,
+        )
+        if not status_match:
+            continue
+
+        link_line = ""
+        link_offset = idx + 1
+        for cursor in range(idx + 1, min(idx + 5, len(lines))):
+            if lines[cursor]:
+                link_line = lines[cursor]
+                link_offset = cursor
+                break
+
+        link_match = re.match(
+            r"^\[(?P<title>.*)\]\((?P<url>https://www\.adb\.org/node/(?P<node_id>\d+))\)",
+            link_line,
+        )
+        if not link_match:
+            continue
+
+        metadata_lines: list[str] = []
+        for cursor in range(link_offset + 1, min(link_offset + 8, len(lines))):
+            if re.search(r"\*\*Status:\*\*", lines[cursor]):
+                break
+            if lines[cursor]:
+                metadata_lines.append(lines[cursor])
+            if "**Notice Type:**" in lines[cursor]:
+                break
+        metadata = "".join(metadata_lines)
+
+        status = status_match.group("status").strip().lower()
+        notice_type = _extract_adb_field(metadata, "Notice Type")
+        if status not in _ACTIVE_STATUSES or notice_type not in _ACTIVE_NOTICE_TYPES:
+            continue
+
+        deadline = _parse_adb_date(status_match.group("deadline"))
+        if deadline and deadline < now:
+            continue
+
+        title = _clean_adb_title(link_match.group("title"))
+        project_number = _extract_project_number(title)
+
+        tenders.append(
+            TenderInfo(
+                source="adb",
+                external_id=link_match.group("node_id"),
+                url=link_match.group("url"),
+                title=title,
+                description=title,
+                project_number=project_number,
+                published_at=_parse_adb_date(
+                    _extract_adb_field(metadata, "Posting Date"),
+                    end_of_day=False,
+                ),
+                deadline=deadline,
+                country=_extract_adb_field(metadata, "Country/Economy"),
+                sector=_extract_adb_field(metadata, "Sector"),
+                procurement_type=notice_type,
+                status="open",
+                raw_data={"notice_type": notice_type},
+            )
+        )
+
+    return tenders
+
+
+def _dedupe_tenders(tenders: list[TenderInfo]) -> list[TenderInfo]:
+    seen: set[str] = set()
+    unique_tenders: list[TenderInfo] = []
+    for tender in tenders:
+        if tender.external_id not in seen:
+            seen.add(tender.external_id)
+            unique_tenders.append(tender)
+    return unique_tenders
+
+
+def _parse_searchstax_doc(doc: dict[str, Any]) -> TenderInfo:
+    url_path = _first_doc_value(doc, "ss_url")
+    external_id = _extract_node_id(url_path) or _extract_node_id(
+        _first_doc_value(doc, "id")
+    )
+    project_number = _join_doc_values(doc, "tm_X3b_en_project_number")
+    title = _build_searchstax_title(
+        project_number,
+        _join_doc_values(doc, "tm_X3b_en_title"),
+    )
+    notice_type = _normalise_notice_type(
+        _first_doc_value(doc, "tm_X3b_en_type") or "Invitation for Bids"
+    )
+
+    return TenderInfo(
+        source="adb",
+        external_id=external_id,
+        url=f"https://www.adb.org{url_path}" if url_path.startswith("/") else url_path,
+        title=title,
+        description=title,
+        project_number=project_number,
+        published_at=_parse_searchstax_date(_first_doc_value(doc, "ds_date_posted")),
+        deadline=_parse_searchstax_date(_first_doc_value(doc, "ds_date_closing")),
+        country=_join_doc_values(doc, "tm_X3b_en_country"),
+        sector=_join_doc_values(doc, "tm_X3b_en_sector"),
+        procurement_type=f"Goods, Works, and Nonconsulting Services - {notice_type}",
+        status="open",
+        raw_data={
+            "notice_type": notice_type,
+            "procurement_group": "goods",
+            "source_status": _first_doc_value(doc, "tm_X3b_en_status"),
+            "searchstax_id": _first_doc_value(doc, "id"),
+        },
+    )
+
+
+def _first_doc_value(doc: dict[str, Any], field: str) -> str:
+    value = doc.get(field)
+    if isinstance(value, list):
+        return str(value[0]).strip() if value else ""
+    return str(value).strip() if value is not None else ""
+
+
+def _join_doc_values(doc: dict[str, Any], field: str) -> str:
+    value = doc.get(field)
+    if isinstance(value, list):
+        return ", ".join(str(item).strip() for item in value if str(item).strip())
+    return str(value).strip() if value is not None else ""
+
+
+def _extract_node_id(value: str) -> str:
+    match = re.search(r"node/(\d+)", value)
+    return match.group(1) if match else ""
+
+
+def _build_searchstax_title(project_number: str, title: str) -> str:
+    cleaned = _clean_adb_title(title)
+    if project_number and not cleaned.startswith(project_number):
+        return f"{project_number}: {cleaned}"
+    return cleaned
+
+
+def _normalise_notice_type(value: str) -> str:
+    if value.lower() == "invitation for prequalification":
+        return "Invitation for Prequalification"
+    return value
+
+
+def _parse_searchstax_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _extract_adb_field(text: str, field: str) -> str:
+    pattern = rf"\*\*{re.escape(field)}:\*\*(.*?)(?=\*\*[A-Z][^*]+:\*\*|$)"
+    match = re.search(pattern, text)
+    return match.group(1).strip() if match else ""
+
+
+def _clean_adb_title(title: str) -> str:
+    return re.sub(r"\s+", " ", title.replace("\\", "")).strip(" ]")
+
+
+def _extract_project_number(title: str) -> str:
+    match = re.search(r"\b(\d{5}-\d{3})\b", title)
+    return match.group(1) if match else ""
+
+
+def _parse_adb_date(value: str | None, *, end_of_day: bool = True) -> datetime | None:
+    if not value:
+        return None
+    cleaned = re.sub(r"\s+", " ", value).strip()
+    cleaned = re.sub(r"\bat\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
+
+    for fmt in ("%d %b %Y", "%d %B %Y", "%Y-%m-%d"):
+        try:
+            parsed = datetime.strptime(cleaned, fmt)
+            parsed_time = time.max if end_of_day else time.min
+            return datetime.combine(parsed.date(), parsed_time, tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_adb_deadline_from_detail(text: str) -> datetime | None:
+    cleaned = re.sub(r"\s+", " ", text)
+    match = re.search(
+        r"Deadline for Submission of Bids:\s*"
+        r"(?P<date>\d{1,2}\s+[A-Za-z]+\s+\d{4})"
+        r"(?:\s+at\s+(?P<time>\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?))?",
+        cleaned,
+    )
+    if not match:
+        return None
+
+    parsed_date = _parse_adb_date(match.group("date"))
+    if not parsed_date:
+        return None
+    time_text = (match.group("time") or "").strip()
+    if time_text:
+        for fmt in ("%H:%M", "%I:%M %p"):
+            try:
+                parsed_time = datetime.strptime(time_text.upper(), fmt).time()
+                return datetime.combine(parsed_date.date(), parsed_time, tzinfo=UTC)
+            except ValueError:
+                continue
+    return parsed_date
+
+
+def _classify_adb_detail(text: str, title: str) -> str:
+    lower = f"{title}\n{text}".lower()
+    if _is_consulting_type("", lower):
+        return "consulting"
+
+    goods_terms = (
+        "the purchaser",
+        "supply of",
+        "supply, delivery",
+        "supply and delivery",
+        "procurement of",
+        "goods",
+        "equipment",
+        "vehicles",
+        "it equipment",
+        "medical equipment",
+        "materials",
+    )
+    works_terms = (
+        "the works",
+        "civil works",
+        "construction of",
+        "rehabilitation of",
+        "road",
+        "bridge",
+        "building",
+        "wastewater",
+        "water supply system",
+    )
+
+    if any(term in lower for term in works_terms[:5]):
+        return "works"
+
+    goods_score = sum(1 for term in goods_terms if term in lower)
+    works_score = sum(1 for term in works_terms if term in lower)
+    if goods_score > works_score:
+        return "goods"
+    if works_score:
+        return "works"
+    if goods_score:
+        return "goods"
+    return "unknown"
+
+
+def _strip_markdown(text: str | None) -> str:
+    if not text:
+        return ""
+    text = re.sub(r"URL Source:.*", " ", text)
+    text = re.sub(r"Published Time:.*", " ", text)
+    text = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"[#*_`>]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _map_feed_to_procurement_type(feed_name: str) -> str:

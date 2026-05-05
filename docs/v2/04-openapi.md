@@ -1,57 +1,52 @@
-# BidAgent V2 — OpenAPI 接口契约
+# BidAgent V2 API 当前实现快照
 
-> 版本: 2.0.0 | 日期: 2026-02-11 | 状态: Draft  
-> 完整 YAML 文件将在实现阶段自动生成，此文档作为设计蓝图。
+> 版本: 2.0.0 | 日期: 2026-05-04 | 状态: Current Implementation
+> 本文档按当前 `backend/app/api` 注册路由整理，用于开发、测试和验收现有功能。它不是早期接口规划文档，也不声明尚未接入的后续功能。
 
 ## 1. 全局约定
 
-### 1.1 基础信息
+### 1.1 基础路径
 
 ```yaml
-openapi: 3.1.0
-info:
-  title: BidAgent API
-  version: 2.0.0
-  description: AI-powered bidding platform for multilateral development banks
-servers:
-  - url: http://localhost:8000/v1
-    description: Development
-  - url: https://api.bidagent.com/v1
-    description: Production
+development: http://localhost:8000/v1
+production: https://api.bidagent.com/v1
 ```
+
+所有路径以下文列出的相对路径为准，例如 `GET /projects` 对应完整路径 `GET /v1/projects`。
 
 ### 1.2 认证
 
-```yaml
-securityDefinitions:
-  BearerAuth:
-    type: http
-    scheme: bearer
-    bearerFormat: JWT
+大多数业务接口使用 JWT Bearer Token。
+
+```http
+Authorization: Bearer <access_token>
 ```
 
-所有需认证的端点添加: `security: [{ BearerAuth: [] }]`
+无需登录的接口：
 
-### 1.3 通用响应格式
+- `GET /health`
+- `GET /public/opportunities`
+- `GET /public/opportunities/latest`
+- `POST /auth/register`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
 
-**成功响应**:
-```json
-{
-  "id": "uuid",
-  "field": "value"
-}
-```
+管理员接口依赖 `require_admin`：
 
-**错误响应**:
-```json
-{
-  "code": "NOT_FOUND",
-  "message": "Resource not found",
-  "detail": null
-}
-```
+- `/admin/*`
+- `POST /knowledge-bases/`
+- `DELETE /knowledge-bases/{kb_id}`
+- `GET /stats/overview`
+- `GET /stats/daily`
 
-**分页响应**:
+### 1.3 通用响应
+
+分页响应：
+
 ```json
 {
   "items": [],
@@ -62,1204 +57,488 @@ securityDefinitions:
 }
 ```
 
-### 1.4 通用响应头
+应用异常响应：
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Resource not found",
+    "detail": null
+  }
+}
+```
+
+常用积分响应头：
 
 | Header | 说明 |
 |--------|------|
-| `X-Credits-Consumed` | 本次请求消耗的积分 |
+| `X-Credits-Consumed` | 本次请求预估或实际消耗积分 |
 | `X-Credits-Remaining` | 当前剩余积分 |
-| `X-Request-Id` | 请求追踪 ID |
+| `X-Process-Time` | 请求耗时 |
 
----
+## 2. 当前端点总览
 
-## 2. API 端点总览
+当前 `backend/app/api/v1` 中共有 66 个 route decorator。`app.main` 还保留一个同路径的健康检查，外部使用时按一个 `GET /health` 端点理解即可。
 
-### V1 → V2 变更
+| 模块 | 前缀 | 端点数 | 说明 |
+|------|------|--------|------|
+| Health | `/health` | 1 | 存活检查 |
+| Public | `/public` | 2 | 公开机会检索 |
+| Auth | `/auth` | 10 | 注册、邮箱验证、登录、资料、密码 |
+| Opportunities | `/opportunities` | 2 | 登录后机会列表和详情 |
+| Projects | `/projects` | 5 | 项目 CRUD |
+| Bid Documents | `/projects/{project_id}/bid-documents` | 7 | 招标文件上传、解析触发、章节、诊断 |
+| Bid Analysis | `/projects/{project_id}/analysis` | 2 | 分析结果与触发 |
+| Guidance | `/projects/{project_id}` | 6 | AI 指导、SSE、聊天历史、清单 |
+| Knowledge Base | `/knowledge-bases` | 6 | 全局知识库 CRUD 与搜索 |
+| Bid Plan | `/projects/{project_id}/plan` | 9 | 投标计划与任务 |
+| Quality Review | `/projects/{project_id}/quality-review` | 2 | 全量/快速质量审查 |
+| Document Review | `/projects/{project_id}/document-review` | 1 | 单项材料审查 |
+| Reading Tips | `/projects/{project_id}/reading-tips` | 1 | 阅读与编制建议 |
+| Payment | `/payment` | 4 | 余额、流水、套餐、订单创建 |
+| Stats | `/stats` | 3 | 管理统计与个人统计 |
+| Admin | `/admin` | 5 | 用户管理和积分调整 |
 
-| 变更 | 说明 |
-|------|------|
-| **全部启用 JWT** | V1 中大量端点未认证，V2 全部强制 JWT (除 register/login/webhook/health) |
-| **修复路径双重前缀** | V1 的 payment/stats/generate 模块有 `/v1/xxx/xxx/endpoint` 问题 |
-| **统一 UUID 路径参数** | 所有 `{id}` 参数类型为 `UUID` |
-| **规范 HTTP 状态码** | 201/204/400/401/403/404/422/429/500/502 |
-| **添加速率限制** | 429 + `Retry-After` header |
-| **SSE 指导流式** | 替代 V1 的伪流式，使用标准 `text/event-stream` |
+## 3. 端点详情
 
----
+### 3.1 Health
 
-## 3. 端点详细定义
+#### `GET /health`
 
-### 3.1 认证 (`/auth`)
+- Auth: 无
+- Response: `{ "status": "ok", "version": string }`
 
-#### `POST /auth/register` — 用户注册
+### 3.2 Public
+
+#### `GET /public/opportunities`
+
+- Auth: 无
+- Query: `search?`, `source?`, `country?`, `sector?`, `sort_by?`, `sort_order?`, `page`, `page_size`
+- 公开列表限制页数和每页数量，用于未登录浏览。
+
+#### `GET /public/opportunities/latest`
+
+- Auth: 无
+- 返回最新公开招标机会。
+
+### 3.3 Auth
+
+#### `POST /auth/register`
 
 - Auth: 无
 - Status: 201
+- Request: `email`, `password`, `name`, `company?`
+- 当前注册流程会创建未验证用户并发送邮箱验证码，不直接返回 token。
 
-```yaml
-Request:
-  email: string (email format, required)
-  password: string (min: 8, required)
-  name: string (1-100, required)
-  company: string (optional)
-
-Response 201:
-  id: uuid
-  email: string
-  name: string
-  company: string?
-  avatar_url: string?
-  role: "user" | "admin"
-  language: string
-  credits_balance: integer
-  created_at: datetime
-  updated_at: datetime
-```
-
-#### `POST /auth/login` — 用户登录
+#### `POST /auth/verify-email`
 
 - Auth: 无
+- Request: `email`, `code`
+- Response: `access_token`, `refresh_token`, `token_type`, `expires_in`
 
-```yaml
-Request:
-  email: string (email format, required)
-  password: string (required)
-
-Response 200:
-  access_token: string
-  refresh_token: string
-  token_type: "bearer"
-  expires_in: integer (seconds)
-```
-
-#### `POST /auth/refresh` — 刷新 Token
-
-- Auth: 无 (使用 refresh_token)
-
-```yaml
-Request:
-  refresh_token: string (required)
-
-Response 200:
-  access_token: string
-  refresh_token: string
-  token_type: "bearer"
-  expires_in: integer
-```
-
-#### `GET /auth/me` — 当前用户信息
-
-- Auth: JWT
-
-```yaml
-Response 200: UserResponse
-```
-
-#### `PUT /auth/me` — 更新用户信息
-
-- Auth: JWT
-
-```yaml
-Request:
-  name: string? (1-100)
-  company: string?
-  avatar_url: string?
-  language: "zh" | "en"
-
-Response 200: UserResponse
-```
-
-#### `PUT /auth/password` — 修改密码
-
-- Auth: JWT
-
-```yaml
-Request:
-  current_password: string (required)
-  new_password: string (min: 8, required)
-
-Response 200:
-  message: "Password updated"
-```
-
----
-
-### 3.2 招标机会 (`/opportunities`)
-
-#### `GET /opportunities` — 招标机会列表
-
-- Auth: JWT
-
-```yaml
-Query:
-  search: string?              # 关键词搜索
-  source: "adb"|"wb"|"un"     # 默认 "adb"
-  status: "open"|"closed"     # 默认 "open"  
-  published_from: date?
-  published_to: date?
-  deadline_from: date?
-  deadline_to: date?
-  country: string?
-  sector: string?
-  sort_by: "relevance"|"published_at"|"deadline"  # 默认 "relevance"
-  sort_order: "asc"|"desc"    # 默认 "desc"
-  page: integer (≥1)          # 默认 1
-  page_size: integer (1-100)  # 默认 20
-
-Response 200: PaginatedResponse<Opportunity>
-```
-
-**Opportunity Schema**:
-```yaml
-id: uuid
-source: "adb" | "wb" | "un"
-external_id: string?
-url: string?
-title: string
-project_number: string?
-description: string?
-organization: string?
-published_at: datetime?
-deadline: datetime?
-budget_min: number?
-budget_max: number?
-currency: string
-location: string?
-country: string?
-sector: string?
-procurement_type: string?
-status: "open" | "closed" | "cancelled"
-created_at: datetime
-updated_at: datetime
-```
-
-#### `GET /opportunities/{id}` — 招标机会详情
-
-- Auth: JWT
-
-#### `POST /opportunities` — 创建招标机会 (管理员)
-
-- Auth: JWT + Admin
-- Status: 201
-
-#### `PUT /opportunities/{id}` — 更新招标机会 (管理员)
-
-- Auth: JWT + Admin
-
----
-
-### 3.3 项目管理 (`/projects`)
-
-#### `GET /projects` — 项目列表
-
-- Auth: JWT
-- 仅返回当前用户的项目
-
-```yaml
-Query:
-  status: string?
-  institution: string?
-  page: integer
-  page_size: integer
-
-Response 200: PaginatedResponse<ProjectResponse>
-```
-
-#### `GET /projects/{id}` — 项目详情
-
-- Auth: JWT (owner only)
-
-```yaml
-Response 200: ProjectDetailResponse
-  # extends ProjectResponse
-  opportunity: Opportunity?
-  documents_count: integer
-  bid_documents_count: integer
-  analysis_status: string?
-  sections_completed: integer
-  total_sections: integer
-```
-
-#### `POST /projects` — 创建项目
-
-- Auth: JWT
-- Status: 201
-
-```yaml
-Request:
-  name: string (1-200, required)
-  description: string?
-  institution: "adb" | "wb" | "un" (default: "adb")
-  opportunity_id: uuid?
-
-Response 201: ProjectResponse
-```
-
-#### `PUT /projects/{id}` — 更新项目
-
-- Auth: JWT (owner only)
-
-```yaml
-Request: (all optional)
-  name: string?
-  description: string?
-  status: project_status?
-  institution: string?
-
-Response 200: ProjectResponse
-```
-
-#### `DELETE /projects/{id}` — 删除项目
-
-- Auth: JWT (owner only)
-- Status: 204
-
-#### `POST /projects/{id}/save` — 确认保存项目
-
-- Auth: JWT
-
----
-
-### 3.4 项目文档 (`/projects/{project_id}/documents`)
-
-#### `POST /projects/{project_id}/documents` — 上传文档
-
-- Auth: JWT
-- Content-Type: multipart/form-data
-
-```yaml
-FormData:
-  file: binary (PDF, ≤50MB, required)
-  doc_type: "tor"|"rfp"|"company_profile"|"cv"|"past_project"|"reference"|"other"
-  auto_process: boolean (default: true)
-
-Response 201:
-  id: uuid
-  filename: string
-  file_size: integer
-  doc_type: string
-  parse_status: string
-  ocr_required: boolean
-  message: string
-```
-
-#### `GET /projects/{project_id}/documents` — 文档列表
-
-- Auth: JWT
-
-```yaml
-Query:
-  doc_type: string?
-
-Response 200:
-  items: DocumentResponse[]
-  total: integer
-```
-
-#### `GET /projects/{project_id}/documents/{id}` — 文档详情
-
-- Auth: JWT
-
-#### `DELETE /projects/{project_id}/documents/{id}` — 删除文档
-
-- Auth: JWT
-- Status: 204
-
-#### `GET /projects/{project_id}/documents/{id}/download` — 下载文档
-
-- Auth: JWT
-- Response: binary (application/pdf)
-
-#### `POST /projects/{project_id}/documents/{id}/process` — 触发处理
-
-- Auth: JWT
-
-#### `GET /projects/{project_id}/documents/{id}/status` — 处理状态
-
-- Auth: JWT
-
----
-
-### 3.5 招标文件 (`/bid-documents`)
-
-#### `POST /bid-documents/projects/{project_id}/upload` — 上传招标文件
-
-- Auth: JWT
-- Content-Type: multipart/form-data
-
-```yaml
-FormData:
-  files: binary[] (PDF, ≤50MB each, 多文件)
-  language: string (default: "en")
-  institution: string?
-
-Response 201:
-  documents: BidDocumentResponse[]
-  message: string
-```
-
-**BidDocumentResponse Schema**:
-```yaml
-id: uuid
-project_id: uuid
-filename: string
-file_size: integer
-status: "pending"|"processing"|"completed"|"partial"|"failed"
-processing_progress: integer (0-100)
-page_count: integer?
-chunk_count: integer?
-vectorized_chunk_count: integer?
-is_scanned: boolean
-original_language: string
-detected_institution: string?
-ai_overview: string?
-ai_reading_tips: string?
-error_message: string?
-created_at: datetime
-processed_at: datetime?
-```
-
-#### `GET /bid-documents/projects/{project_id}` — 项目的招标文件列表
-
-- Auth: JWT
-
-```yaml
-Response 200:
-  items: BidDocumentResponse[]
-  total: integer
-  stats:
-    total: integer
-    pending: integer
-    processing: integer
-    completed: integer
-    failed: integer
-```
-
-#### `GET /bid-documents/{id}` — 招标文件详情
-
-- Auth: JWT
-
-#### `GET /bid-documents/{id}/progress` — 处理进度
-
-- Auth: JWT
-
-#### `GET /bid-documents/{id}/structure` — 文档章节结构
-
-- Auth: JWT
-
-```yaml
-Response 200:
-  document_id: uuid
-  filename: string
-  page_count: integer
-  sections:
-    - id: uuid
-      section_type: string
-      title: string?
-      start_page: integer
-      end_page: integer
-      content_preview: string?
-      ai_summary: string?
-      reading_guide: string?
-```
-
-#### `POST /bid-documents/{id}/reprocess` — 重新处理
-
-- Auth: JWT
-
-#### `DELETE /bid-documents/{id}` — 删除
-
-- Auth: JWT
-- Status: 204
-
-#### `POST /bid-documents/projects/{project_id}/search` — 向量搜索
-
-- Auth: JWT
-
-```yaml
-Request:
-  query: string (1-1000, required)
-  section_types: string[]?
-  top_k: integer (1-20, default: 5)
-  translate: boolean (default: true)
-
-Response 200:
-  results:
-    - chunk_id: uuid
-      content: string
-      translation: string?
-      page_number: integer
-      section_type: string
-      section_title: string?
-      filename: string
-      document_id: uuid
-      similarity: float
-  total: integer
-```
-
-#### `POST /bid-documents/projects/{project_id}/ask` — 文档问答 (RAG)
-
-- Auth: JWT
-
-```yaml
-Request:
-  question: string (1-2000, required)
-  section_types: string[]?
-  top_k: integer (1-10, default: 5)
-  translate: boolean (default: true)
-
-Response 200:
-  answer: string
-  translated_answer: string?
-  sources:
-    - index: integer
-      section_type: string
-      section_title: string?
-      page_number: integer
-      filename: string
-      document_id: uuid
-      similarity: float
-```
-
-#### `GET /bid-documents/projects/{project_id}/deep-analysis` — 深度分析结果
-
-- Auth: JWT
-
-#### `POST /bid-documents/projects/{project_id}/generate-analysis` — 生成深度分析
-
-- Auth: JWT
-
-```yaml
-Request:
-  force_refresh: boolean (default: false)
-
-Response 200:
-  id: uuid
-  project_id: uuid
-  qualification_requirements: object?
-  evaluation_criteria: object?
-  submission_checklist: object?
-  key_dates: object?
-  budget_info: object?
-  special_notes: string?
-  risk_assessment: object?
-  model_used: string?
-  tokens_consumed: integer
-  created_at: datetime
-```
-
-#### `GET /bid-documents/projects/{project_id}/analysis` — 获取分析结果
-
-- Auth: JWT
-
-#### `GET /bid-documents/meta/section-types` — Section 类型元数据
+#### `POST /auth/resend-verification`
 
 - Auth: 无
+- Request: `email`
+- 重新发送邮箱验证码，服务端有频率限制。
 
----
+#### `POST /auth/login`
 
-### 3.6 招标分析 (`/projects/{project_id}/analysis`)
+- Auth: 无
+- Request: `email`, `password`
+- Response: `TokenResponse`
 
-#### `POST /projects/{project_id}/analysis` — 触发 AI 分析
+#### `POST /auth/refresh`
 
-- Auth: JWT
+- Auth: 无
+- Request: `refresh_token`
+- Response: `TokenResponse`
 
-```yaml
-Request:
-  force_refresh: boolean (default: false)
-
-Response 200: BidAnalysisResponse
-```
-
-#### `GET /projects/{project_id}/analysis` — 获取分析结果
-
-- Auth: JWT
-
-```yaml
-Response 200: BidAnalysisResponse
-  id: uuid
-  project_id: uuid
-  qualification_requirements: object?
-  evaluation_criteria: object?
-  evaluation_methodology: object?
-  commercial_terms: object?
-  submission_checklist: object?
-  key_dates: object?
-  budget_info: object?
-  special_notes: string?
-  quality_review: object?
-  model_used: string?
-  tokens_consumed: integer
-  created_at: datetime
-  updated_at: datetime
-```
-
----
-
-### 3.7 投标计划 (`/projects/{project_id}/bid-plan`)
-
-#### `GET /projects/{project_id}/bid-plan` — 获取投标计划
+#### `GET /auth/me`
 
 - Auth: JWT
+- Response: `UserResponse`
 
-```yaml
-Response 200: BidPlanResponse
-  id: uuid
-  project_id: uuid
-  name: string
-  description: string?
-  total_tasks: integer
-  completed_tasks: integer
-  progress_percentage: float
-  generated_by_ai: boolean
-  model_used: string?
-  tasks: TaskResponse[]
-  created_at: datetime
-  updated_at: datetime
-```
-
-#### `POST /projects/{project_id}/bid-plan/generate` — AI 生成投标计划
+#### `PUT /auth/me`
 
 - Auth: JWT
+- Request: `UserUpdate`
+- Response: `UserResponse`
 
-```yaml
-Request:
-  deadline: date?
-  force_refresh: boolean (default: false)
+#### `PUT /auth/password`
 
-Response 200: BidPlanResponse
-```
+- Auth: JWT
+- Request: `current_password`, `new_password`
+- Response: `{ "message": string }`
 
-#### `POST /projects/{project_id}/bid-plan/tasks` — 添加任务
+#### `POST /auth/forgot-password`
+
+- Auth: 无
+- Request: `email`
+- Response: generic success message, avoids account enumeration.
+
+#### `POST /auth/reset-password`
+
+- Auth: 无
+- Request: `token`, `new_password`
+- Response: `{ "message": string }`
+
+### 3.4 Opportunities
+
+#### `GET /opportunities`
+
+- Auth: JWT
+- Query:
+  - `search?: string`
+  - `source?: "adb" | "wb" | "afdb"`
+  - `status?: "open" | "closed" | "cancelled" | "all"`
+  - `country?: string`
+  - `sector?: string`
+  - `sort_by?: "published_at" | "deadline" | "created_at" | "updated_at" | "title" | "source" | "country" | "sector"`
+  - `sort_order?: "asc" | "desc"`
+  - `page: integer >= 1`
+  - `page_size: integer 1-100`
+- Response: `PaginatedOpportunities`
+
+#### `GET /opportunities/{opportunity_id}`
+
+- Auth: JWT
+- Response: `OpportunityResponse`
+
+### 3.5 Projects
+
+#### `POST /projects`
 
 - Auth: JWT
 - Status: 201
+- Request: `ProjectCreate`
+- Response: `ProjectResponse`
 
-```yaml
-Request:
-  title: string (required)
-  description: string?
-  category: string? (default: "documents")
-  priority: "low"|"medium"|"high"|"critical" (default: "medium")
-  assignee: string?
-  due_date: date?
-  notes: string?
-
-Response 201: TaskResponse
-```
-
-#### `PATCH /bid-plan/tasks/{task_id}` — 更新任务
+#### `GET /projects`
 
 - Auth: JWT
+- Query: `page`, `page_size`
+- 仅返回当前用户项目。
 
-```yaml
-Request: (all optional)
-  title: string?
-  description: string?
-  category: string?
-  status: "pending"|"in_progress"|"completed"|"skipped"
-  priority: "low"|"medium"|"high"|"critical"
-  assignee: string?
-  due_date: date?
-  notes: string?
+#### `GET /projects/{project_id}`
 
-Response 200: TaskResponse
-```
+- Auth: JWT, owner only
+- Response: `ProjectResponse`
 
-#### `DELETE /bid-plan/tasks/{task_id}` — 删除任务
+#### `PUT /projects/{project_id}`
 
-- Auth: JWT
+- Auth: JWT, owner only
+- Request: `ProjectUpdate`
+- Response: `ProjectResponse`
+
+#### `DELETE /projects/{project_id}`
+
+- Auth: JWT, owner only
 - Status: 204
 
-#### `POST /projects/{project_id}/bid-plan/reorder` — 任务排序
+### 3.6 Bid Documents
 
-- Auth: JWT
+#### `POST /projects/{project_id}/bid-documents`
 
-```yaml
-Request:
-  task_orders:
-    - task_id: uuid
-      sort_order: integer
+- Auth: JWT, project owner
+- Content-Type: `multipart/form-data`
+- FormData: `file`
+- 支持 PDF/DOCX。服务端会校验扩展名、MIME、文件魔数、大小、重复 hash，并使用安全唯一文件名保存。
+- 上传成功后尝试派发 Celery `process_document` 任务。
 
-Response 200:
-  message: "Reordered"
-```
+#### `GET /projects/{project_id}/bid-documents`
 
----
+- Auth: JWT, project owner
+- Response: `BidDocumentResponse[]`
 
-### 3.8 评标预测 (`/projects/{project_id}/prediction`)
+#### `POST /projects/{project_id}/bid-documents/analyze-combined`
 
-#### `POST /projects/{project_id}/prediction` — 生成评标预测
+- Auth: JWT, project owner
+- Status: 202
+- 触发项目内所有已处理招标文件的合并 AI 概览任务。
 
-- Auth: JWT
+#### `DELETE /projects/{project_id}/bid-documents/{document_id}`
 
-```yaml
-Request:
-  force_refresh: boolean (default: false)
+- Auth: JWT, project owner
+- Status: 204
+- 删除文档记录和磁盘文件，文档必须属于该项目。
 
-Response 200: BidPredictionResponse
-  id: uuid
-  project_id: uuid
-  overall_score: integer? (0-100)
-  technical_score: integer?
-  commercial_score: integer?
-  win_probability: integer? (0-100)
-  weaknesses: object[]?
-  recommendations: object[]?
-  competitive_analysis: object?
-  model_used: string?
-  confidence_level: "high"|"medium"|"low"
-  status: string
-  created_at: datetime
-```
+#### `POST /projects/{project_id}/bid-documents/{document_id}/analyze`
 
-#### `GET /projects/{project_id}/prediction` — 获取预测结果
+- Auth: JWT, project owner
+- Status: 202
+- 触发单个文档的 AI 概览和阅读提示生成任务。
 
-- Auth: JWT
+#### `GET /projects/{project_id}/bid-documents/{document_id}/sections`
 
-#### `GET /projects/{project_id}/prediction/quick` — 快速评估
+- Auth: JWT, project owner
+- Response: `BidDocumentSectionResponse[]`
 
-- Auth: JWT
+#### `GET /projects/{project_id}/bid-documents/diagnostics`
 
----
+- Auth: JWT, project owner
+- 返回项目文档 chunk 数、向量覆盖率、section type 分布等诊断信息。
 
-### 3.9 质量审查 (`/projects/{project_id}/quality-review`)
+### 3.7 Bid Analysis
 
-#### `POST /projects/{project_id}/quality-review` — 请求质量审查
+#### `GET /projects/{project_id}/analysis`
 
-- Auth: JWT
+- Auth: JWT, project owner
+- Response: `BidAnalysis`
 
-```yaml
-Query:
-  quick_mode: boolean (default: false)
-  force_refresh: boolean (default: false)
+#### `POST /projects/{project_id}/analysis/trigger`
 
-Response 200:
-  success: true
-  data: QualityReviewResult
-```
+- Auth: JWT, project owner
+- Query: `steps?: string[]`, `force_refresh?: boolean`
+- Credits: `bid_analysis_trigger`
+- 同步执行当前 8 步分析 pipeline，成功后扣积分。
 
-#### `GET /projects/{project_id}/quality-review` — 审查结果
+### 3.8 Guidance
 
-- Auth: JWT
+#### `POST /projects/{project_id}/guidance`
 
-#### `GET /projects/{project_id}/quality-review/summary` — 审查摘要
+- Auth: JWT, project owner
+- Request: `GuidanceRequest`
+- Credits: `guidance_qa`
+- 非流式 AI 编制指导，成功后扣积分。
 
-- Auth: JWT
+#### `POST /projects/{project_id}/guidance/stream`
 
-#### `POST /projects/{project_id}/quality-review/check-completeness` — 完整性
-
-- Auth: JWT
-
-#### `POST /projects/{project_id}/quality-review/check-compliance` — 合规性
-
-- Auth: JWT
-
-#### `POST /projects/{project_id}/quality-review/check-consistency` — 一致性
-
-- Auth: JWT
-
-#### `POST /projects/{project_id}/quality-review/flag-risks` — 风险识别
-
-- Auth: JWT
-
----
-
-### 3.10 标书编制指导 (`/guidance`)
-
-#### `POST /guidance/ask` — 提交指导请求
-
-- Auth: JWT
-- 用户在问答区提交问题或需求，系统智能路由到 prompt 回答或 Skills 分析
-
-```yaml
-Request:
-  project_id: uuid (required)
-  message: string (required)        # 用户消息
-  context: object?                  # 可选上下文
-    section_id: string?             # 当前所在章节
-    intent: string?                 # 前端预判意图 (guidance/review/question)
-
-Response 200:
-  message_id: string
-  response: string                  # AI 回答内容
-  route_type: "prompt"|"skill"      # 实际路由方式
-  skill_used: string?               # 使用的 Skill 名称
-  tokens_consumed: integer
-  credits_consumed: integer
-```
-
-#### `POST /guidance/ask-stream` — 流式指导请求 (SSE)
-
-- Auth: JWT
+- Auth: JWT, project owner
+- Request: `GuidanceRequest`
 - Response: `text/event-stream`
+- Credits: `guidance_stream`
+- 流式输出 AI 指导内容，完成后发送积分事件并扣费。
 
-```
-event: thinking
-data: {"message": "正在分析您的需求..."}
+#### `GET /projects/{project_id}/guidance/history`
 
-event: chunk
-data: {"content": "根据招标文件要求，技术方案章节应包含..."}
+- Auth: JWT, project owner
+- 返回当前用户和项目的 Redis 会话历史。
 
-event: reference
-data: {"source": "TOR Section 5.2", "content": "..."}
+#### `DELETE /projects/{project_id}/guidance/history`
 
-event: complete
-data: {"message_id": "xxx", "route_type": "skill", "tokens_consumed": 1500}
+- Auth: JWT, project owner
+- 清空当前用户和项目的 Redis 会话历史。
 
-event: error
-data: {"code": "LLM_ERROR", "message": "..."}
-```
+#### `POST /projects/{project_id}/checklist/generate`
 
-#### `POST /guidance/section-guidance` — 章节编写指导
+- Auth: JWT, project owner
+- 生成投标文件提交清单。
 
-- Auth: JWT
-- 获取特定章节的结构化编写指导
+#### `POST /projects/{project_id}/checklist/translate`
 
-```yaml
-Request:
-  project_id: uuid (required)
-  section_id: string (required)
+- Auth: JWT, project owner
+- 翻译提交清单。
 
-Response 200:
-  section_id: string
-  title: string
-  guidance: object
-    format_requirements: string[]   # 格式要求
-    content_outline: string[]       # 内容要点
-    scoring_alignment: object[]     # 评分对标建议
-    template_references: string[]   # 模板参考片段
-    common_pitfalls: string[]       # 常见错误提醒
-    word_count_target: integer
-  tokens_consumed: integer
-```
+### 3.9 Knowledge Base
 
-#### `POST /guidance/review-draft` — 审查用户草稿
-
-- Auth: JWT
-
-```yaml
-Request:
-  project_id: uuid (required)
-  section_id: string (required)
-  draft_content: string (required)  # 用户编写的草稿内容
-
-Response 200:
-  section_id: string
-  overall_score: integer (0-100)
-  format_compliance: object
-  content_completeness: object
-  scoring_alignment: object
-  language_quality: object
-  specific_feedback: string[]
-  priority_improvements: string[]
-  tokens_consumed: integer
-```
-
-#### `GET /guidance/{project_id}/document-structure` — 获取投标文件结构
-
-- Auth: JWT
-
-```yaml
-Response 200:
-  project_id: uuid
-  title: string
-  sections: object[]
-    - id: string
-      title: string
-      requirements: string
-      scoring_weight: number
-      format_requirements: string[]
-      status: "not_started"|"drafting"|"reviewed"|"completed"
-```
-
-#### `GET /guidance/{project_id}/conversation` — 获取指导对话历史
-
-- Auth: JWT
-
-```yaml
-Query:
-  page: integer?
-  page_size: integer?
-
-Response 200:
-  messages: object[]
-    - id: string
-      role: "user"|"assistant"
-      content: string
-      route_type: "prompt"|"skill"?
-      skill_used: string?
-      created_at: datetime
-  total: integer
-```
-
----
-
-### 3.11 知识库 (`/knowledge-bases`)
-
-#### `GET /knowledge-bases` — 知识库列表
-
-- Auth: JWT
-
-```yaml
-Query:
-  institution: "adb"|"wb"|"un"?
-  kb_type: "guide"|"review"|"template"?
-
-Response 200:
-  items: KnowledgeBaseResponse[]
-  total: integer
-```
-
-#### `GET /knowledge-bases/{id}` — 知识库详情
-
-- Auth: JWT
-
-#### `POST /knowledge-bases` — 创建知识库 (管理员)
+#### `POST /knowledge-bases/`
 
 - Auth: JWT + Admin
 - Status: 201
+- Request: `name`, `description?`, `institution`, `kb_type`
+- 创建全局知识库。
 
-#### `DELETE /knowledge-bases/{id}` — 删除知识库 (管理员)
+#### `GET /knowledge-bases/`
+
+- Auth: JWT
+- Query: `institution?: "adb" | "wb" | "afdb"`, `kb_type?: "guide" | "review" | "template"`
+- Response: `KnowledgeBaseResponse[]`
+
+#### `GET /knowledge-bases/{kb_id}`
+
+- Auth: JWT
+- Response: `KnowledgeBaseResponse`
+
+#### `DELETE /knowledge-bases/{kb_id}`
 
 - Auth: JWT + Admin
 - Status: 204
 
-#### `POST /knowledge-bases/{id}/documents` — 上传文档
+#### `POST /knowledge-bases/search`
 
 - Auth: JWT
-- Content-Type: multipart/form-data
+- Request: `query`, `institution?`, `kb_type?`, `top_k?`, `score_threshold?`
+- Response: `KnowledgeSearchResult[]`
 
-#### `GET /knowledge-bases/{id}/documents` — 文档列表
-
-- Auth: JWT
-
-#### `POST /knowledge-bases/{id}/documents/{doc_id}/process` — 处理文档
+#### `POST /knowledge-bases/{kb_id}/search`
 
 - Auth: JWT
+- Request: `query`, `top_k?`, `score_threshold?`
+- 在指定知识库维度内搜索。
 
-#### `DELETE /knowledge-bases/{id}/documents/{doc_id}` — 删除文档
+### 3.10 Bid Plan
+
+#### `GET /projects/{project_id}/plan`
+
+- Auth: JWT, project owner
+- 返回项目投标计划。
+
+#### `POST /projects/{project_id}/plan`
+
+- Auth: JWT, project owner
+- Request: `title?`, `name?`, `description?`
+- 创建或更新项目投标计划。
+
+#### `GET /projects/{project_id}/plan/tasks`
+
+- Auth: JWT, project owner
+- 返回计划任务列表。
+
+#### `POST /projects/{project_id}/plan/tasks`
+
+- Auth: JWT, project owner
+- Request: `title`, `description?`, `category?`, `priority?`, `assignee?`, `assigned_to?`, `start_date?`, `due_date?`, `notes?`, `sort_order?`, `status?`
+- 添加任务。`assigned_to` 会兼容映射到后端字段 `assignee`。
+
+#### `PATCH /projects/{project_id}/plan/tasks/{task_id}`
+
+- Auth: JWT, project owner
+- Request: task partial fields
+- 任务必须属于该项目的 plan。
+
+#### `PUT /projects/{project_id}/plan/tasks/{task_id}/status`
+
+- Auth: JWT, project owner
+- Query: `status`
+- 更新任务状态。
+
+#### `DELETE /projects/{project_id}/plan/tasks/{task_id}`
+
+- Auth: JWT, project owner
+- 删除任务，任务必须属于该项目的 plan。
+
+#### `POST /projects/{project_id}/plan/reorder`
+
+- Auth: JWT, project owner
+- Request: `task_ids: uuid[]`
+- 按传入顺序更新任务排序。
+
+#### `POST /projects/{project_id}/plan/generate`
+
+- Auth: JWT, project owner
+- 基于项目上下文生成投标准备任务。
+
+### 3.11 Quality Review
+
+#### `POST /projects/{project_id}/quality-review/full`
+
+- Auth: JWT, project owner
+- Request: `proposal_content`
+- Credits: `quality_review_full`
+- 运行完整质量审查，成功后扣积分。
+
+#### `POST /projects/{project_id}/quality-review/quick`
+
+- Auth: JWT, project owner
+- Request: `proposal_content`
+- Credits: `quality_review_quick`
+- 运行快速质量审查，成功后扣积分。
+
+### 3.12 Document Review
+
+#### `POST /projects/{project_id}/document-review/item`
+
+- Auth: JWT, project owner
+- Content-Type: `multipart/form-data`
+- FormData: `item_title`, `item_guidance?`, `source_section?`, `source_excerpt?`, `content_text?`, `file?`
+- 支持粘贴文本或上传 PDF/JPG/PNG/WEBP，文件上限 10MB。
+- Credits: `doc_review_item`
+
+### 3.13 Reading Tips
+
+#### `POST /projects/{project_id}/reading-tips`
+
+- Auth: JWT, project owner
+- Credits: `guidance_qa`
+- 基于项目合并概览和知识库 RAG 生成招标文件阅读建议与投标编制建议。
+
+### 3.14 Payment
+
+#### `GET /payment/balance`
 
 - Auth: JWT
-- Status: 204
+- Response: `{ "balance": number }`
 
-#### `POST /knowledge-bases/{id}/search` — 向量搜索
-
-- Auth: JWT
-
-```yaml
-Request:
-  query: string (1-1000, required)
-  limit: integer (1-20, default: 5)
-  score_threshold: float (0-1, default: 0.5)
-
-Response 200:
-  query: string
-  results:
-    - chunk_id: uuid
-      content: string
-      document_name: string
-      page_number: integer?
-      score: float
-  total: integer
-```
-
-#### `POST /knowledge-bases/{id}/qa` — 知识库问答
+#### `GET /payment/transactions`
 
 - Auth: JWT
+- Query: `page`, `page_size`
+- 返回当前用户积分流水。
 
-```yaml
-Request:
-  question: string (1-2000, required)
-  include_sources: boolean (default: true)
-  max_sources: integer (1-10, default: 5)
+#### `GET /payment/packages`
 
-Response 200:
-  question: string
-  answer: string
-  sources:
-    - document_name: string
-      page_number: integer?
-      excerpt: string
-      relevance_score: float
-  credits_consumed: integer
-```
+- Auth: 无强制登录依赖
+- Response: `PackageResponse[]`
 
-#### `POST /knowledge-bases/{id}/import` — 批量导入 (管理员)
+#### `POST /payment/orders`
+
+- Auth: JWT
+- Request: `package_id`, `payment_method: "alipay" | "wechat" | "bank_transfer"`
+- 创建待支付订单。当前实现只创建订单记录，不包含第三方支付回调、退款或自动入账闭环。
+
+普通用户不能通过公开接口直接给自己加积分或扣积分。手动积分调整通过管理员接口完成。
+
+### 3.15 Stats
+
+#### `GET /stats/overview`
 
 - Auth: JWT + Admin
+- 返回平台用户、项目、机会、分析数量及当日活跃用户等概览。
 
-#### `GET /knowledge-bases/{institution}/bid-steps` — 投标流程
-
-- Auth: JWT
-
-#### `GET /knowledge-bases/{institution}/review-criteria` — 评审标准
-
-- Auth: JWT
-
-#### `POST /knowledge-bases/{institution}/review-section` — 审查章节
-
-- Auth: JWT
-
----
-
-### 3.12 支付 (`/payments`)
-
-#### `GET /payments/packages` — 充值套餐列表
-
-- Auth: JWT
-
-```yaml
-Response 200:
-  - id: uuid
-    name: string
-    description: string?
-    credit_amount: integer
-    bonus_credits: integer
-    price: number
-    currency: string
-```
-
-#### `POST /payments/orders` — 创建支付订单
-
-- Auth: JWT
-
-```yaml
-Request:
-  amount: number (required)
-  payment_method: "alipay"|"wechat" (required)
-  product_type: "credit_recharge"|"subscription" (required)
-  product_id: uuid?
-  description: string?
-
-Response 201:
-  order_no: string
-  amount: number
-  payment_method: string
-  status: string
-  pay_url: string?
-  pay_params: object?
-```
-
-#### `GET /payments/orders/{order_no}` — 查询订单状态
-
-- Auth: JWT
-
-#### `POST /payments/orders/{order_no}/refund` — 申请退款
-
-- Auth: JWT
-
-#### `GET /payments/history` — 支付历史
-
-- Auth: JWT
-
-```yaml
-Query:
-  page: integer
-  page_size: integer
-
-Response 200:
-  orders: PaymentOrderResponse[]
-  transactions: TransactionResponse[]
-  total: integer
-  page: integer
-  page_size: integer
-```
-
-#### `POST /payments/webhooks/alipay` — 支付宝回调
-
-- Auth: 无 (签名验证)
-
-#### `POST /payments/webhooks/wechat` — 微信支付回调
-
-- Auth: 无 (签名验证)
-
----
-
-### 3.13 统计 (`/stats`)
-
-#### `GET /stats/overview` — 运营概览 (管理员)
+#### `GET /stats/daily`
 
 - Auth: JWT + Admin
+- Query: `start_date`, `end_date`
+- 返回日期范围内的 `DailyStats` 聚合。
 
-```yaml
-Query:
-  date_from: date?
-  date_to: date?
-
-Response 200:
-  users: { total, new_today, active_today }
-  projects: { total, active, completed }
-  opportunities: { total, open }
-  revenue: { total, today }
-```
-
-#### `GET /stats/users` — 用户统计 (管理员)
-
-- Auth: JWT + Admin
-
-#### `GET /stats/opportunities` — 招标统计 (管理员)
-
-- Auth: JWT + Admin
-
-#### `GET /stats/projects` — 项目统计 (管理员)
-
-- Auth: JWT + Admin
-
-#### `GET /stats/finances` — 财务统计 (管理员)
-
-- Auth: JWT + Admin
-
-#### `GET /stats/usage` — 使用统计 (管理员)
-
-- Auth: JWT + Admin
-
-#### `GET /stats/my-usage` — 个人使用统计
+#### `GET /stats/users/me`
 
 - Auth: JWT
+- 返回当前用户项目数、分析数、积分消耗、最近活跃时间。
 
----
+### 3.16 Admin
 
-### 3.14 工作流 (`/projects/{project_id}/workflow`)
+#### `GET /admin/users`
 
-#### `GET /projects/{project_id}/workflow` — 工作流状态
+- Auth: JWT + Admin
+- Query: `search?`, `page`, `page_size`
+- 返回用户分页列表。
 
-- Auth: JWT
+#### `GET /admin/users/{user_id}`
 
-```yaml
-Response 200:
-  current_step: string
-  workflow_state: object
-  available_steps: string[]
-  completed_steps: string[]
-```
+- Auth: JWT + Admin
+- 返回用户详情。
 
-**工作流步骤**: `document_upload` → `tor_analysis` → `company_profile` → `team_composition` → `methodology` → `work_plan` → `budget` → `review_submit`
+#### `POST /admin/users/{user_id}/credits/adjust`
 
-#### `PUT /projects/{project_id}/workflow` — 更新工作流步骤
+- Auth: JWT + Admin
+- Request: `amount`, `reason`
+- 正数增加积分，负数扣减积分。服务端使用行锁更新余额并记录流水。
 
-- Auth: JWT
+#### `GET /admin/users/{user_id}/transactions`
 
-```yaml
-Request:
-  step: string (required)
-  data: object (required)
+- Auth: JWT + Admin
+- Query: `page`, `page_size`
+- 返回指定用户积分流水。
 
-Response 200: WorkflowStateResponse
-```
+#### `PUT /admin/users/{user_id}/role`
 
-#### `POST /projects/{project_id}/analyze-tor` — TOR 分析
+- Auth: JWT + Admin
+- Request: `role`
+- 修改用户角色，不能修改自己的角色。
 
-- Auth: JWT
+## 4. 当前未作为 API 合同声明的内容
 
-```yaml
-Response 200:
-  summary: string
-  key_requirements: string[]
-  evaluation_criteria: object[]
-  submission_requirements: object
-  timeline: object
-  budget_info: object?
-```
+以下内容存在于早期设计或部分模型/实验代码中，但不是当前实现的 API 合同：
 
-#### `POST /projects/{project_id}/qa` — 项目文档问答
+- `/payments/*` 复数支付路径、第三方支付 webhook、退款、自动入账闭环。
+- `/projects/{project_id}/prediction` 评标预测接口。
+- `/projects/{project_id}/workflow` 工作流接口。
+- `/projects/{project_id}/analyze-tor`、`/projects/{project_id}/qa` 项目文档问答接口。
+- 知识库文档上传、批量导入、知识库 QA、流程/评审标准专用接口。
+- 独立 `/guidance/ask`、`/guidance/section-guidance`、`/guidance/review-draft` 路径；当前指导能力挂载在 `/projects/{project_id}/guidance*`。
+- 招标机会管理员创建/更新接口；当前仅支持列表和详情查询。
 
-- Auth: JWT
-
-```yaml
-Request:
-  question: string (1-2000, required)
-  use_knowledge_base: boolean (default: false)
-  top_k: integer (1-20, default: 5)
-
-Response 200:
-  answer: string
-  sources: object[]
-  from_knowledge_base: boolean
-```
-
----
-
-### 3.15 健康检查
-
-#### `GET /health` — 健康检查
-
-- Auth: 无
-
-```yaml
-Response 200:
-  status: "healthy"
-  version: string
-  database: "connected" | "disconnected"
-  redis: "connected" | "disconnected"
-```
-
----
-
-## 4. 通用 Schema 定义
-
-### 4.1 分页包装
-
-```yaml
-PaginatedResponse<T>:
-  items: T[]
-  total: integer
-  page: integer (≥1)
-  page_size: integer (1-100)
-  pages: integer
-```
-
-### 4.2 错误响应
-
-```yaml
-ErrorResponse:
-  code: string    # 机器可读错误码
-  message: string # 人类可读消息
-  detail: any?    # 附加详情
-
-# 错误码枚举:
-# NOT_FOUND, UNAUTHORIZED, FORBIDDEN, VALIDATION_ERROR,
-# INSUFFICIENT_CREDITS, RATE_LIMITED, EXTERNAL_SERVICE_ERROR,
-# INTERNAL_ERROR
-```
-
-### 4.3 HTTP 状态码
-
-| 状态码 | 含义 | 使用场景 |
-|--------|------|---------|
-| 200 | OK | 查询/更新成功 |
-| 201 | Created | 创建成功 |
-| 204 | No Content | 删除成功 |
-| 400 | Bad Request | 请求格式错误 |
-| 401 | Unauthorized | 未提供/无效 Token |
-| 402 | Payment Required | 积分不足 |
-| 403 | Forbidden | 无权限 (非 owner/非 admin) |
-| 404 | Not Found | 资源不存在 |
-| 409 | Conflict | 资源已存在 (注册重复邮箱) |
-| 422 | Unprocessable Entity | 请求体校验失败 |
-| 429 | Too Many Requests | 速率限制 |
-| 500 | Internal Server Error | 服务器错误 |
-| 502 | Bad Gateway | 外部服务 (LLM/Embedding) 失败 |
-
----
-
-## 5. 端点统计
-
-| 模块 | 端点数 | Auth |
-|------|--------|------|
-| Auth | 6 | 混合 |
-| Opportunities | 4 | JWT (Admin for write) |
-| Projects | 7 | JWT (owner) |
-| Project Documents | 7 | JWT |
-| Bid Documents | 14 | JWT |
-| Bid Analysis | 2 | JWT |
-| Bid Plan | 6 | JWT |
-| Bid Prediction | 3 | JWT |
-| Quality Review | 7 | JWT |
-| Generate | 7 | JWT |
-| Knowledge Base | 15 | JWT (Admin for manage) |
-| Payments | 7 | JWT (webhooks public) |
-| Stats | 7 | JWT (Admin) |
-| Workflow | 4 | JWT |
-| Health | 1 | 无 |
-| **总计** | **97** | |
+如后续恢复或新增这些能力，应先实现路由和测试，再把本文件提升为新的合同版本。

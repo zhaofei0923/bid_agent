@@ -22,10 +22,11 @@ from typing import Any
 from fastapi import Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import BidAgentException
+from app.core.exceptions import InsufficientCreditsError
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.user import User
+from app.services.payment_service import PaymentService
 
 logger = logging.getLogger(__name__)
 
@@ -38,20 +39,6 @@ CREDIT_COST: dict[str, int] = {
     "quality_review_quick": 10,
     "doc_review_item": 5,
 }
-
-
-class InsufficientCreditsError(BidAgentException):
-    """Raised when user doesn't have enough credits."""
-
-    code = "INSUFFICIENT_CREDITS"
-    status_code = 402
-
-    def __init__(self, required: int, available: int) -> None:
-        super().__init__(
-            message=f"积分不足: 需要 {required} 积分, 剩余 {available} 积分",
-        )
-        self.required = required
-        self.available = available
 
 
 # ── Core Functions ───────────────────────────────────────────
@@ -89,32 +76,15 @@ async def deduct_credits(
 
     Returns the new balance.
     """
-    import uuid
-
-    from app.models.payment import PaymentTransaction
-
-    # Optimistic decrement
-    old_balance = user.credits_balance or 0
-    new_balance = old_balance - cost
-    if new_balance < 0:
-        raise InsufficientCreditsError(required=cost, available=old_balance)
-
-    user.credits_balance = new_balance
-
-    # Record transaction — field names match PaymentTransaction model columns
-    tx = PaymentTransaction(
-        id=uuid.uuid4(),
+    service = PaymentService(db)
+    new_balance_decimal = await service.deduct_credits(
         user_id=user.id,
-        type="consume",
-        amount=-cost,
-        balance_before=old_balance,
-        balance_after=new_balance,
+        amount=cost,
         description=f"[{action}] 操作消耗",
-        related_type=action,
-        related_id=uuid.UUID(reference_id) if reference_id else None,
+        reference_type=action,
+        reference_id=reference_id or "",
     )
-    db.add(tx)
-    await db.commit()
+    new_balance = int(new_balance_decimal)
 
     logger.info(
         "Credits deducted: user=%s action=%s cost=%d balance=%d",

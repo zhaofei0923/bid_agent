@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Server-side script: import ADB tenders from JSON file into the database.
+"""Server-side script: import tenders from JSON file into the database.
 
 This script runs INSIDE the Docker container on the remote server.
-It reads a JSON file produced by scripts/export_adb.py and upserts the
+It reads a JSON file produced by scripts/export_tenders.py and upserts the
 tenders into the Opportunity table.
 
 Usage (called automatically by sync_adb.sh):
@@ -59,6 +59,7 @@ async def import_tenders(json_path: Path, clear_existing: bool) -> None:
     tenders = data.get("tenders", [])
     source = data.get("source", "adb")
     exported_at = data.get("exported_at", "unknown")
+    goods_only = bool(data.get("filters", {}).get("goods_only"))
 
     logger.info(
         "Importing %d %s tenders (exported at %s)",
@@ -67,6 +68,12 @@ async def import_tenders(json_path: Path, clear_existing: bool) -> None:
 
     now = datetime.now(UTC)
     created = updated = skipped = 0
+    deleted_invalid = deleted_expired = deleted_non_goods = deleted_missing = 0
+    incoming_ids = {
+        str(item.get("external_id"))
+        for item in tenders
+        if item.get("external_id")
+    }
 
     async with async_session() as db:
         if clear_existing:
@@ -77,15 +84,7 @@ async def import_tenders(json_path: Path, clear_existing: bool) -> None:
 
         for item in tenders:
             status = (item.get("status") or "open").lower()
-            if status in _SKIP_STATUSES:
-                skipped += 1
-                continue
-
             deadline = _parse_dt(item.get("deadline"))
-            if deadline and deadline < now:
-                skipped += 1
-                continue
-
             ext_id = item.get("external_id", "")
             if not ext_id:
                 skipped += 1
@@ -99,10 +98,37 @@ async def import_tenders(json_path: Path, clear_existing: bool) -> None:
             )
             existing = result.scalar_one_or_none()
 
+            if status in _SKIP_STATUSES or (deadline and deadline < now):
+                if existing:
+                    await db.delete(existing)
+                    deleted_invalid += 1
+                else:
+                    skipped += 1
+                continue
+
             if existing:
                 existing.title = item.get("title") or existing.title
                 existing.description = item.get("description") or existing.description
                 existing.url = item.get("url") or existing.url
+                existing.organization = (
+                    _trunc(item.get("organization")) or existing.organization
+                )
+                existing.project_number = (
+                    _trunc(item.get("project_number")) or existing.project_number
+                )
+                existing.published_at = (
+                    _parse_dt(item.get("published_at")) or existing.published_at
+                )
+                existing.deadline = deadline or existing.deadline
+                existing.budget_min = item.get("budget_min") or existing.budget_min
+                existing.budget_max = item.get("budget_max") or existing.budget_max
+                existing.currency = item.get("currency") or existing.currency
+                existing.location = _trunc(item.get("location")) or existing.location
+                existing.country = _trunc(item.get("country")) or existing.country
+                existing.sector = _trunc(item.get("sector")) or existing.sector
+                existing.procurement_type = (
+                    _trunc(item.get("procurement_type")) or existing.procurement_type
+                )
                 existing.status = status
                 existing.updated_at = now
                 updated += 1
@@ -128,11 +154,54 @@ async def import_tenders(json_path: Path, clear_existing: bool) -> None:
                 ))
                 created += 1
 
+        result = await db.execute(
+            delete(Opportunity).where(
+                Opportunity.source == source,
+                Opportunity.deadline.is_not(None),
+                Opportunity.deadline < now,
+            )
+        )
+        deleted_expired += result.rowcount or 0
+        result = await db.execute(
+            delete(Opportunity).where(
+                Opportunity.source == source,
+                Opportunity.status.in_(_SKIP_STATUSES),
+            )
+        )
+        deleted_expired += result.rowcount or 0
+        if goods_only:
+            goods_condition = (
+                Opportunity.procurement_type.ilike("%goods%")
+                | (Opportunity.sector == "Goods")
+            )
+            result = await db.execute(
+                delete(Opportunity).where(
+                    Opportunity.source == source,
+                    ~goods_condition,
+                )
+            )
+            deleted_non_goods = result.rowcount or 0
+        if incoming_ids:
+            result = await db.execute(
+                delete(Opportunity).where(
+                    Opportunity.source == source,
+                    Opportunity.external_id.not_in(incoming_ids),
+                )
+            )
+            deleted_missing = result.rowcount or 0
         await db.commit()
 
     logger.info(
-        "Import complete: created=%d, updated=%d, skipped=%d",
-        created, updated, skipped,
+        "Import complete: created=%d, updated=%d, skipped=%d, "
+        "deleted_invalid=%d, deleted_expired=%d, deleted_non_goods=%d, "
+        "deleted_missing=%d",
+        created,
+        updated,
+        skipped,
+        deleted_invalid,
+        deleted_expired,
+        deleted_non_goods,
+        deleted_missing,
     )
 
 

@@ -17,7 +17,7 @@ interface QualityReviewPanelProps {
 export const QualityReviewPanel = memo(function QualityReviewPanel({
   projectId,
 }: QualityReviewPanelProps) {
-  const { completeStep, goToStep } = useBidWorkspaceStore()
+  const { completeStep } = useBidWorkspaceStore()
   const t = useTranslations("bid")
   const [reviewResult, setReviewResult] = useState<QualityReviewResult | null>(
     null

@@ -2,7 +2,9 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
@@ -32,17 +34,23 @@ async def list_opportunities(
     db: AsyncSession = Depends(get_db),
 ):
     service = OpportunityService(db)
-    query = OpportunityQuery(
-        search=search,
-        source=source,
-        status=status,
-        country=country,
-        sector=sector,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        page=page,
-        page_size=page_size,
-    )
+    try:
+        query = OpportunityQuery(
+            search=search,
+            source=source,
+            status=status,
+            country=country,
+            sector=sector,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            page_size=page_size,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors(),
+        ) from exc
     return await service.list(query)
 
 

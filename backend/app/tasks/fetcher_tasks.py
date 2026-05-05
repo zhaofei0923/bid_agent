@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.database import async_session
 from app.fetchers import get_fetcher
@@ -32,6 +32,7 @@ async def _run_fetcher(source: str, max_pages: int = 5) -> dict:
     created = 0
     updated = 0
     skipped = 0
+    expired_closed = 0
     now = datetime.now(UTC)
 
     # Statuses that represent a closed / no-longer-open opportunity
@@ -94,6 +95,17 @@ async def _run_fetcher(source: str, max_pages: int = 5) -> dict:
                 db.add(opp)
                 created += 1
 
+        result = await db.execute(
+            update(Opportunity)
+            .where(
+                Opportunity.source == source,
+                Opportunity.status == "open",
+                Opportunity.deadline.is_not(None),
+                Opportunity.deadline < now,
+            )
+            .values(status="closed", updated_at=now)
+        )
+        expired_closed = result.rowcount or 0
         await db.commit()
 
     return {
@@ -102,6 +114,7 @@ async def _run_fetcher(source: str, max_pages: int = 5) -> dict:
         "created": created,
         "updated": updated,
         "skipped": skipped,
+        "expired_closed": expired_closed,
     }
 
 

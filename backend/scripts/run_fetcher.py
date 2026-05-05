@@ -20,6 +20,7 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -42,6 +43,12 @@ async def run_fetch(source: str, max_pages: int, dry_run: bool) -> list[TenderIn
     """Run a single fetcher and return results."""
     fetcher = get_fetcher(source)
     logger.info("Fetching from %s (max_pages=%d, dry_run=%s)", source, max_pages, dry_run)
+    if source == "wb":
+        logger.info(
+            "[wb] filters: procurement_groups=%s notice_types=%s",
+            os.getenv("WB_PROCUREMENT_GROUPS", "all"),
+            os.getenv("WB_NOTICE_TYPES", "default-open-types"),
+        )
 
     async with fetcher:
         tenders = await fetcher.fetch_all(max_pages=max_pages, fetch_details=False)
@@ -99,13 +106,13 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
     """Save fetched tenders to the database using the same logic as fetcher_tasks."""
     from datetime import UTC, datetime
 
-    from sqlalchemy import select
+    from sqlalchemy import select, update
 
     from app.database import async_session
     from app.models.opportunity import Opportunity
 
     skip_statuses = {"closed", "awarded", "cancelled", "expired"}
-    created = updated = skipped = 0
+    created = updated = skipped = expired_closed = 0
     now = datetime.now(UTC)
 
     def _trunc(value: str | None, max_len: int = 100) -> str | None:
@@ -162,9 +169,28 @@ async def _upsert_to_db(tenders: list[TenderInfo]) -> None:
                     )
                 )
                 created += 1
+        sources = {tender.source for tender in tenders}
+        for source in sources:
+            result = await db.execute(
+                update(Opportunity)
+                .where(
+                    Opportunity.source == source,
+                    Opportunity.status == "open",
+                    Opportunity.deadline.is_not(None),
+                    Opportunity.deadline < now,
+                )
+                .values(status="closed", updated_at=now)
+            )
+            expired_closed += result.rowcount or 0
         await db.commit()
 
-    logger.info("DB upsert: created=%d, updated=%d, skipped=%d", created, updated, skipped)
+    logger.info(
+        "DB upsert: created=%d, updated=%d, skipped=%d, expired_closed=%d",
+        created,
+        updated,
+        skipped,
+        expired_closed,
+    )
 
 
 async def main(args: argparse.Namespace) -> None:
@@ -189,9 +215,7 @@ if __name__ == "__main__":
         "--max-pages", "-p",
         type=int,
         default=50,
-        help="Maximum pages to fetch per source (default: 50). "
-             "WB self-terminates when all items on a page are expired, "
-             "so this is a safety cap — not a hard item limit.",
+        help="Maximum pages to fetch per source (default: 50).",
     )
     parser.add_argument(
         "--dry-run", "-n",

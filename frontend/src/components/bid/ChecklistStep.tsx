@@ -14,12 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useTranslations } from "next-intl"
-import * as XLSX from "xlsx"
 import type { ChecklistItem, ChecklistSection, SubmissionChecklist } from "@/types/bid"
 
 // ── Export helper ─────────────────────────────────────────────────
 
-function exportChecklistToExcel(checklist: SubmissionChecklist, lang: "zh" | "en") {
+function exportChecklistToCsv(checklist: SubmissionChecklist, lang: "zh" | "en") {
   const isCn = lang === "zh"
 
   const headers = isCn
@@ -50,24 +49,21 @@ function exportChecklistToExcel(checklist: SubmissionChecklist, lang: "zh" | "en
     }
   }
 
-  const ws = XLSX.utils.aoa_to_sheet(rows)
-
-  // Column widths
-  ws["!cols"] = [8, 20, 36, 10, 8, 18, 12, 48, 20, 8, 24, 48].map((w) => ({ wch: w }))
-
-  // Bold header row
-  const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "EEF2FF" } } }
-  headers.forEach((_, ci) => {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: ci })
-    if (ws[cellRef]) ws[cellRef].s = headerStyle
-  })
-
-  const wb = XLSX.utils.book_new()
-  const sheetName = isCn ? "投标文件清单" : "Submission Checklist"
-  XLSX.utils.book_append_sheet(wb, ws, sheetName)
-
-  const filename = isCn ? "投标文件清单.xlsx" : "Submission_Checklist.xlsx"
-  XLSX.writeFile(wb, filename)
+  const csv = rows
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
+        .join(",")
+    )
+    .join("\n")
+  const filename = isCn ? "投标文件清单.csv" : "Submission_Checklist.csv"
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 interface ChecklistStepProps {
@@ -287,12 +283,12 @@ export const ChecklistStep = memo(function ChecklistStep({
                         翻译中...
                       </>
                     ) : (
-                      "📥 导出 Excel"
+                      "📥 导出 CSV"
                     )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => exportChecklistToExcel(checklist, "zh")}>
+                  <DropdownMenuItem onClick={() => exportChecklistToCsv(checklist, "zh")}>
                     🇨🇳 中文版
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -301,10 +297,10 @@ export const ChecklistStep = memo(function ChecklistStep({
                       setIsTranslating(true)
                       try {
                         const translated = await checklistService.translate(projectId, "en")
-                        exportChecklistToExcel(translated, "en")
+                        exportChecklistToCsv(translated, "en")
                       } catch {
                         // silently fall back to untranslated export
-                        exportChecklistToExcel(checklist, "en")
+                        exportChecklistToCsv(checklist, "en")
                       } finally {
                         setIsTranslating(false)
                       }

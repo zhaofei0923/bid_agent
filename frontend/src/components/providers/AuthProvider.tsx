@@ -5,7 +5,14 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/stores/auth"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const PUBLIC_PATHS = ["/auth/login", "/auth/register", "/help"]
+const PUBLIC_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/verify-email",
+  "/help",
+]
 
 function isPublicPath(pathname: string): boolean {
   if (pathname.match(/^\/[a-z]{2}$/)) return true // landing page /{locale}

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -250,6 +251,29 @@ async def _parse_pdf(file_path: str) -> list[dict]:
             )
 
     return pages
+
+
+async def _parse_document(file_path: str) -> list[dict]:
+    """Parse a supported bid document into page-like text blocks."""
+    suffix = Path(file_path).suffix.lower()
+    if suffix == ".docx":
+        from app.services.document_processing.docx_parser import parse_docx_async
+
+        parsed = await parse_docx_async(file_path)
+        parts = list(parsed.paragraphs)
+        for table in parsed.tables:
+            for row in table:
+                row_text = " | ".join(cell for cell in row if cell)
+                if row_text:
+                    parts.append(row_text)
+        text = "\n".join(parts).strip()
+        return [{"page_number": 1, "text": text}] if text else []
+
+    return await _parse_pdf(file_path)
+
+
+def _is_pdf_file(file_path: str) -> bool:
+    return Path(file_path).suffix.lower() == ".pdf"
 
 
 # ── TOC Extraction ─────────────────────────────────────
@@ -574,8 +598,8 @@ async def _analyze_document_from_db(document_id: str) -> dict:
         if not doc:
             raise ValueError(f"Document not found: {document_id}")
 
-        # Re-parse PDF to get text
-        pages = await _parse_pdf(doc.file_path)
+        # Re-parse document to get text
+        pages = await _parse_document(doc.file_path)
         if not pages:
             logger.warning("No pages for document %s — cannot generate AI overview", document_id)
             return {"status": "error", "reason": "no_content"}
@@ -592,7 +616,11 @@ async def _analyze_document_from_db(document_id: str) -> dict:
                 "Document %s has only page-group sections — attempting TOC extraction",
                 document_id,
             )
-            toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
+            toc_items = (
+                await _extract_toc_from_pdf(doc.file_path, pages)
+                if _is_pdf_file(doc.file_path)
+                else []
+            )
             if toc_items:
                 # Delete old page-group sections and replace with TOC sections
                 for sec in existing_sections:
@@ -646,12 +674,12 @@ async def _process_document(document_id: str) -> dict:
         total_vectorized = 0
 
         try:
-            # 2. Parse PDF → pages
-            pages = await _parse_pdf(doc.file_path)
+            # 2. Parse supported document → pages
+            pages = await _parse_document(doc.file_path)
             if not pages:
                 logger.warning("Document %s has no parseable content", document_id)
                 doc.status = "error"
-                doc.error_message = "PDF parsing failed or no text content found"
+                doc.error_message = "Document parsing failed or no text content found"
                 await db.commit()
                 return {"status": "error", "reason": "no_content"}
 
@@ -735,7 +763,11 @@ async def _process_document(document_id: str) -> dict:
                     section_tuples.append((section_orm, content))
             else:
                 # ── Fallback: TOC bookmarks / text scan / page groups ─
-                toc_items = await _extract_toc_from_pdf(doc.file_path, pages)
+                toc_items = (
+                    await _extract_toc_from_pdf(doc.file_path, pages)
+                    if _is_pdf_file(doc.file_path)
+                    else []
+                )
                 if toc_items:
                     section_tuples = _build_sections_from_toc(toc_items, pages, doc.id)
                 else:
@@ -929,7 +961,7 @@ async def _generate_combined_ai_analysis(project_id: str) -> dict:
         parts: list[str] = []
         per_doc_limit = max(2000, 12000 // len(docs))
         for doc in docs:
-            pages = await _parse_pdf(doc.file_path)
+            pages = await _parse_document(doc.file_path)
             if not pages:
                 continue
             text = "\n\n".join(p["text"] for p in pages[:30] if p["text"].strip())

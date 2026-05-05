@@ -7,8 +7,12 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 from app.core.security import hash_password
@@ -18,15 +22,27 @@ from app.models.user import User
 
 settings = get_settings()
 
-# Use a separate test database (append _test) or in-memory SQLite
-TEST_DATABASE_URL = settings.DATABASE_URL.replace(
-    "/bidagent", "/bidagent_test"
-) if "/bidagent" in settings.DATABASE_URL else settings.DATABASE_URL
+# Use a separate test database while preserving username, password, and host.
+_database_url = make_url(settings.DATABASE_URL)
+if _database_url.database and not _database_url.database.endswith("_test"):
+    _database_url = _database_url.set(database=f"{_database_url.database}_test")
+TEST_DATABASE_URL = _database_url.render_as_string(hide_password=False)
 
-engine_test = create_async_engine(TEST_DATABASE_URL, echo=False)
+engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 async_session_test = async_sessionmaker(
     engine_test, class_=AsyncSession, expire_on_commit=False
 )
+
+
+async def _clear_test_redis() -> None:
+    """Remove test-owned Redis keys between tests."""
+    redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        keys = await redis.keys(f"{settings.REDIS_KEY_PREFIX}:*")
+        if keys:
+            await redis.delete(*keys)
+    finally:
+        await redis.aclose()
 
 
 @pytest.fixture(scope="session")
@@ -41,6 +57,8 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 async def setup_database():
     """Create all tables before tests and drop them after."""
     async with engine_test.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine_test.begin() as conn:
@@ -51,9 +69,17 @@ async def setup_database():
 @pytest_asyncio.fixture
 async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
     """Provide a transactional database session that rolls back after each test."""
+    await _clear_test_redis()
+    async with engine_test.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
     async with async_session_test() as session:
         yield session
         await session.rollback()
+    async with engine_test.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+    await _clear_test_redis()
 
 
 @pytest_asyncio.fixture
@@ -82,6 +108,7 @@ async def test_user(db_session: AsyncSession) -> User:
         hashed_password=hash_password("testpassword123"),
         name="Test User",
         role="user",
+        is_verified=True,
     )
     db_session.add(user)
     await db_session.commit()
@@ -98,6 +125,7 @@ async def admin_user(db_session: AsyncSession) -> User:
         hashed_password=hash_password("adminpassword123"),
         name="Admin User",
         role="admin",
+        is_verified=True,
     )
     db_session.add(user)
     await db_session.commit()

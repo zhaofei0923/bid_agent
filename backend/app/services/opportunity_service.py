@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import math
+from datetime import UTC, datetime
+from typing import ClassVar
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
@@ -14,11 +16,23 @@ from app.schemas.opportunity import OpportunityQuery, PaginatedOpportunities
 
 
 class OpportunityService:
+    SORT_COLUMNS: ClassVar[dict[str, object]] = {
+        "published_at": Opportunity.published_at,
+        "deadline": Opportunity.deadline,
+        "created_at": Opportunity.created_at,
+        "updated_at": Opportunity.updated_at,
+        "title": Opportunity.title,
+        "source": Opportunity.source,
+        "country": Opportunity.country,
+        "sector": Opportunity.sector,
+    }
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def list(self, query: OpportunityQuery) -> PaginatedOpportunities:
         stmt = select(Opportunity)
+        now = datetime.now(UTC)
 
         if query.source:
             stmt = stmt.where(Opportunity.source == query.source)
@@ -27,6 +41,10 @@ class OpportunityService:
             stmt = stmt.where(Opportunity.status == query.status)
         elif not query.status:
             stmt = stmt.where(Opportunity.status == "open")
+        if query.status in (None, "open"):
+            stmt = stmt.where(
+                or_(Opportunity.deadline.is_(None), Opportunity.deadline >= now)
+            )
         if query.country:
             stmt = stmt.where(Opportunity.country == query.country)
         if query.sector:
@@ -51,7 +69,7 @@ class OpportunityService:
         total = (await self.db.execute(count_stmt)).scalar_one()
 
         # Sort
-        sort_col = getattr(Opportunity, query.sort_by, Opportunity.published_at)
+        sort_col = self.SORT_COLUMNS.get(query.sort_by, Opportunity.published_at)
         if query.sort_order == "asc":
             stmt = stmt.order_by(sort_col.asc())
         else:
@@ -90,6 +108,12 @@ class OpportunityService:
         stmt = (
             select(Opportunity)
             .where(Opportunity.status == "open")
+            .where(
+                or_(
+                    Opportunity.deadline.is_(None),
+                    Opportunity.deadline >= datetime.now(UTC),
+                )
+            )
             .order_by(Opportunity.published_at.desc())
             .limit(limit)
         )

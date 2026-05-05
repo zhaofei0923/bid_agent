@@ -38,6 +38,7 @@ async def upload_bid_document(
         filename=file.filename or "upload",
         content=content,
         content_type=file.content_type or "",
+        uploaded_by=current_user.id,
     )
 
     # Promote project from 'draft' to 'created' on first successful upload
@@ -124,7 +125,7 @@ async def delete_bid_document(
     await project_svc.get_by_id(project_id, current_user.id)
 
     doc_svc = BidDocumentService(db)
-    await doc_svc.delete(document_id)
+    await doc_svc.delete(document_id, project_id=project_id)
 
 
 @router.post(
@@ -145,7 +146,7 @@ async def analyze_bid_document(
     await project_svc.get_by_id(project_id, current_user.id)
 
     doc_svc = BidDocumentService(db)
-    await doc_svc.get_by_id(document_id)  # validates existence
+    await doc_svc.get_by_id(document_id, project_id=project_id)  # validates ownership
 
     try:
         from app.tasks.document_tasks import generate_document_ai
@@ -180,6 +181,8 @@ async def list_document_sections(
 
     result = await db.execute(
         select(BidDocumentSection)
+        .join(BidDocumentSection.bid_document)
+        .where(BidDocumentSection.bid_document.has(project_id=project_id))
         .where(BidDocumentSection.bid_document_id == document_id)
         .order_by(BidDocumentSection.start_page)
     )

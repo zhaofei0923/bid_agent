@@ -7,7 +7,6 @@ import Link from "next/link"
 import { useAuthStore } from "@/stores/auth"
 import { authService } from "@/services/auth"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 export default function VerifyEmailPage() {
   const t = useTranslations("auth")

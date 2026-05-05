@@ -127,6 +127,20 @@ class Settings(BaseSettings):
             return v
         return str(v)
 
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, v: Any) -> bool:
+        """Accept deployment-style DEBUG values such as release/production."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            normalized = v.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "development"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        return bool(v)
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS origins as a list."""

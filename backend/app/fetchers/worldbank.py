@@ -4,9 +4,11 @@ Uses the official World Bank Procurement API v2.
 API documentation: https://search.worldbank.org/api/v2/procnotices
 """
 
+import asyncio
 import logging
+import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 
 from app.fetchers.base import BaseFetcher, TenderInfo
 
@@ -43,12 +45,20 @@ def _strip_html(html: str | None) -> str:
 # 'Contract Award' is excluded — those are already-signed contracts, not open bids.
 _OPEN_NOTICE_TYPES = {
     "Invitation for Bids",
+    "Invitation for Prequalification",
     "Request for Proposals",
     "Request for Expression of Interest",
     "Request for Quotation",
     "General Procurement Notice",
     "Specific Procurement Notice",
 }
+
+_DEFAULT_ROWS = int(os.getenv("WB_ROWS", "500"))
+
+
+def _csv_env(name: str) -> list[str]:
+    value = os.getenv(name, "")
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 class WorldBankFetcher(BaseFetcher):
@@ -63,32 +73,47 @@ class WorldBankFetcher(BaseFetcher):
     async def fetch_list(self, page: int = 1) -> list[TenderInfo]:
         """Fetch World Bank procurement notices.
 
-        Sorted by submission_date (deadline) descending so tenders with the
-        furthest future deadlines appear first. This ensures that with a
-        reasonable page limit we capture all currently-valid opportunities
-        before hitting expired ones.
+        The API is filtered by deadline_strdate so only currently-valid
+        notices are returned upstream. Optional environment filters:
+        WB_PROCUREMENT_GROUPS=GO and WB_NOTICE_TYPES=Invitation for Bids,...
 
         Contract Award notices are excluded — those are completed contracts,
         not open procurement opportunities.
-
-        When an entire page (after filtering Contract Awards) contains only
-        expired items the fetcher returns an empty list, signalling fetch_all()
-        to stop pagination.
         """
+        today = datetime.now(UTC).date().isoformat()
+        procurement_groups = _csv_env("WB_PROCUREMENT_GROUPS")
+        notice_types = _csv_env("WB_NOTICE_TYPES") or sorted(_OPEN_NOTICE_TYPES)
+        goods_only = {group.upper() for group in procurement_groups} == {"GO"}
+
         params = {
             "format": "json",
-            "rows": 20,
-            "os": (page - 1) * 20,  # offset
-            "srt": "submission_date",  # sort by deadline, not publish date
-            "order": "desc",
+            "rows": _DEFAULT_ROWS,
+            "os": (page - 1) * _DEFAULT_ROWS,  # offset
+            "srt": os.getenv("WB_SORT_BY", "noticedate"),
+            "order": os.getenv("WB_SORT_ORDER", "desc"),
+            "apilang": "en",
+            "srce": "both",
+            "deadline_strdate": today,
+            "notice_type_exact": "^".join(notice_types),
         }
+        if procurement_groups:
+            params["procurement_group_exact"] = "^".join(procurement_groups)
 
-        try:
-            response = await self._get(self._api_url, params=params)
-            data = response.json()
-        except Exception:
-            logger.exception("[wb] Failed to fetch list page %d", page)
-            return []
+        for attempt in range(1, 4):
+            try:
+                response = await self._get(self._api_url, params=params)
+                data = response.json()
+                break
+            except Exception:
+                if attempt == 3:
+                    logger.exception("[wb] Failed to fetch list page %d", page)
+                    return []
+                logger.warning(
+                    "[wb] Fetch page %d failed (attempt %d/3), retrying",
+                    page,
+                    attempt,
+                )
+                await asyncio.sleep(attempt * 2)
 
         items = data.get("procnotices", {})
         if isinstance(items, dict):
@@ -99,7 +124,7 @@ class WorldBankFetcher(BaseFetcher):
         now = datetime.now(UTC)
         tenders: list[TenderInfo] = []
         expired_count = 0
-        award_count = 0
+        non_open_count = 0
 
         for item in items:
             try:
@@ -107,7 +132,10 @@ class WorldBankFetcher(BaseFetcher):
 
                 # Skip Contract Award and other non-open types
                 if _OPEN_NOTICE_TYPES and notice_type not in _OPEN_NOTICE_TYPES:
-                    award_count += 1
+                    non_open_count += 1
+                    continue
+                if goods_only and _looks_consulting_notice(item):
+                    non_open_count += 1
                     continue
 
                 tender = _parse_item(item)
@@ -122,22 +150,17 @@ class WorldBankFetcher(BaseFetcher):
                 logger.warning("[wb] Failed to parse item: %s", item.get("id"))
                 continue
 
-        if award_count:
-            logger.debug("[wb] Page %d: skipped %d contract-award/non-open items", page, award_count)
+        if non_open_count:
+            logger.debug(
+                "[wb] Page %d: skipped %d contract-award/non-open items",
+                page,
+                non_open_count,
+            )
         if expired_count:
             logger.info(
                 "[wb] Page %d: skipped %d expired items",
                 page, expired_count,
             )
-
-        # If every non-award item on the page was expired, signal end-of-data
-        non_award_count = len(items) - award_count
-        if non_award_count > 0 and expired_count == non_award_count and not tenders:
-            logger.info(
-                "[wb] Page %d: all %d open-type items expired, stopping",
-                page, non_award_count,
-            )
-            return []
 
         return tenders
 
@@ -193,9 +216,7 @@ def _parse_item(item: dict, *, tender_id: str | None = None) -> TenderInfo | Non
         organization=organization,
         project_number=item.get("project_id"),
         published_at=_parse_wb_date(item.get("noticedate")),
-        deadline=_parse_wb_date(
-            item.get("submission_deadline_date") or item.get("submission_date")
-        ),
+        deadline=_parse_wb_deadline(item),
         budget_min=_parse_float(item.get("estimated_cost")),
         budget_max=_parse_float(item.get("estimated_cost")),
         currency=item.get("currency", "USD"),
@@ -206,6 +227,45 @@ def _parse_item(item: dict, *, tender_id: str | None = None) -> TenderInfo | Non
         status="open",
         raw_data=item,
     )
+
+
+def _looks_consulting_notice(item: dict) -> bool:
+    text = " ".join(
+        str(item.get(key) or "")
+        for key in ("bid_description", "project_name", "notice_text", "notice_type")
+    ).lower()
+    consulting_terms = (
+        "consulting services",
+        "consultancy",
+        "consultant",
+        "expression of interest",
+        "expressions of interest",
+    )
+    return any(term in text for term in consulting_terms)
+
+
+def _parse_wb_deadline(item: dict) -> datetime | None:
+    """Parse WB deadline date plus optional local-time field.
+
+    The API exposes the time without timezone. Treat it as UTC rather than
+    midnight so notices are not incorrectly expired at the start of deadline day.
+    """
+    dt = _parse_wb_date(
+        item.get("submission_deadline_date") or item.get("submission_date")
+    )
+    if not dt:
+        return None
+
+    time_text = (item.get("submission_deadline_time") or "").strip()
+    if time_text:
+        for fmt in ("%H:%M", "%H:%M:%S", "%I:%M %p"):
+            try:
+                parsed_time = datetime.strptime(time_text, fmt).time()
+                return datetime.combine(dt.date(), parsed_time, tzinfo=UTC)
+            except ValueError:
+                continue
+
+    return datetime.combine(dt.date(), time.max, tzinfo=UTC)
 
 
 def _parse_wb_date(value: str | None) -> datetime | None:

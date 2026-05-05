@@ -13,9 +13,6 @@ from typing import Any
 
 import httpx
 
-from app.config import get_settings
-
-settings = get_settings()
 logger = logging.getLogger(__name__)
 
 

@@ -11,15 +11,18 @@ class OpportunityQuery(BaseModel):
 
     search: str | None = None
     source: str | None = Field(None, pattern="^(adb|wb|afdb)$")
-    status: str | None = Field(None, pattern="^(open|closed|cancelled)$")
+    status: str | None = Field(None, pattern="^(open|closed|cancelled|all)$")
     published_from: datetime | None = None
     published_to: datetime | None = None
     deadline_from: datetime | None = None
     deadline_to: datetime | None = None
     country: str | None = None
     sector: str | None = None
-    sort_by: str = "published_at"
-    sort_order: str = "desc"
+    sort_by: str = Field(
+        "published_at",
+        pattern="^(published_at|deadline|created_at|updated_at|title|source|country|sector)$",
+    )
+    sort_order: str = Field("desc", pattern="^(asc|desc)$")
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=100)
 
@@ -67,8 +70,11 @@ class PublicOpportunityQuery(BaseModel):
     source: str | None = Field(None, pattern="^(adb|wb|afdb)$")
     country: str | None = None
     sector: str | None = None
-    sort_by: str = "published_at"
-    sort_order: str = "desc"
+    sort_by: str = Field(
+        "published_at",
+        pattern="^(published_at|deadline|created_at|updated_at|title|source|country|sector)$",
+    )
+    sort_order: str = Field("desc", pattern="^(asc|desc)$")
     page: int = Field(1, ge=1, le=5)
     page_size: int = Field(20, ge=1, le=20)
 

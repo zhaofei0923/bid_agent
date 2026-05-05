@@ -3,7 +3,7 @@ export interface CreditTransaction {
   user_id: string
   amount: number
   balance_after: number
-  type: "recharge" | "consume" | "refund"
+  type: "recharge" | "deduction" | "consume" | "refund"
   description: string
   created_at: string
 }
@@ -14,8 +14,10 @@ export interface RechargePackage {
   credits: number
   price: number
   currency: string
-  discount_percent: number | null
+  bonus_credits: number
+  bonus_description: string | null
   is_active: boolean
+  sort_order: number
 }
 
 export interface SubscriptionPlan {

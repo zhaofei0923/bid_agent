@@ -129,6 +129,7 @@ async def get_guidance(
 async def stream_guidance(
     project_id: UUID,
     request: GuidanceRequest,
+    cost_info: dict = Depends(require_credits("guidance_stream")),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -555,6 +556,25 @@ async def stream_guidance(
                 _history,
                 request.message,
                 "".join(_accumulated),
+            )
+
+            remaining = await deduct_credits(
+                current_user,
+                cost_info["action"],
+                cost_info["cost"],
+                db,
+                reference_id=str(project_id),
+            )
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "credits",
+                        "consumed": cost_info["cost"],
+                        "remaining": remaining,
+                    }
+                )
+                + "\n\n"
             )
 
             # Send sources after content

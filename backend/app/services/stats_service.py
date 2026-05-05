@@ -1,12 +1,13 @@
 """Stats service — operational, user, and financial statistics."""
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.bid_analysis import BidAnalysis
 from app.models.opportunity import Opportunity
 from app.models.payment import PaymentTransaction
 from app.models.project import Project
@@ -27,57 +28,87 @@ class StatsService:
         user_count = await self.db.scalar(select(func.count(User.id)))
         project_count = await self.db.scalar(select(func.count(Project.id)))
         opp_count = await self.db.scalar(select(func.count(Opportunity.id)))
+        analysis_count = await self.db.scalar(select(func.count(BidAnalysis.id)))
+        today = datetime.now(UTC).date()
+        active_users_today = await self.db.scalar(
+            select(func.count(func.distinct(UsageLog.user_id))).where(
+                func.date(UsageLog.created_at) == today
+            )
+        )
 
         return {
             "total_users": user_count or 0,
             "total_projects": project_count or 0,
             "total_opportunities": opp_count or 0,
+            "total_analyses": analysis_count or 0,
+            "active_users_today": active_users_today or 0,
             "generated_at": datetime.now(UTC).isoformat(),
         }
 
     async def get_daily_stats(
         self,
-        days: int = 30,
+        start_date: date,
+        end_date: date,
     ) -> list[dict]:
-        """Get daily statistics for the past N days."""
-        since = datetime.now(UTC) - timedelta(days=days)
+        """Get daily statistics for a date range."""
+        if end_date < start_date:
+            start_date, end_date = end_date, start_date
 
         result = await self.db.execute(
             select(DailyStats)
-            .where(DailyStats.date >= since.date())
-            .order_by(DailyStats.date.desc())
+            .where(
+                DailyStats.stat_date >= start_date,
+                DailyStats.stat_date <= end_date,
+            )
+            .order_by(DailyStats.stat_date.asc())
         )
         rows = result.scalars().all()
 
-        return [
-            {
-                "date": str(row.date),
-                "new_users": row.new_users,
-                "active_users": row.active_users,
-                "new_projects": row.new_projects,
-                "api_calls": row.api_calls,
-                "credits_consumed": row.credits_consumed,
-            }
-            for row in rows
-        ]
+        by_date: dict[date, dict] = {}
+        for row in rows:
+            bucket = by_date.setdefault(
+                row.stat_date,
+                {
+                    "date": row.stat_date.isoformat(),
+                    "new_users": 0,
+                    "active_users": 0,
+                    "new_projects": 0,
+                    "api_calls": 0,
+                    "credits_consumed": 0,
+                },
+            )
+            if row.metric_type in bucket:
+                bucket[row.metric_type] = int(row.metric_value or row.metric_count or 0)
+
+        return [by_date[key] for key in sorted(by_date)]
 
     async def get_user_stats(self, user_id: UUID) -> dict:
         """Get statistics for a specific user."""
         project_count = await self.db.scalar(
             select(func.count(Project.id)).where(Project.user_id == user_id)
         )
+        analyses_count = await self.db.scalar(
+            select(func.count(BidAnalysis.id))
+            .join(Project, Project.id == BidAnalysis.project_id)
+            .where(Project.user_id == user_id)
+        )
 
         credits_used = await self.db.scalar(
             select(func.sum(func.abs(PaymentTransaction.amount)))
             .where(
                 PaymentTransaction.user_id == user_id,
-                PaymentTransaction.transaction_type == "deduction",
+                PaymentTransaction.amount < 0,
             )
+        )
+        last_active = await self.db.scalar(
+            select(func.max(UsageLog.created_at)).where(UsageLog.user_id == user_id)
         )
 
         return {
-            "projects": project_count or 0,
+            "projects_count": project_count or 0,
+            "analyses_count": analyses_count or 0,
             "credits_consumed": int(credits_used or 0),
+            "last_active": last_active.isoformat() if last_active else None,
         }
 
     async def log_usage(
@@ -92,11 +123,11 @@ class StatsService:
         """Log a usage event."""
         log = UsageLog(
             user_id=user_id,
-            action=action,
+            action_type=action,
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=UUID(resource_id) if resource_id else None,
             credits_consumed=credits_consumed,
-            metadata=metadata or {},
+            metadata_=metadata or {},
         )
         self.db.add(log)
         await self.db.commit()

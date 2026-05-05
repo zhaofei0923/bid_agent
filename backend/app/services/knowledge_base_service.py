@@ -22,7 +22,7 @@ class KnowledgeBaseService:
         self,
         name: str,
         institution: str,
-        kb_type: str = "procurement_guide",
+        kb_type: str = "guide",
         description: str = "",
     ) -> KnowledgeBase:
         """Create a new knowledge base."""
@@ -105,7 +105,7 @@ class KnowledgeBaseService:
         query = (
             select(
                 KnowledgeChunk,
-                KnowledgeDocument.title.label("document_title"),
+                KnowledgeDocument.filename.label("document_title"),
                 KnowledgeBase.institution,
                 score,
             )

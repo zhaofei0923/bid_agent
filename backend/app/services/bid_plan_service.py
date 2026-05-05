@@ -1,7 +1,7 @@
 """Bid plan service — AI-generated task plan management."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy import delete, select, update
@@ -41,6 +41,7 @@ class BidPlanService:
         self,
         project_id: UUID,
         title: str = "",
+        description: str | None = None,
         deadline: datetime | None = None,
     ) -> BidPlan:
         result = await self.db.execute(
@@ -51,11 +52,14 @@ class BidPlanService:
         if plan:
             if title:
                 plan.name = title
+            if description is not None:
+                plan.description = description
             plan.updated_at = datetime.now(UTC)
         else:
             plan = BidPlan(
                 project_id=project_id,
                 name=title or "Bid Preparation Plan",
+                description=description,
             )
             self.db.add(plan)
 
@@ -77,19 +81,32 @@ class BidPlanService:
         plan_id: UUID,
         title: str,
         description: str = "",
+        category: str | None = None,
+        priority: str = "medium",
         assignee: str = "",
-        due_date: datetime | None = None,
+        start_date: date | None = None,
+        due_date: date | None = None,
         sort_order: int = 0,
+        status: str = "pending",
+        notes: str | None = None,
+        related_document: str | None = None,
+        reference_page: int | None = None,
     ) -> BidPlanTask:
         """Add a task to a bid plan."""
         task = BidPlanTask(
             plan_id=plan_id,
             title=title,
             description=description,
+            category=category,
+            priority=priority,
             assignee=assignee,
+            start_date=start_date,
             due_date=due_date,
             sort_order=sort_order,
-            status="pending",
+            status=status,
+            notes=notes,
+            related_document=related_document,
+            reference_page=reference_page,
         )
         self.db.add(task)
         await self.db.commit()
@@ -100,10 +117,14 @@ class BidPlanService:
         self,
         task_id: UUID,
         status: str,
+        plan_id: UUID,
     ) -> BidPlanTask:
         """Update a task's status."""
         result = await self.db.execute(
-            select(BidPlanTask).where(BidPlanTask.id == task_id)
+            select(BidPlanTask).where(
+                BidPlanTask.id == task_id,
+                BidPlanTask.plan_id == plan_id,
+            )
         )
         task = result.scalar_one_or_none()
         if not task:
@@ -118,10 +139,13 @@ class BidPlanService:
         await self.db.refresh(task)
         return task
 
-    async def delete_task(self, task_id: UUID) -> None:
+    async def delete_task(self, task_id: UUID, plan_id: UUID) -> None:
         """Delete a task from a bid plan."""
         result = await self.db.execute(
-            select(BidPlanTask).where(BidPlanTask.id == task_id)
+            select(BidPlanTask).where(
+                BidPlanTask.id == task_id,
+                BidPlanTask.plan_id == plan_id,
+            )
         )
         task = result.scalar_one_or_none()
         if not task:
@@ -133,11 +157,15 @@ class BidPlanService:
     async def update_task(
         self,
         task_id: UUID,
+        plan_id: UUID,
         **fields: object,
     ) -> BidPlanTask:
         """Update arbitrary fields on a task."""
         result = await self.db.execute(
-            select(BidPlanTask).where(BidPlanTask.id == task_id)
+            select(BidPlanTask).where(
+                BidPlanTask.id == task_id,
+                BidPlanTask.plan_id == plan_id,
+            )
         )
         task = result.scalar_one_or_none()
         if not task:

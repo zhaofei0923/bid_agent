@@ -1,7 +1,7 @@
 """Email service — send verification codes via Tencent Cloud SES SMTP."""
 
 import logging
-import random
+import secrets
 import string
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def generate_verify_code(length: int = 6) -> str:
     """Generate a numeric verification code."""
-    return "".join(random.choices(string.digits, k=length))
+    return "".join(secrets.choice(string.digits) for _ in range(length))
 
 
 # ── Redis Key Helpers ────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ async def send_verification_email(to_email: str, code: str, name: str = "") -> N
         return
 
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.warning("SMTP not configured — verification code %s not sent", code)
+        logger.warning("SMTP not configured — verification email not sent")
         return
 
     msg = MIMEMultipart("alternative")

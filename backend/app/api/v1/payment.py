@@ -20,25 +20,11 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-class DeductCreditsRequest(BaseModel):
-    """Request body for credit deduction."""
-
-    amount: int = Field(gt=0)
-    description: str
-
-
-class RechargeRequest(BaseModel):
-    """Request body for credit recharge."""
-
-    amount: int = Field(gt=0)
-    description: str = "manual_recharge"
-
-
 class CreateOrderRequest(BaseModel):
     """Request body for creating a payment order."""
 
     package_id: UUID
-    payment_method: str = "alipay"
+    payment_method: str = Field("alipay", pattern="^(alipay|wechat|bank_transfer)$")
 
 
 class PackageResponse(BaseModel):
@@ -84,34 +70,6 @@ async def get_balance(
     return {"balance": balance}
 
 
-@router.post("/credits/deduct")
-async def deduct_credits(
-    request: DeductCreditsRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Deduct credits from user's balance."""
-    service = PaymentService(db)
-    new_balance = await service.deduct_credits(
-        current_user.id, request.amount, request.description
-    )
-    return {"balance": new_balance}
-
-
-@router.post("/credits/recharge")
-async def recharge_credits(
-    request: RechargeRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Add credits to user's balance."""
-    service = PaymentService(db)
-    new_balance = await service.add_credits(
-        current_user.id, request.amount, request.description
-    )
-    return {"balance": new_balance}
-
-
 @router.get("/transactions")
 async def list_transactions(
     page: int = Query(1, ge=1),
@@ -121,8 +79,9 @@ async def list_transactions(
 ):
     """List user's credit transactions."""
     service = PaymentService(db)
+    offset = (page - 1) * page_size
     return await service.list_transactions(
-        current_user.id, page=page, page_size=page_size
+        current_user.id, limit=page_size, offset=offset
     )
 
 

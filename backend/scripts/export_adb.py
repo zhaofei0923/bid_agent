@@ -17,6 +17,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -45,11 +46,20 @@ def _tender_to_dict(tender: TenderInfo) -> dict:
 
 async def main(args: argparse.Namespace) -> None:
     output_path = Path(args.output)
-    logger.info("Fetching ADB data (max_pages=%d)...", args.max_pages)
+    if args.goods_only:
+        os.environ["ADB_GOODS_ONLY"] = "1"
+    logger.info(
+        "Fetching ADB data (max_pages=%d, goods_only=%s)...",
+        args.max_pages,
+        args.goods_only,
+    )
 
     fetcher = ADBFetcher()
     async with fetcher:
-        tenders = await fetcher.fetch_all(max_pages=args.max_pages, fetch_details=False)
+        tenders = await fetcher.fetch_all(
+            max_pages=args.max_pages,
+            fetch_details=args.fetch_details or args.goods_only,
+        )
 
     logger.info("Fetched %d ADB tenders", len(tenders))
 
@@ -90,8 +100,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-pages", "-p",
         type=int,
-        default=10,
-        help="Maximum RSS pages to fetch (default: 10)",
+        default=1,
+        help="Maximum list pages to fetch (default: 1)",
+    )
+    parser.add_argument(
+        "--fetch-details",
+        action="store_true",
+        help="Fetch each ADB detail page and enrich deadline/procurement category",
+    )
+    parser.add_argument(
+        "--goods-only",
+        action="store_true",
+        help="Only export tenders classified as goods/supplies",
     )
     args = parser.parse_args()
     asyncio.run(main(args))

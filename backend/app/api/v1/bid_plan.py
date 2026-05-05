@@ -23,10 +23,13 @@ router = APIRouter()
 
 def _orm_to_dict(obj: object) -> dict:
     """Convert a SQLAlchemy ORM object to a plain dict (columns only, no relationships)."""
-    return {
+    data = {
         c.key: getattr(obj, c.key)
         for c in sa_inspect(type(obj)).mapper.column_attrs
     }
+    if "assignee" in data:
+        data["assigned_to"] = data["assignee"]
+    return data
 
 
 # ── Pydantic schemas for request bodies ──────────────────────────
@@ -39,6 +42,7 @@ class TaskUpdateBody(BaseModel):
     start_date: date | None = None
     due_date: date | None = None
     assignee: str | None = None
+    assigned_to: str | None = None
     notes: str | None = None
     sort_order: int | None = None
     status: str | None = None
@@ -48,6 +52,16 @@ class TaskUpdateBody(BaseModel):
 
 class ReorderBody(BaseModel):
     task_ids: list[str]
+
+
+class PlanUpsertBody(BaseModel):
+    title: str | None = None
+    name: str | None = None
+    description: str | None = None
+
+
+class TaskCreateBody(TaskUpdateBody):
+    title: str
 
 
 # ── Plan routes ──────────────────────────────────────────────────
@@ -73,7 +87,7 @@ async def get_plan(
 @router.post("/{project_id}/plan")
 async def create_or_update_plan(
     project_id: UUID,
-    title: str = "",
+    body: PlanUpsertBody | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -82,7 +96,12 @@ async def create_or_update_plan(
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    return await plan_svc.create_or_update(project_id, title=title)
+    title = body.title or body.name if body else ""
+    description = body.description if body else None
+    plan = await plan_svc.create_or_update(
+        project_id, title=title or "", description=description
+    )
+    return _orm_to_dict(plan)
 
 
 # ── Task routes ──────────────────────────────────────────────────
@@ -109,8 +128,7 @@ async def list_tasks(
 @router.post("/{project_id}/plan/tasks")
 async def add_task(
     project_id: UUID,
-    title: str,
-    description: str = "",
+    body: TaskCreateBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -119,8 +137,14 @@ async def add_task(
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    plan = await plan_svc.get_by_project(project_id)
-    task = await plan_svc.add_task(plan.id, title=title, description=description)
+    try:
+        plan = await plan_svc.get_by_project(project_id)
+    except Exception:
+        plan = await plan_svc.create_or_update(project_id)
+    fields = body.model_dump(exclude_none=True)
+    if "assigned_to" in fields:
+        fields["assignee"] = fields.pop("assigned_to")
+    task = await plan_svc.add_task(plan.id, **fields)
     return _orm_to_dict(task)
 
 
@@ -138,7 +162,10 @@ async def update_task(
 
     plan_svc = BidPlanService(db)
     fields = body.model_dump(exclude_none=True)
-    task = await plan_svc.update_task(task_id, **fields)
+    if "assigned_to" in fields:
+        fields["assignee"] = fields.pop("assigned_to")
+    plan = await plan_svc.get_by_project(project_id)
+    task = await plan_svc.update_task(task_id, plan.id, **fields)
     return _orm_to_dict(task)
 
 
@@ -155,7 +182,8 @@ async def update_task_status(
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    task = await plan_svc.update_task_status(task_id, status)
+    plan = await plan_svc.get_by_project(project_id)
+    task = await plan_svc.update_task_status(task_id, status, plan.id)
     return _orm_to_dict(task)
 
 
@@ -171,7 +199,8 @@ async def delete_task(
     await project_svc.get_by_id(project_id, current_user.id)
 
     plan_svc = BidPlanService(db)
-    await plan_svc.delete_task(task_id)
+    plan = await plan_svc.get_by_project(project_id)
+    await plan_svc.delete_task(task_id, plan.id)
     return {"message": "Task deleted"}
 
 

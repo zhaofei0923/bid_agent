@@ -11,7 +11,7 @@ router = APIRouter()
 async def health_check():
     """Liveness probe — no auth required."""
     return {
-        "status": "healthy",
+        "status": "ok",
         "version": settings.APP_VERSION,
         "env": settings.APP_ENV,
     }

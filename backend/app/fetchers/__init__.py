@@ -1,23 +1,25 @@
 """Fetchers - API/RSS based data fetchers for multilateral development banks.
 
 This module provides official API and RSS based fetchers for
-ADB and World Bank procurement opportunities.
+ADB, World Bank, and AfDB procurement opportunities.
 
 Data Source Notes:
 - ADB: Uses direct ADB RSS URLs (discovered from FeedBurner <source> tags).
   FeedBurner URLs (feeds.feedburner.com) are blocked by GFW on mainland China
   servers. The direct ADB URLs include full category metadata with Status field,
   allowing proper filtering to only Active tenders.
-- AfDB: Currently unsupported — afdb.org blocks server-side requests at the
-  WAF/IP level (HTTP 403), making reliable automated fetching impossible.
+- AfDB: Uses the public AfDB procurement RSS feed. The fetcher fails closed
+  and returns an empty list if the upstream WAF blocks the request.
 """
 
 from app.fetchers.adb import ADBFetcher
+from app.fetchers.afdb import AfDBFetcher
 from app.fetchers.base import BaseFetcher
 from app.fetchers.worldbank import WorldBankFetcher
 
 __all__ = [
     "ADBFetcher",
+    "AfDBFetcher",
     "BaseFetcher",
     "WorldBankFetcher",
     "get_fetcher",
@@ -28,6 +30,7 @@ FETCHERS: dict[str, type[BaseFetcher]] = {
     "wb": WorldBankFetcher,
     "worldbank": WorldBankFetcher,
     "adb": ADBFetcher,
+    "afdb": AfDBFetcher,
 }
 
 

@@ -28,19 +28,4 @@ export const creditsService = {
     return data
   },
 
-  deduct: async (amount: number, description: string) => {
-    const { data } = await apiClient.post<{ balance: number }>(
-      "/payment/credits/deduct",
-      { amount, description }
-    )
-    return data.balance
-  },
-
-  recharge: async (amount: number, description = "manual_recharge") => {
-    const { data } = await apiClient.post<{ balance: number }>(
-      "/payment/credits/recharge",
-      { amount, description }
-    )
-    return data.balance
-  },
 }

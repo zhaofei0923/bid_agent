@@ -23,6 +23,29 @@ jobs:
   lint-test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: bidagent
+          POSTGRES_PASSWORD: bidagent
+          POSTGRES_DB: bidagent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bidagent -d bidagent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +73,26 @@ jobs:
           ruff check . 2>&1 | tee /tmp/ruff_output.txt
           exit ${PIPESTATUS[0]}
 
+      - name: Test backend (pytest)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          createdb -h localhost -U bidagent bidagent_test
+          cd backend
+          python -m compileall -q app
+          python -m pytest -q
+        env:
+          APP_ENV: test
+          DEBUG: "false"
+          DATABASE_URL: postgresql+asyncpg://bidagent:bidagent@localhost:5432/bidagent
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_URL: redis://localhost:6379/2
+          SECRET_KEY: ci-secret
+          JWT_SECRET_KEY: ci-jwt-secret
+          EMAIL_ENABLED: "false"
+          PGPASSWORD: bidagent
+
       - name: Upload ruff output on failure
         if: failure() && steps.ruff_lint.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -75,6 +118,11 @@ jobs:
         run: |
           cd frontend
           npm run lint
+
+      - name: Audit frontend production dependencies
+        run: |
+          cd frontend
+          npm audit --omit=dev --audit-level=moderate
 
       - name: Build frontend
         run: |
